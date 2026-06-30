@@ -16,6 +16,21 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
+function getLoginErrorMessage(code: string | undefined, message: string): string {
+  switch (code) {
+    case "invalid_credentials":
+      return "Email o contraseña incorrectos.";
+    case "email_not_confirmed":
+      return "Confirma tu email antes de iniciar sesión.";
+    case "over_request_rate_limit":
+      return "Demasiados intentos. Espera un momento e inténtalo de nuevo.";
+    default:
+      return message === "Invalid login credentials"
+        ? "Email o contraseña incorrectos."
+        : message;
+  }
+}
+
 export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -42,7 +57,7 @@ export function LoginForm() {
     });
 
     if (authError) {
-      setError(authError.message);
+      setError(getLoginErrorMessage(authError.code, authError.message));
       setLoading(false);
       return;
     }

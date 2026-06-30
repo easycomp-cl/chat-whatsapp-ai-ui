@@ -1,0 +1,27 @@
+{
+  "object": "whatsapp_business_account",
+  "entry": [{
+    "id": "2228992544298783",
+    "changes": [{
+      "value": {
+        "messaging_product": "whatsapp",
+        "metadata": {
+          "display_phone_number": "56940414977",
+          "phone_number_id": "1068250019704829"
+        },
+        "contacts": [{
+          "profile": { "name": "Israel Test" },
+          "wa_id": "56912345678"
+        }],
+        "messages": [{
+          "from": "56912345678",
+          "id": "wamid.live-test-002",
+          "timestamp": "1717888800",
+          "text": { "body": "Hola quiero pan" },
+          "type": "text"
+        }]
+      },
+      "field": "messages"
+    }]
+  }]
+}

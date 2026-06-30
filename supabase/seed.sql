@@ -1,0 +1,2 @@
+-- Test users bootstrap (runs after migrations on db reset)
+-- Profiles are updated after auth users exist via seed script

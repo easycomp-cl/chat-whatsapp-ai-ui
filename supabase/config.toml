@@ -1,0 +1,31 @@
+project_id = "chat-whatsapp-ai-ui"
+
+[api]
+enabled = true
+port = 54331
+
+[db]
+port = 54332
+shadow_port = 54330
+major_version = 15
+
+[studio]
+enabled = true
+port = 54333
+
+[inbucket]
+enabled = true
+port = 54334
+
+[analytics]
+enabled = true
+port = 54337
+
+[auth]
+enabled = true
+site_url = "http://localhost:3001"
+additional_redirect_urls = ["http://localhost:3001/auth/callback", "https://chat-whatsapp-ai-ui.vercel.app/auth/callback"]
+
+[auth.email]
+enable_signup = true
+enable_confirmations = false

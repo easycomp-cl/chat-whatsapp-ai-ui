@@ -12,8 +12,9 @@ import {
   MessageReactions,
   hasCustomerReactions,
 } from "@/features/conversations/components/message-reactions";
+import { MessageDeliveryStatus } from "@/features/conversations/components/message-delivery-status";
 import type { Message } from "@/types/database.types";
-import { Bot, CheckCheck, CornerUpLeft, User } from "lucide-react";
+import { Bot, CornerUpLeft, User } from "lucide-react";
 
 type ChatMessageBubbleProps = {
   message: Message;
@@ -23,6 +24,7 @@ type ChatMessageBubbleProps = {
   highlightUnread?: boolean;
   canReply?: boolean;
   onReply?: (message: Message) => void;
+  onResent?: () => void;
 };
 
 function hasUnreadReaction(
@@ -46,6 +48,7 @@ export function ChatMessageBubble({
   highlightUnread = false,
   canReply = false,
   onReply,
+  onResent,
 }: ChatMessageBubbleProps) {
   if (isSystemMessage(message)) {
     return (
@@ -144,8 +147,11 @@ export function ChatMessageBubble({
               {isHuman && !inbound && <User className="size-3 text-[#00a884]" />}
               <span>{formatFullTime(message.created_at)}</span>
               {!inbound && (
-                <CheckCheck
-                  className={cn("size-3.5", isHuman ? "text-[#53bdeb]" : "text-[#8696a0]")}
+                <MessageDeliveryStatus
+                  message={message}
+                  conversationId={conversationId}
+                  isHuman={isHuman}
+                  onResent={onResent}
                 />
               )}
             </div>

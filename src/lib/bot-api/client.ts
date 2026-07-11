@@ -6,8 +6,10 @@ import type {
   CatalogProduct,
   ChatImportUploadResult,
   ConsolidatedToneAnalysis,
+  CreateDeliveryRegionBody,
   CreateFaqBody,
   CreateKnowledgeBody,
+  DeliveryRegion,
   EditFaqSuggestionBody,
   Faq,
   FaqSuggestion,
@@ -19,7 +21,10 @@ import type {
   KnowledgeSettingsInput,
   PaginatedImportJobs,
   PaginatedMessages,
+  PatchDeliveryCommuneBody,
+  PatchDeliveryRegionBody,
   PendingFaqSuggestion,
+  SeedDeliveryCommunesResult,
   ShopifyIntegration,
   ToneAnalysis,
 } from "./types";
@@ -176,6 +181,55 @@ export const botApi = {
 
   deleteFaq: (businessId: string, id: string) =>
     botFetch<void>(`/businesses/${businessId}/faqs/${id}`, { method: "DELETE" }),
+
+  listDeliveryRegions: (businessId: string) =>
+    botFetch<DeliveryRegion[]>(`/businesses/${businessId}/delivery/regions`),
+
+  listChileRegions: () => botFetch<string[]>("/delivery/chile-regions"),
+
+  createDeliveryRegion: (businessId: string, body: CreateDeliveryRegionBody) =>
+    botFetch<DeliveryRegion>(`/businesses/${businessId}/delivery/regions`, {
+      method: "POST",
+      body,
+    }),
+
+  patchDeliveryRegion: (
+    businessId: string,
+    id: string,
+    body: PatchDeliveryRegionBody
+  ) =>
+    botFetch<DeliveryRegion>(`/businesses/${businessId}/delivery/regions/${id}`, {
+      method: "PATCH",
+      body,
+    }),
+
+  deleteDeliveryRegion: (businessId: string, id: string) =>
+    botFetch<void>(`/businesses/${businessId}/delivery/regions/${id}`, {
+      method: "DELETE",
+    }),
+
+  seedDeliveryCommunes: (businessId: string, regionId: string) =>
+    botFetch<SeedDeliveryCommunesResult>(
+      `/businesses/${businessId}/delivery/regions/${regionId}/seed-communes`,
+      { method: "POST" }
+    ),
+
+  patchDeliveryCommune: (
+    businessId: string,
+    regionId: string,
+    communeId: string,
+    body: PatchDeliveryCommuneBody
+  ) =>
+    botFetch<DeliveryRegion>(
+      `/businesses/${businessId}/delivery/regions/${regionId}/communes/${communeId}`,
+      { method: "PATCH", body }
+    ),
+
+  rebuildDeliveryIndex: (businessId: string) =>
+    botFetch<{ documentId: string }>(
+      `/businesses/${businessId}/delivery/reindex`,
+      { method: "POST" }
+    ),
 
   listCatalogProducts: (businessId: string) =>
     botFetch<CatalogProduct[]>(`/businesses/${businessId}/catalog/products`),
@@ -403,6 +457,16 @@ export const botApi = {
       `/businesses/${businessId}/faq-suggestions/${suggestionId}/reject`,
       { method: "PATCH" }
     ),
+
+  resendMessage: (messageId: string) =>
+    botFetch<{
+      id: string;
+      conversation_id: string;
+      external_id: string | null;
+      whatsapp_delivery_status: string | null;
+      content_text: string;
+      created_at: string;
+    }>(`/messages/${messageId}/resend`, { method: "POST" }),
 };
 
 export { BotApiError };

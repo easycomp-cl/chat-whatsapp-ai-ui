@@ -226,6 +226,7 @@ export function ChatWindow({
                     lastReadAt={lastReadAt[conversation.id]}
                     highlightUnread={mounted}
                     canReply={canReply}
+                    onResent={() => void refresh()}
                     onReply={(target) => {
                       setReplyingTo(target);
                       setTab("reply");

@@ -82,6 +82,7 @@ export type Message = {
   content_text: string;
   content_type?: string | null;
   external_id?: string | null;
+  whatsapp_delivery_status?: string | null;
   ai_generated: boolean;
   created_at: string;
   reply_to_message_id?: string | null;

@@ -48,6 +48,9 @@ export function mapApiMessageToMessage(
     content_text: String(raw.content_text ?? raw.contentText ?? ""),
     content_type: (raw.content_type ?? raw.contentType ?? "TEXT") as string,
     external_id: (raw.external_id ?? raw.externalId ?? null) as string | null,
+    whatsapp_delivery_status: (raw.whatsapp_delivery_status ??
+      raw.whatsappDeliveryStatus ??
+      null) as string | null,
     ai_generated: Boolean(raw.ai_generated ?? raw.aiGenerated ?? false),
     created_at: String(raw.created_at ?? raw.createdAt ?? new Date().toISOString()),
     reply_to_message_id: (raw.reply_to_message_id ?? raw.replyToMessageId ?? null) as

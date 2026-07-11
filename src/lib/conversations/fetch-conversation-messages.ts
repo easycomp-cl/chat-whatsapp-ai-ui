@@ -3,10 +3,10 @@ import type { Database } from "@/types/database.types";
 import type { Message } from "@/types/database.types";
 
 export const MESSAGE_SELECT_COLUMNS =
-  "id, conversation_id, business_id, customer_id, direction, sender_type, sender_phone, receiver_phone, content_text, content_type, external_id, ai_generated, created_at, reply_to_message_id, quoted_text, quoted_sender_type, reactions";
+  "id, conversation_id, business_id, customer_id, direction, sender_type, sender_phone, receiver_phone, content_text, content_type, external_id, whatsapp_delivery_status, ai_generated, created_at, reply_to_message_id, quoted_text, quoted_sender_type, reactions";
 
 export const MESSAGE_SELECT_COLUMNS_LEGACY =
-  "id, conversation_id, business_id, customer_id, direction, sender_type, sender_phone, receiver_phone, content_text, content_type, external_id, ai_generated, created_at";
+  "id, conversation_id, business_id, customer_id, direction, sender_type, sender_phone, receiver_phone, content_text, content_type, external_id, whatsapp_delivery_status, ai_generated, created_at";
 
 type Supabase = SupabaseClient<Database>;
 

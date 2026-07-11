@@ -20,6 +20,9 @@ import type {
   NoteInput,
   ReplyInput,
   ShopifyConnectInput,
+  DeliveryRegionInput,
+  DeliveryRegionPatchInput,
+  DeliveryCommunePatchInput,
 } from "@/lib/validators/schemas";
 
 export async function toggleBotGlobal(enabled: boolean) {
@@ -85,6 +88,81 @@ export async function deleteFaqAction(id: string) {
   const profile = await requireBusinessAdmin();
   await botApi.deleteFaq(profile.business_id!, id);
   revalidatePath("/app/faqs");
+}
+
+export async function createDeliveryRegionAction(data: DeliveryRegionInput) {
+  const profile = await requireBusinessAdmin();
+  try {
+    await botApi.createDeliveryRegion(profile.business_id!, {
+      name: data.name,
+      courier: data.courier,
+      default_price: data.default_price,
+      active: data.active,
+      seed_communes: data.seed_communes,
+    });
+  } catch (error) {
+    if (error instanceof BotApiError) {
+      throw new Error(error.message);
+    }
+    throw new Error(
+      "No se pudo conectar con el backend del bot. Verifica que chat-whatsapp-ai esté corriendo en el puerto 3000."
+    );
+  }
+  revalidatePath("/app/despachos");
+}
+
+export async function updateDeliveryRegionAction(
+  id: string,
+  data: DeliveryRegionPatchInput
+) {
+  const profile = await requireBusinessAdmin();
+  await botApi.patchDeliveryRegion(profile.business_id!, id, {
+    ...(data.name !== undefined ? { name: data.name } : {}),
+    ...(data.courier !== undefined ? { courier: data.courier } : {}),
+    ...(data.default_price !== undefined ? { default_price: data.default_price } : {}),
+    ...(data.active !== undefined ? { active: data.active } : {}),
+  });
+  revalidatePath("/app/despachos");
+}
+
+export async function deleteDeliveryRegionAction(id: string) {
+  const profile = await requireBusinessAdmin();
+  await botApi.deleteDeliveryRegion(profile.business_id!, id);
+  revalidatePath("/app/despachos");
+}
+
+export async function seedDeliveryCommunesAction(regionId: string) {
+  const profile = await requireBusinessAdmin();
+  const result = await botApi.seedDeliveryCommunes(profile.business_id!, regionId);
+  revalidatePath("/app/despachos");
+  return result;
+}
+
+export async function updateDeliveryCommuneAction(
+  regionId: string,
+  communeId: string,
+  data: DeliveryCommunePatchInput
+) {
+  const profile = await requireBusinessAdmin();
+  await botApi.patchDeliveryCommune(
+    profile.business_id!,
+    regionId,
+    communeId,
+    {
+      ...(data.price_override !== undefined
+        ? { price_override: data.price_override }
+        : {}),
+      ...(data.active !== undefined ? { active: data.active } : {}),
+    }
+  );
+  revalidatePath("/app/despachos");
+}
+
+export async function rebuildDeliveryIndexAction() {
+  const profile = await requireBusinessAdmin();
+  await botApi.rebuildDeliveryIndex(profile.business_id!);
+  revalidatePath("/app/despachos");
+  revalidatePath("/app/knowledge");
 }
 
 async function importFaqsBulk(faqs: ReturnType<typeof parseCsvFaqs>) {
@@ -295,6 +373,22 @@ export async function sendConversationReplyAction(
   }
 }
 
+export async function resendMessageAction(messageId: string, conversationId: string) {
+  await requireAppAccess();
+
+  try {
+    const updated = await botApi.resendMessage(messageId);
+    revalidatePath("/app/conversations");
+    revalidatePath(`/app/conversations/${conversationId}`);
+    return updated;
+  } catch (error) {
+    if (error instanceof BotApiError) {
+      throw new Error(error.message || "No se pudo reenviar el mensaje por WhatsApp");
+    }
+    throw error;
+  }
+}
+
 export async function addConversationNoteAction(
   conversationId: string,
   data: NoteInput
@@ -307,6 +401,59 @@ export async function addConversationNoteAction(
     user_id: profile.user_id,
     note: data.note,
   });
+  if (error) throw new Error(error.message);
+  revalidatePath(`/app/conversations/${conversationId}`);
+}
+
+export async function deleteConversationNotesAction(conversationId: string) {
+  const profile = await requireAppAccess();
+  const supabase = await createClient();
+
+  const { data: conversation } = await supabase
+    .from("conversations")
+    .select("id, business_id")
+    .eq("id", conversationId)
+    .eq("business_id", profile.business_id!)
+    .single();
+
+  if (!conversation) {
+    throw new Error("Conversación no encontrada");
+  }
+
+  const { error } = await supabase
+    .from("conversation_notes")
+    .delete()
+    .eq("conversation_id", conversationId)
+    .eq("business_id", profile.business_id!);
+
+  if (error) throw new Error(error.message);
+  revalidatePath(`/app/conversations/${conversationId}`);
+}
+
+export async function deleteConversationNoteAction(
+  conversationId: string,
+  noteId: string
+) {
+  const profile = await requireAppAccess();
+  const supabase = await createClient();
+
+  const { data: note } = await supabase
+    .from("conversation_notes")
+    .select("id")
+    .eq("id", noteId)
+    .eq("conversation_id", conversationId)
+    .eq("business_id", profile.business_id!)
+    .single();
+
+  if (!note) {
+    throw new Error("Nota no encontrada");
+  }
+
+  const { error } = await supabase
+    .from("conversation_notes")
+    .delete()
+    .eq("id", noteId);
+
   if (error) throw new Error(error.message);
   revalidatePath(`/app/conversations/${conversationId}`);
 }

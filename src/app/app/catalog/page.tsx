@@ -1,29 +1,18 @@
-import { requireBusinessAdmin } from "@/lib/auth/session";
-import { botApi } from "@/lib/bot-api/client";
-import { CatalogManager } from "@/features/catalog/components/catalog-manager";
-import type { CatalogProduct } from "@/lib/bot-api/types";
+import { Suspense } from "react";
+import { PageHeader } from "@/components/layout/page-header";
+import { CatalogContentSkeleton } from "@/components/layout/page-skeletons";
+import { CatalogPageContent } from "@/features/catalog/components/catalog-page-content";
 
-export default async function CatalogPage() {
-  const profile = await requireBusinessAdmin();
-  const businessId = profile.business_id!;
-
-  let products: CatalogProduct[] = [];
-
-  try {
-    products = await botApi.listCatalogProducts(businessId);
-  } catch {
-    products = [];
-  }
-
+export default function CatalogPage() {
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold tracking-tight">Catálogo de productos</h2>
-        <p className="text-muted-foreground">
-          Importa productos desde CSV o JSON
-        </p>
-      </div>
-      <CatalogManager products={products} />
+      <PageHeader
+        title="Catálogo de productos"
+        description="Importa productos desde CSV o JSON"
+      />
+      <Suspense fallback={<CatalogContentSkeleton />}>
+        <CatalogPageContent />
+      </Suspense>
     </div>
   );
 }

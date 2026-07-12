@@ -23,7 +23,11 @@ export async function loadConversations(
     convQuery = convQuery.eq("assigned_admin_id", agentId);
   }
 
-  const { data: conversations } = await convQuery;
+  const { data: conversations, error } = await convQuery;
+  if (error) {
+    console.error("[loadConversations] query error:", error);
+    return [];
+  }
   if (!conversations?.length) return [];
 
   const customerIds = [...new Set(conversations.map((c) => c.customer_id))];
@@ -68,4 +72,31 @@ export async function loadConversations(
     customers: customerMap.get(c.customer_id) ?? null,
     last_message_preview: previewMap.get(c.id) ?? null,
   }));
+}
+
+export function toConversationRow(
+  conv: Conversation,
+  customer: Customer | null,
+  lastMessagePreview?: string | null
+): ConversationRow {
+  return {
+    ...conv,
+    customers: customer,
+    last_message_preview: lastMessagePreview ?? null,
+  };
+}
+
+export function ensureConversationInList(
+  conversations: ConversationRow[],
+  row: ConversationRow
+): ConversationRow[] {
+  if (conversations.some((conversation) => conversation.id === row.id)) {
+    return conversations;
+  }
+
+  return [row, ...conversations].sort(
+    (a, b) =>
+      new Date(b.last_message_at ?? 0).getTime() -
+      new Date(a.last_message_at ?? 0).getTime()
+  );
 }

@@ -41,10 +41,14 @@ function SheetContent({
   children,
   side = "right",
   showCloseButton = true,
+  closeIcon,
+  closeButtonClassName,
   ...props
 }: SheetPrimitive.Popup.Props & {
   side?: "top" | "right" | "bottom" | "left"
   showCloseButton?: boolean
+  closeIcon?: React.ReactNode
+  closeButtonClassName?: string
 }) {
   return (
     <SheetPortal>
@@ -65,14 +69,13 @@ function SheetContent({
             render={
               <Button
                 variant="ghost"
-                className="absolute top-3 right-3"
+                className={cn("absolute top-3 right-3", closeButtonClassName)}
                 size="icon-sm"
               />
             }
           >
-            <XIcon
-            />
-            <span className="sr-only">Close</span>
+            {closeIcon ?? <XIcon />}
+            <span className="sr-only">Cerrar</span>
           </SheetPrimitive.Close>
         )}
       </SheetPrimitive.Popup>

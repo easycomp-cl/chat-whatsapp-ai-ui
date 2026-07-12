@@ -65,6 +65,26 @@ export const replySchema = z.object({
   reply_to_message_id: z.string().optional(),
 });
 
+export const deliveryRegionSchema = z.object({
+  name: z.string().min(1, "Selecciona una región"),
+  courier: z.string().min(1, "Indica el courier"),
+  default_price: z.coerce.number().int().min(0, "Precio inválido"),
+  active: z.boolean().default(true),
+  seed_communes: z.boolean().default(true),
+});
+
+export const deliveryRegionPatchSchema = z.object({
+  name: z.string().min(1).optional(),
+  courier: z.string().min(1).optional(),
+  default_price: z.coerce.number().int().min(0).optional(),
+  active: z.boolean().optional(),
+});
+
+export const deliveryCommunePatchSchema = z.object({
+  price_override: z.coerce.number().int().min(0).nullable().optional(),
+  active: z.boolean().optional(),
+});
+
 export type LoginInput = z.infer<typeof loginSchema>;
 export type FaqInput = z.infer<typeof faqSchema>;
 export type AgentInput = z.infer<typeof agentSchema>;
@@ -74,3 +94,6 @@ export type ShopifyConnectInput = z.infer<typeof shopifyConnectSchema>;
 export type SettingsInput = z.infer<typeof settingsSchema>;
 export type NoteInput = z.infer<typeof noteSchema>;
 export type ReplyInput = z.infer<typeof replySchema>;
+export type DeliveryRegionInput = z.infer<typeof deliveryRegionSchema>;
+export type DeliveryRegionPatchInput = z.infer<typeof deliveryRegionPatchSchema>;
+export type DeliveryCommunePatchInput = z.infer<typeof deliveryCommunePatchSchema>;

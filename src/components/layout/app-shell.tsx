@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { BrandName } from "@/components/brand/brand-name";
 import {
@@ -13,6 +14,7 @@ import {
   BarChart3,
   ShoppingBag,
   MessageCirclePlus,
+  Truck,
 } from "lucide-react";
 import {
   Sidebar,
@@ -42,6 +44,7 @@ const navItems = [
   { href: "/app/importar-chat", label: "Importar chat", icon: MessageCirclePlus, roles: ["BUSINESS_ADMIN"] as UserRole[] },
   { href: "/app/knowledge", label: "Base de conocimiento", icon: BookOpen, roles: ["BUSINESS_ADMIN"] as UserRole[] },
   { href: "/app/catalog", label: "Catálogo", icon: ShoppingBag, roles: ["BUSINESS_ADMIN"] as UserRole[] },
+  { href: "/app/despachos", label: "Despachos", icon: Truck, roles: ["BUSINESS_ADMIN"] as UserRole[] },
   { href: "/app/agents", label: "Usuarios", icon: Users, roles: ["BUSINESS_ADMIN"] as UserRole[] },
   { href: "/app/usage", label: "Uso del plan", icon: BarChart3, roles: ["BUSINESS_ADMIN"] as UserRole[] },
   { href: "/app/settings", label: "Configuración", icon: Settings, roles: ["BUSINESS_ADMIN"] as UserRole[] },
@@ -67,12 +70,28 @@ function NavItemWithPending({
   const { pendingCount } = usePendingMessages();
   const showPending = item.href === "/app/conversations" && pendingCount > 0;
 
+  const pathname = usePathname();
+  const [pendingHref, setPendingHref] = useState<string | null>(null);
+
+  useEffect(() => {
+    setPendingHref(null);
+  }, [pathname]);
+
+  const active = isActive || pendingHref === item.href;
+
   return (
     <SidebarMenuItem>
       <SidebarMenuButton
         size="lg"
-        render={<Link href={item.href} aria-current={isActive ? "page" : undefined} />}
-        isActive={isActive}
+        render={
+          <Link
+            href={item.href}
+            prefetch
+            aria-current={active ? "page" : undefined}
+            onClick={() => setPendingHref(item.href)}
+          />
+        }
+        isActive={active}
       >
         <span className="relative">
           <item.icon />

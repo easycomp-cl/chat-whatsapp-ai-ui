@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { requireAppAccess } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
-import { loadConversations } from "@/lib/conversations/load-conversations";
+import { loadConversations, toConversationRow, ensureConversationInList } from "@/lib/conversations/load-conversations";
 import { fetchConversationMessages } from "@/lib/conversations/fetch-conversation-messages";
 import { ConversationsInbox } from "@/features/conversations/components/conversations-inbox";
 import { ChatWindow } from "@/features/conversations/components/chat-window";
@@ -56,6 +56,13 @@ export default async function ConversationDetailPage({
     console.error("[chat] Error cargando mensajes (SSR):", messagesError);
   }
 
+  const activeConversation = toConversationRow(
+    conv,
+    (customer as Customer | null) ?? null,
+    (messages ?? [])[0]?.content_text ?? null
+  );
+  const conversationRows = ensureConversationInList(conversations, activeConversation);
+
   const { data: notes } = await supabase
     .from("conversation_notes")
     .select("*")
@@ -71,7 +78,7 @@ export default async function ConversationDetailPage({
 
   return (
     <ConversationsInbox
-      conversations={conversations}
+      conversations={conversationRows}
       businessId={profile.business_id!}
       agentId={agentFilter}
     >

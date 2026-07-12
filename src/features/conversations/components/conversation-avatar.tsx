@@ -6,11 +6,14 @@ type ConversationAvatarProps = {
   name?: string | null;
   phone?: string;
   seed: string;
-  size?: "sm" | "md" | "lg";
+  size?: "xs" | "sm" | "md" | "lg";
   showChannel?: boolean;
+  className?: string;
+  channelClassName?: string;
 };
 
 const sizes = {
+  xs: "size-10 text-xs",
   sm: "size-11 text-sm",
   md: "size-14 text-base",
   lg: "size-20 text-xl",
@@ -22,6 +25,8 @@ export function ConversationAvatar({
   seed,
   size = "sm",
   showChannel = true,
+  className,
+  channelClassName,
 }: ConversationAvatarProps) {
   return (
     <div className="relative shrink-0">
@@ -29,13 +34,19 @@ export function ConversationAvatar({
         className={cn(
           "flex items-center justify-center rounded-full font-semibold text-white",
           getAvatarColor(seed),
-          sizes[size]
+          sizes[size],
+          className
         )}
       >
         {getInitials(name, phone)}
       </div>
       {showChannel && (
-        <span className="absolute -bottom-0.5 -right-0.5 flex size-5 items-center justify-center rounded-full bg-[#25D366] ring-2 ring-white">
+        <span
+          className={cn(
+            "absolute -bottom-0.5 -right-0.5 flex size-5 items-center justify-center rounded-full bg-[#25D366] ring-2 ring-white",
+            channelClassName
+          )}
+        >
           <MessageCircle className="size-3 text-white" />
         </span>
       )}

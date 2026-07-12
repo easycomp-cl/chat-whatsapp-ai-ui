@@ -1,4 +1,5 @@
 import "server-only";
+import type { MetricsSummary, TopQuestion } from "@/types/database.types";
 import type {
   ApproveFaqSuggestionBody,
   ApproveToneBody,
@@ -72,8 +73,16 @@ async function parseError(res: Response): Promise<string> {
   }
 }
 
+export const BOT_API_UNAVAILABLE_MESSAGE =
+  "No se pudo conectar con el backend del bot. Verifica BOT_API_BASE_URL y que el servicio esté disponible.";
+
 function connectionErrorMessage(baseUrl: string): string {
-  return `No se pudo conectar con el backend (${baseUrl}). Verifica que chat-whatsapp-ai esté en ejecución (npm run dev en el puerto 3000).`;
+  return `${BOT_API_UNAVAILABLE_MESSAGE} (${baseUrl})`;
+}
+
+export function getBotApiErrorMessage(error: unknown): string {
+  if (error instanceof BotApiError) return error.message;
+  return BOT_API_UNAVAILABLE_MESSAGE;
 }
 
 async function runBotFetch<T>(url: string, init: RequestInit): Promise<T> {
@@ -304,6 +313,18 @@ export const botApi = {
       searchParams: { from, to },
     }),
 
+  getMetricsDashboard: (
+    businessId: string,
+    params?: { from?: string; to?: string; limit?: number }
+  ) =>
+    botFetch<{
+      summary: MetricsSummary;
+      top_questions: TopQuestion[];
+      usage: Array<{ eventType: string; createdAt: string }>;
+    }>(`/businesses/${businessId}/metrics/dashboard`, {
+      searchParams: params,
+    }),
+
   getMetricsQuestions: (
     businessId: string,
     params?: { from?: string; to?: string; limit?: number }
@@ -330,7 +351,7 @@ export const botApi = {
       `/businesses/${businessId}/faq-suggestions/pending`
     ),
 
-  getConsolidatedToneAnalysis: (businessId: string, useAi = true) =>
+  getConsolidatedToneAnalysis: (businessId: string, useAi = false) =>
     botFetch<ConsolidatedToneAnalysis>(
       `/businesses/${businessId}/tone-analysis/consolidated`,
       { searchParams: { ai: useAi ? "true" : "false" } }

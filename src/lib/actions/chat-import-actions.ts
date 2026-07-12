@@ -68,7 +68,7 @@ export async function listPendingFaqSuggestionsAction() {
   return botApi.listPendingFaqSuggestions(profile.business_id!);
 }
 
-export async function getConsolidatedToneAction(useAi = true) {
+export async function getConsolidatedToneAction(useAi = false) {
   const profile = await requireBusinessAdmin();
   try {
     return await botApi.getConsolidatedToneAnalysis(profile.business_id!, useAi);

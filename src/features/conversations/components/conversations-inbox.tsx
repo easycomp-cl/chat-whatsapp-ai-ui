@@ -15,7 +15,7 @@ export function ConversationsInbox({
   children?: React.ReactNode;
 }) {
   return (
-    <div className="flex h-full min-h-0 overflow-hidden rounded-2xl border border-[#202022]/8 bg-white shadow-[0_8px_40px_rgba(32,32,34,0.08)]">
+    <div className="flex h-full min-h-0 overflow-hidden rounded-xl border border-[#202022]/8 bg-white shadow-[0_8px_40px_rgba(32,32,34,0.08)] md:rounded-2xl">
       <Suspense>
         <ConversationListPanel
           conversations={conversations}

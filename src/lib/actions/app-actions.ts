@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { botApi, BotApiError } from "@/lib/bot-api/client";
+import { botApi, BotApiError, BOT_API_UNAVAILABLE_MESSAGE } from "@/lib/bot-api/client";
 import {
   requireAppAccess,
   requireBusinessAdmin,
@@ -104,9 +104,7 @@ export async function createDeliveryRegionAction(data: DeliveryRegionInput) {
     if (error instanceof BotApiError) {
       throw new Error(error.message);
     }
-    throw new Error(
-      "No se pudo conectar con el backend del bot. Verifica que chat-whatsapp-ai esté corriendo en el puerto 3000."
-    );
+    throw new Error(BOT_API_UNAVAILABLE_MESSAGE);
   }
   revalidatePath("/app/despachos");
 }

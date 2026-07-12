@@ -1,11 +1,47 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { ConversationRow } from "@/lib/conversations/load-conversations";
 import type { Conversation, Customer, Message } from "@/types/database.types";
 
 const POLL_MS = 4000;
+
+function buildConversationRows(
+  convs: Conversation[],
+  customers: Customer[] | null | undefined,
+  recentMessages: Pick<Message, "conversation_id" | "content_text" | "created_at">[] | null | undefined
+): ConversationRow[] {
+  const customerMap = new Map(
+    ((customers ?? []) as Customer[]).map((c) => [c.id, c])
+  );
+
+  const previewMap = new Map<string, string>();
+  const clearedAtMap = new Map<string, string | null>();
+  for (const conv of convs) {
+    clearedAtMap.set(conv.id, conv.chat_cleared_at ?? null);
+  }
+
+  for (const msg of recentMessages ?? []) {
+    if (previewMap.has(msg.conversation_id)) continue;
+
+    const clearedAt = clearedAtMap.get(msg.conversation_id);
+    if (
+      clearedAt &&
+      new Date(msg.created_at).getTime() <= new Date(clearedAt).getTime()
+    ) {
+      continue;
+    }
+
+    previewMap.set(msg.conversation_id, msg.content_text);
+  }
+
+  return convs.map((c) => ({
+    ...c,
+    customers: customerMap.get(c.customer_id) ?? null,
+    last_message_preview: previewMap.get(c.id) ?? null,
+  }));
+}
 
 export function useLiveConversationsList(
   businessId: string,
@@ -13,15 +49,25 @@ export function useLiveConversationsList(
   agentId?: string | null
 ) {
   const [conversations, setConversations] = useState(initial);
+  const initialRef = useRef(initial);
 
   useEffect(() => {
-    setConversations(initial);
+    initialRef.current = initial;
+    if (initial.length > 0) {
+      setConversations(initial);
+    }
   }, [initial, businessId]);
 
   useEffect(() => {
     const supabase = createClient();
+    let cancelled = false;
 
     async function refresh() {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session || cancelled) return;
+
       let convQuery = supabase
         .from("conversations")
         .select("*")
@@ -33,8 +79,16 @@ export function useLiveConversationsList(
         convQuery = convQuery.eq("assigned_admin_id", agentId);
       }
 
-      const { data: convs } = await convQuery;
+      const { data: convs, error } = await convQuery;
+      if (cancelled) return;
+
+      if (error) {
+        console.error("[conversations-list] refresh error:", error);
+        return;
+      }
+
       if (!convs?.length) {
+        if (initialRef.current.length > 0) return;
         setConversations([]);
         return;
       }
@@ -45,10 +99,6 @@ export function useLiveConversationsList(
         .select("*")
         .in("id", customerIds);
 
-      const customerMap = new Map(
-        ((customers ?? []) as Customer[]).map((c) => [c.id, c])
-      );
-
       const { data: recentMessages } = await supabase
         .from("messages")
         .select("conversation_id, content_text, created_at")
@@ -56,27 +106,22 @@ export function useLiveConversationsList(
         .order("created_at", { ascending: false })
         .limit(300);
 
-      const previewMap = new Map<string, string>();
-      for (const msg of (recentMessages ?? []) as Pick<
-        Message,
-        "conversation_id" | "content_text"
-      >[]) {
-        if (!previewMap.has(msg.conversation_id)) {
-          previewMap.set(msg.conversation_id, msg.content_text);
-        }
-      }
+      if (cancelled) return;
 
       setConversations(
-        (convs as Conversation[]).map((c) => ({
-          ...c,
-          customers: customerMap.get(c.customer_id) ?? null,
-          last_message_preview: previewMap.get(c.id) ?? null,
-        }))
+        buildConversationRows(
+          convs as Conversation[],
+          customers as Customer[] | null,
+          (recentMessages ?? []) as Pick<
+            Message,
+            "conversation_id" | "content_text" | "created_at"
+          >[]
+        )
       );
     }
 
     void refresh();
-    const interval = setInterval(refresh, POLL_MS);
+    const interval = setInterval(() => void refresh(), POLL_MS);
 
     const channel = supabase
       .channel(`business-conversations-${businessId}`)
@@ -85,8 +130,8 @@ export function useLiveConversationsList(
         {
           event: "*",
           schema: "public",
-          table: "Message",
-          filter: `tenantId=eq.${businessId}`,
+          table: "messages",
+          filter: `business_id=eq.${businessId}`,
         },
         () => void refresh()
       )
@@ -95,14 +140,15 @@ export function useLiveConversationsList(
         {
           event: "UPDATE",
           schema: "public",
-          table: "Conversation",
-          filter: `tenantId=eq.${businessId}`,
+          table: "conversations",
+          filter: `business_id=eq.${businessId}`,
         },
         () => void refresh()
       )
       .subscribe();
 
     return () => {
+      cancelled = true;
       clearInterval(interval);
       void supabase.removeChannel(channel);
     };

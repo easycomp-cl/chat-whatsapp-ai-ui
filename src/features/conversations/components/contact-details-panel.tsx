@@ -1,5 +1,6 @@
 import { Clock, Globe, MessageCircle, Tag } from "lucide-react";
 import { AiEventsAccordion } from "@/features/conversations/components/ai-events-accordion";
+import { ContactNotesSection } from "@/features/conversations/components/contact-notes-section";
 import { ConversationAvatar } from "@/features/conversations/components/conversation-avatar";
 import { ModeBadge, StatusBadge } from "@/features/conversations/components/conversation-badges";
 import { formatFullTime } from "@/lib/conversations/utils";
@@ -63,28 +64,7 @@ export function ContactDetailsPanel({
           </div>
         </section>
 
-        <section className="rounded-xl border border-[#202022]/8 bg-white p-4 shadow-sm">
-          <h4 className="mb-2.5 text-xs font-semibold uppercase tracking-wide text-[#202022]/50">
-            Notas del contacto
-          </h4>
-          {notes.length === 0 ? (
-            <p className="text-sm text-[#202022]/40">Sin notas internas</p>
-          ) : (
-            <div className="space-y-2">
-              {notes.map((n) => (
-                <div
-                  key={n.id}
-                  className="rounded-lg border border-dashed border-amber-200 bg-amber-50/70 p-3 text-sm"
-                >
-                  <p className="text-[#202022]/80">{n.note}</p>
-                  <p className="mt-1 text-[10px] text-amber-700/60">
-                    {formatFullTime(n.created_at)}
-                  </p>
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
+        <ContactNotesSection conversationId={conversation.id} notes={notes} />
 
         <section className="rounded-xl border border-[#202022]/8 bg-white p-4 shadow-sm">
           <h4 className="mb-2.5 text-xs font-semibold uppercase tracking-wide text-[#202022]/50">

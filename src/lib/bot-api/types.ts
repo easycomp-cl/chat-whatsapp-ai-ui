@@ -279,3 +279,50 @@ export type ApproveFaqSuggestionBody = {
   final_question?: string;
   final_answer?: string;
 };
+
+export type DeliveryCommune = {
+  id: string;
+  region_id: string;
+  name: string;
+  price_override: number | null;
+  is_active: boolean;
+  sort_order: number;
+  effective_price: number;
+};
+
+export type DeliveryRegion = {
+  id: string;
+  business_id: string;
+  name: string;
+  courier: string;
+  default_price: number;
+  is_active: boolean;
+  sort_order: number;
+  communes: DeliveryCommune[];
+  created_at: string;
+  updated_at: string;
+};
+
+export type CreateDeliveryRegionBody = {
+  name: string;
+  courier: string;
+  default_price: number;
+  active?: boolean;
+  seed_communes?: boolean;
+};
+
+export type PatchDeliveryRegionBody = Partial<CreateDeliveryRegionBody> & {
+  sort_order?: number;
+};
+
+export type PatchDeliveryCommuneBody = {
+  name?: string;
+  price_override?: number | null;
+  active?: boolean;
+  sort_order?: number;
+};
+
+export type SeedDeliveryCommunesResult = {
+  seeded: number;
+  region: DeliveryRegion;
+};

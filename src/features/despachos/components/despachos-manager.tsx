@@ -48,7 +48,9 @@ import {
 import type { DeliveryCommune, DeliveryRegion } from "@/lib/bot-api/types";
 import {
   DEFAULT_DELIVERY_COURIER,
+  type DeliveryCourier,
   deliveryCourierOptions,
+  parseDeliveryCourier,
 } from "@/lib/delivery/couriers";
 
 function formatClp(value: number) {
@@ -59,13 +61,16 @@ function CourierSelect({
   value,
   onValueChange,
 }: {
-  value: string;
-  onValueChange: (value: string) => void;
+  value: DeliveryCourier;
+  onValueChange: (value: DeliveryCourier) => void;
 }) {
   const options = useMemo(() => deliveryCourierOptions(value), [value]);
 
   return (
-    <Select value={value} onValueChange={(v) => onValueChange(v ?? DEFAULT_DELIVERY_COURIER)}>
+    <Select
+      value={value}
+      onValueChange={(v) => onValueChange(parseDeliveryCourier(v))}
+    >
       <SelectTrigger className="w-full">
         <SelectValue placeholder="Selecciona courier" />
       </SelectTrigger>
@@ -200,7 +205,9 @@ function RegionPanel({ region }: { region: DeliveryRegion }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [expanded, setExpanded] = useState(false);
-  const [courier, setCourier] = useState(region.courier);
+  const [courier, setCourier] = useState<DeliveryCourier>(() =>
+    parseDeliveryCourier(region.courier)
+  );
   const [defaultPrice, setDefaultPrice] = useState(String(region.default_price));
   const [active, setActive] = useState(region.is_active);
   const [communeFilter, setCommuneFilter] = useState("");

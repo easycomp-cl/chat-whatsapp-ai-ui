@@ -1,0 +1,45 @@
+---
+description: Evitar errores de TypeScript en build de producción
+globs: "src/**/*.{ts,tsx}"
+alwaysApply: false
+---
+
+# TypeScript y build de producción
+
+Antes de dar por terminado un cambio en `src/`, ejecuta `npm run build`. El build corre `tsc` estricto y falla con errores que `next dev` puede no mostrar.
+
+## Select / callbacks con union types
+
+Si el estado es un union (`"A" | "B" | "C"`), el callback del `Select` no puede ser `(value: string) => void`: `setState` no acepta `string` genérico.
+
+```tsx
+// ❌ MAL — rompe el build
+function CourierSelect({ onValueChange }: { onValueChange: (value: string) => void }) {}
+<CourierSelect onValueChange={setCourier} /> // setCourier: Dispatch<SetStateAction<DeliveryCourier>>
+
+// ✅ BIEN — tipar con el union y parsear el valor del Select
+function CourierSelect({
+  onValueChange,
+}: {
+  value: DeliveryCourier;
+  onValueChange: (value: DeliveryCourier) => void;
+}) {
+  return (
+    <Select onValueChange={(v) => onValueChange(parseDeliveryCourier(v))} />
+  );
+}
+```
+
+## Valores del API vs tipos de dominio
+
+Campos del API tipados como `string` (p. ej. `region.courier`) deben normalizarse al inicializar estado local:
+
+```tsx
+const [courier, setCourier] = useState<DeliveryCourier>(() =>
+  parseDeliveryCourier(region.courier)
+);
+```
+
+## Helpers de dominio
+
+Reutiliza tipos y parsers de `@/lib/delivery/couriers` (`DeliveryCourier`, `parseDeliveryCourier`, `isDeliveryCourier`) en lugar de `string` suelto para couriers.

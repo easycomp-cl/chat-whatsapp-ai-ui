@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import type { ConversationRow } from "@/lib/conversations/load-conversations";
 import type { Conversation, Customer, Message } from "@/types/database.types";
 
-const POLL_MS = 4000;
+const POLL_MS = 15000;
 
 function buildConversationRows(
   convs: Conversation[],
@@ -120,7 +120,9 @@ export function useLiveConversationsList(
       );
     }
 
-    void refresh();
+    if (initialRef.current.length === 0) {
+      void refresh();
+    }
     const interval = setInterval(() => void refresh(), POLL_MS);
 
     const channel = supabase

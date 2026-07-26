@@ -21,6 +21,14 @@ export type KnowledgeDocument = {
   updatedAt: string;
 };
 
+import type { Conversation, Customer } from "@/types/database.types";
+
+/** Respuesta de GET /businesses/:id/conversations/inbox (snake_case, alineado con Supabase). */
+export type InboxConversation = Conversation & {
+  customers: Customer | null;
+  last_message_preview?: string | null;
+};
+
 export type Faq = {
   id: string;
   tenantId: string;

@@ -1,7 +1,7 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
-import { botApi, BotApiError, BOT_API_UNAVAILABLE_MESSAGE } from "@/lib/bot-api/client";
+import { revalidatePath, revalidateTag } from "next/cache";
+import { botApi, BotApiError, BOT_API_UNAVAILABLE_MESSAGE, faqsCacheTag } from "@/lib/bot-api/client";
 import {
   requireAppAccess,
   requireBusinessAdmin,
@@ -75,18 +75,21 @@ export async function changeConversationMode(
 export async function createFaqAction(data: FaqInput) {
   const profile = await requireBusinessAdmin();
   await botApi.createFaq(profile.business_id!, data);
+  revalidateTag(faqsCacheTag(profile.business_id!), "max");
   revalidatePath("/app/faqs");
 }
 
 export async function updateFaqAction(id: string, data: Partial<FaqInput>) {
   const profile = await requireBusinessAdmin();
   await botApi.patchFaq(profile.business_id!, id, data);
+  revalidateTag(faqsCacheTag(profile.business_id!), "max");
   revalidatePath("/app/faqs");
 }
 
 export async function deleteFaqAction(id: string) {
   const profile = await requireBusinessAdmin();
   await botApi.deleteFaq(profile.business_id!, id);
+  revalidateTag(faqsCacheTag(profile.business_id!), "max");
   revalidatePath("/app/faqs");
 }
 

@@ -1,4 +1,5 @@
 import "server-only";
+import { unstable_cache } from "next/cache";
 import type { MetricsSummary, TopQuestion } from "@/types/database.types";
 import type {
   ApproveFaqSuggestionBody,
@@ -14,6 +15,7 @@ import type {
   EditFaqSuggestionBody,
   Faq,
   FaqSuggestion,
+  InboxConversation,
   ImportJob,
   ImportResult,
   ImportedMessage,
@@ -181,6 +183,15 @@ export const botApi = {
 
   listFaqs: (businessId: string) =>
     botFetch<Faq[]>(`/businesses/${businessId}/faqs`),
+
+  listConversationsInbox: (
+    businessId: string,
+    params?: { assigned_admin_id?: string; limit?: number }
+  ) =>
+    botFetch<{ conversations: InboxConversation[] }>(
+      `/businesses/${businessId}/conversations/inbox`,
+      { searchParams: params }
+    ),
 
   createFaq: (businessId: string, body: CreateFaqBody) =>
     botFetch<Faq>(`/businesses/${businessId}/faqs`, { method: "POST", body }),
@@ -489,5 +500,17 @@ export const botApi = {
       created_at: string;
     }>(`/messages/${messageId}/resend`, { method: "POST" }),
 };
+
+export function getCachedFaqs(businessId: string) {
+  return unstable_cache(
+    () => botApi.listFaqs(businessId),
+    [`faqs-${businessId}`],
+    { revalidate: 60, tags: [`faqs-${businessId}`] }
+  )();
+}
+
+export function faqsCacheTag(businessId: string) {
+  return `faqs-${businessId}`;
+}
 
 export { BotApiError };

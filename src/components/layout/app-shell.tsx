@@ -31,10 +31,7 @@ import {
 } from "@/components/ui/sidebar";
 import type { UserRole } from "@/types/database.types";
 import { AppHeader } from "@/components/layout/app-header";
-import {
-  PendingMessagesProvider,
-  usePendingMessages,
-} from "@/features/conversations/context/pending-messages-context";
+import { usePendingMessages } from "@/features/conversations/context/pending-messages-context";
 import { Bell } from "lucide-react";
 
 const navItems = [
@@ -126,7 +123,6 @@ export function AppShell({
   const items = navItems.filter((item) => item.roles.includes(userRole));
 
   return (
-    <PendingMessagesProvider businessId={businessId}>
     <SidebarProvider>
       <Sidebar className="[&_[data-slot=sidebar-inner]]:shadow-xl">
         <SidebarHeader className="border-b border-sidebar-border px-4 py-5">
@@ -160,6 +156,5 @@ export function AppShell({
         <main className="flex-1 p-6">{children}</main>
       </SidebarInset>
     </SidebarProvider>
-    </PendingMessagesProvider>
   );
 }

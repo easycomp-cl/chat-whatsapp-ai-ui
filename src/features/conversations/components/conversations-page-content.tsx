@@ -1,5 +1,5 @@
 import { requireAppAccess } from "@/lib/auth/session";
-import { loadConversations } from "@/lib/conversations/load-conversations";
+import { loadConversationsInbox } from "@/lib/conversations/load-conversations";
 import { ConversationsInbox } from "@/features/conversations/components/conversations-inbox";
 import { isAgent } from "@/lib/rbac";
 
@@ -7,7 +7,7 @@ export async function ConversationsPageContent() {
   const profile = await requireAppAccess();
   const agentFilter =
     isAgent(profile.role) && profile.agent_id ? profile.agent_id : null;
-  const conversations = await loadConversations(
+  const conversations = await loadConversationsInbox(
     profile.business_id!,
     agentFilter
   );

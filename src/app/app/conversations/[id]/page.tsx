@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { requireAppAccess } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
-import { loadConversations, toConversationRow, ensureConversationInList } from "@/lib/conversations/load-conversations";
+import { loadConversationsInbox, toConversationRow, ensureConversationInList } from "@/lib/conversations/load-conversations";
 import { fetchConversationMessages } from "@/lib/conversations/fetch-conversation-messages";
 import { ConversationsInbox } from "@/features/conversations/components/conversations-inbox";
 import { ChatWindow } from "@/features/conversations/components/chat-window";
@@ -18,7 +18,7 @@ export default async function ConversationDetailPage({
   const profile = await requireAppAccess();
   const agentFilter =
     isAgent(profile.role) && profile.agent_id ? profile.agent_id : null;
-  const conversations = await loadConversations(
+  const conversations = await loadConversationsInbox(
     profile.business_id!,
     agentFilter
   );

@@ -1,10 +1,27 @@
 import { createClient } from "@/lib/supabase/server";
+import { botApi } from "@/lib/bot-api/client";
 import type { Conversation, Customer, Message } from "@/types/database.types";
 
 export type ConversationRow = Conversation & {
   customers: Customer | null;
   last_message_preview?: string | null;
 };
+
+export async function loadConversationsInbox(
+  businessId: string,
+  agentId?: string | null
+): Promise<ConversationRow[]> {
+  try {
+    const { conversations } = await botApi.listConversationsInbox(businessId, {
+      assigned_admin_id: agentId ?? undefined,
+      limit: 100,
+    });
+    return conversations;
+  } catch (error) {
+    console.error("[loadConversationsInbox] bot API error:", error);
+    return [];
+  }
+}
 
 export async function loadConversations(
   businessId: string,

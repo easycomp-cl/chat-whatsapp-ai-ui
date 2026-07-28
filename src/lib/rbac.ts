@@ -24,6 +24,11 @@ export function canClearConversationChat(role: UserRole) {
   return role === "BUSINESS_ADMIN";
 }
 
+/** Ver snapshot / texto original cuando el cliente edita o borra en WhatsApp. */
+export function canViewCustomerMessageAudit(role: UserRole) {
+  return role === "BUSINESS_ADMIN" || role === "SUPER_ADMIN";
+}
+
 export function canChangeConversationMode(profile: Profile) {
   return (
     profile.role === "BUSINESS_ADMIN" ||

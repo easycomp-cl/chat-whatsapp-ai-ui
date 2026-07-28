@@ -60,6 +60,11 @@ export function mapApiMessageToMessage(
     quoted_sender_type: (raw.quoted_sender_type ?? raw.quotedSenderType ?? null) as
       | string
       | null,
+    content_text_snapshot: (raw.content_text_snapshot ?? raw.contentTextSnapshot ?? null) as
+      | string
+      | null,
+    customer_edited_at: (raw.customer_edited_at ?? raw.customerEditedAt ?? null) as string | null,
+    customer_revoked_at: (raw.customer_revoked_at ?? raw.customerRevokedAt ?? null) as string | null,
     reactions: [],
   });
 }

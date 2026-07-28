@@ -1,4 +1,6 @@
 import type { Message, MessageReaction } from "@/types/database.types";
+import { normalizeTimestampString } from "@/lib/format-datetime";
+import { stripWhatsAppFormatting } from "@/lib/conversations/whatsapp-formatting";
 
 export const QUOTED_UNAVAILABLE = "[Mensaje no disponible]";
 
@@ -65,7 +67,17 @@ export function parseReactions(raw: unknown): MessageReaction[] {
 export function normalizeMessage(raw: Message): Message {
   return {
     ...raw,
-    reactions: parseReactions(raw.reactions),
+    created_at: normalizeTimestampString(raw.created_at),
+    customer_edited_at: raw.customer_edited_at
+      ? normalizeTimestampString(raw.customer_edited_at)
+      : raw.customer_edited_at,
+    customer_revoked_at: raw.customer_revoked_at
+      ? normalizeTimestampString(raw.customer_revoked_at)
+      : raw.customer_revoked_at,
+    reactions: parseReactions(raw.reactions).map((reaction) => ({
+      ...reaction,
+      created_at: normalizeTimestampString(reaction.created_at),
+    })),
   };
 }
 
@@ -76,7 +88,7 @@ export function normalizeMessages(raw: Message[]): Message[] {
 }
 
 export function getReplyPreviewText(message: Message): string {
-  const text = message.content_text?.trim();
+  const text = stripWhatsAppFormatting(message.content_text?.trim() ?? "");
   if (!text) return "Mensaje sin texto";
   return text.length > 120 ? `${text.slice(0, 120)}…` : text;
 }

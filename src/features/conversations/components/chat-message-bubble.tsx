@@ -1,3 +1,6 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { formatFullTime } from "@/lib/conversations/utils";
 import {
@@ -7,24 +10,39 @@ import {
 } from "@/lib/conversations/message-display";
 import { getLastReadAt } from "@/lib/conversations/last-read-storage";
 import { isCustomerReaction, isUnreadInboundMessage } from "@/lib/conversations/pending-activity";
+import {
+  WHATSAPP_MESSAGE_EDIT_UI_ENABLED,
+  canEditWhatsappMessage,
+  getWhatsappEditWindowLabel,
+} from "@/lib/conversations/delivery-status";
 import { MessageQuotedBlock } from "@/features/conversations/components/message-quoted-block";
 import {
   MessageReactions,
   hasCustomerReactions,
 } from "@/features/conversations/components/message-reactions";
 import { MessageDeliveryStatus } from "@/features/conversations/components/message-delivery-status";
+import { MessageEditableText } from "@/features/conversations/components/message-editable-text";
+import { WhatsAppFormattedText } from "@/features/conversations/components/whatsapp-formatted-text";
+import { MessageCustomerChangeBadge } from "@/features/conversations/components/message-customer-change-badge";
+import {
+  getMessageDisplayText,
+  isCustomerRevokedMessage,
+} from "@/lib/conversations/customer-message-change";
 import type { Message } from "@/types/database.types";
-import { Bot, CornerUpLeft, User } from "lucide-react";
+import { Bot, CornerUpLeft, Pencil, User } from "lucide-react";
 
 type ChatMessageBubbleProps = {
   message: Message;
   messageById: Map<string, Message>;
   conversationId: string;
+  customerDisplayName?: string;
   lastReadAt?: string;
   highlightUnread?: boolean;
   canReply?: boolean;
   onReply?: (message: Message) => void;
   onResent?: () => void;
+  onEdited?: () => void;
+  showCustomerMessageAudit?: boolean;
 };
 
 function hasUnreadReaction(
@@ -40,21 +58,98 @@ function hasUnreadReaction(
   return reactions.some((r) => new Date(r.created_at).getTime() > readTime);
 }
 
+function MessageBody({
+  message,
+  conversationId,
+  isHuman,
+  inbound,
+  isEditing,
+  onEditingChange,
+  onEdited,
+  showCustomerMessageAudit = false,
+}: {
+  message: Message;
+  conversationId: string;
+  isHuman: boolean;
+  inbound: boolean;
+  isEditing: boolean;
+  onEditingChange: (editing: boolean) => void;
+  onEdited?: () => void;
+  showCustomerMessageAudit?: boolean;
+}) {
+  if (WHATSAPP_MESSAGE_EDIT_UI_ENABLED && isHuman && !inbound) {
+    return (
+      <MessageEditableText
+        message={message}
+        conversationId={conversationId}
+        isEditing={isEditing}
+        onEditingChange={onEditingChange}
+        onEdited={onEdited}
+      />
+    );
+  }
+
+  return (
+    <>
+      <p
+        className={cn(
+          "leading-relaxed whitespace-pre-wrap",
+          showCustomerMessageAudit &&
+            isCustomerRevokedMessage(message) &&
+            "text-[#667781] line-through decoration-[#ea0038]/50"
+        )}
+      >
+        <WhatsAppFormattedText text={getMessageDisplayText(message, showCustomerMessageAudit)} />
+      </p>
+      {inbound && (
+        <MessageCustomerChangeBadge
+          message={message}
+          showAudit={showCustomerMessageAudit}
+        />
+      )}
+    </>
+  );
+}
+
 export function ChatMessageBubble({
   message,
   messageById,
   conversationId,
+  customerDisplayName = "Cliente",
   lastReadAt,
   highlightUnread = false,
   canReply = false,
   onReply,
   onResent,
+  onEdited,
+  showCustomerMessageAudit = false,
 }: ChatMessageBubbleProps) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [canEdit, setCanEdit] = useState(
+    () => WHATSAPP_MESSAGE_EDIT_UI_ENABLED && canEditWhatsappMessage(message)
+  );
+  const messageRef = useRef(message);
+  messageRef.current = message;
+
+  useEffect(() => {
+    if (!WHATSAPP_MESSAGE_EDIT_UI_ENABLED) return;
+    setIsEditing(false);
+  }, [message.id]);
+
+  useEffect(() => {
+    if (!WHATSAPP_MESSAGE_EDIT_UI_ENABLED) return;
+
+    const syncCanEdit = () => setCanEdit(canEditWhatsappMessage(messageRef.current));
+    syncCanEdit();
+    const interval = window.setInterval(syncCanEdit, 30_000);
+    return () => window.clearInterval(interval);
+  }, [message.id]);
+
   if (isSystemMessage(message)) {
     return (
       <div className="flex justify-center py-2">
         <div className="max-w-md rounded-lg border border-amber-200/80 bg-[#fff3cd] px-4 py-2 text-center text-xs text-[#54656f] shadow-sm">
-          {message.content_text}
+          <WhatsAppFormattedText text={message.content_text} />
           <div className="mt-1 text-[10px] text-[#667781]">
             {formatFullTime(message.created_at)}
           </div>
@@ -72,6 +167,10 @@ export function ChatMessageBubble({
   const unreadReaction = highlightUnread && hasUnreadReaction(message, conversationId, lastReadAt);
   const unreadInbound =
     highlightUnread && isUnreadInboundMessage(message, conversationId, lastReadAt);
+  const showEdit =
+    WHATSAPP_MESSAGE_EDIT_UI_ENABLED && isHuman && !inbound && canEdit && !isEditing;
+  const showReply =
+    canReply && onReply && (!WHATSAPP_MESSAGE_EDIT_UI_ENABLED || !isEditing);
 
   return (
     <div
@@ -87,7 +186,7 @@ export function ChatMessageBubble({
       )}
       <div className={cn("max-w-[75%]", !inbound && "order-first")}>
         {inbound && (
-          <p className="mb-0.5 text-[11px] font-medium text-[#00a884]">Cliente</p>
+          <p className="mb-0.5 text-[11px] font-medium text-[#00a884]">{customerDisplayName}</p>
         )}
         {!inbound && (
           <p
@@ -114,18 +213,35 @@ export function ChatMessageBubble({
               unreadReaction && "ring-2 ring-[#ff7a55]/50"
             )}
           >
-            {canReply && onReply && (
-              <button
-                type="button"
-                onClick={() => onReply(message)}
+            {(showReply || showEdit) && (
+              <div
                 className={cn(
-                  "absolute top-1 rounded-full bg-white/90 p-1 text-[#667781] opacity-0 shadow-sm ring-1 ring-[#d1d7db] transition-opacity group-hover:opacity-100 hover:text-[#00a884]",
+                  "absolute top-1 flex flex-col gap-1 opacity-0 transition-opacity group-hover:opacity-100",
                   inbound ? "-right-8" : "-left-8"
                 )}
-                title="Responder citando este mensaje"
               >
-                <CornerUpLeft className="size-3.5" />
-              </button>
+                {showEdit && (
+                  <button
+                    type="button"
+                    onClick={() => setIsEditing(true)}
+                    onMouseDown={(event) => event.preventDefault()}
+                    className="rounded-full bg-white/90 p-1 text-[#667781] shadow-sm ring-1 ring-[#d1d7db] hover:text-[#00a884]"
+                    title={getWhatsappEditWindowLabel(message)}
+                  >
+                    <Pencil className="size-3.5" />
+                  </button>
+                )}
+                {showReply && (
+                  <button
+                    type="button"
+                    onClick={() => onReply(message)}
+                    className="rounded-full bg-white/90 p-1 text-[#667781] shadow-sm ring-1 ring-[#d1d7db] hover:text-[#00a884]"
+                    title="Responder citando este mensaje"
+                  >
+                    <CornerUpLeft className="size-3.5" />
+                  </button>
+                )}
+              </div>
             )}
             {quoted && (
               <MessageQuotedBlock
@@ -133,9 +249,19 @@ export function ChatMessageBubble({
                 quotedSenderType={quoted.senderType}
                 inbound={inbound}
                 unavailable={quoted.unavailable}
+                customerDisplayName={customerDisplayName}
               />
             )}
-            <p className="leading-relaxed whitespace-pre-wrap">{message.content_text}</p>
+            <MessageBody
+              message={message}
+              conversationId={conversationId}
+              isHuman={isHuman}
+              inbound={inbound}
+              isEditing={isEditing}
+              onEditingChange={setIsEditing}
+              onEdited={onEdited}
+              showCustomerMessageAudit={showCustomerMessageAudit}
+            />
             <div
               className={cn(
                 "mt-0.5 flex items-center gap-1 text-[10px] text-[#667781]",

@@ -2,16 +2,17 @@
 
 import { useEffect, useMemo, useRef, useTransition, useState, useCallback } from "react";
 import { toast } from "sonner";
-import { ChevronDown, Eraser, MoreHorizontal, Search, StickyNote, MessageSquare } from "lucide-react";
+import { ChevronDown, ChevronUp, Eraser, MoreHorizontal, Search, StickyNote, MessageSquare, X } from "lucide-react";
 import { changeConversationMode, clearConversationChatAction } from "@/lib/actions/app-actions";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -23,11 +24,13 @@ import {
 import { cn } from "@/lib/utils";
 import { ChatMessageBubble } from "@/features/conversations/components/chat-message-bubble";
 import { ConversationAvatar } from "@/features/conversations/components/conversation-avatar";
+import { ConversationModeSwitch } from "@/features/conversations/components/conversation-mode-switch";
 import { AddNoteForm } from "@/features/conversations/components/add-note-form";
 import { ReplyForm } from "@/features/conversations/components/reply-form";
 import { PendingIndicator } from "@/features/conversations/components/pending-indicator";
 import { usePendingMessages } from "@/features/conversations/context/pending-messages-context";
 import { buildMessageMap } from "@/lib/conversations/message-display";
+import { stripWhatsAppFormatting } from "@/lib/conversations/whatsapp-formatting";
 import { hasUnreadCustomerReactions, countUnreadCustomerActivity } from "@/lib/conversations/pending-activity";
 import { useChatScroll } from "@/features/conversations/hooks/use-chat-scroll";
 import { useLiveConversation } from "@/features/conversations/hooks/use-live-conversation";
@@ -38,12 +41,14 @@ type ChatWindowProps = {
   conversation: Conversation & { customers: Customer | null };
   messages: Message[];
   canClearChat?: boolean;
+  showCustomerMessageAudit?: boolean;
 };
 
 export function ChatWindow({
   conversation: initialConversation,
   messages: initialMessages,
   canClearChat = false,
+  showCustomerMessageAudit = false,
 }: ChatWindowProps) {
   const { conversation, messages, scrollRef, refreshAfterSend, refresh } = useLiveConversation(
     initialConversation.id,
@@ -68,6 +73,10 @@ export function ChatWindow({
   const [pending, startTransition] = useTransition();
   const [clearPending, startClearTransition] = useTransition();
   const [clearDialogOpen, setClearDialogOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const [tab, setTab] = useState(conversation.mode === "HUMAN" ? "reply" : "note");
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
   const customer = conversation.customers;
@@ -93,6 +102,20 @@ export function ChatWindow({
     mounted &&
     (awaitingResponse || hasPending(conversation.id) || hasUnreadReactions);
 
+  const matchingMessageIds = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return [];
+    return messages
+      .filter((message) =>
+        stripWhatsAppFormatting(message.content_text ?? "")
+          .toLowerCase()
+          .includes(query)
+      )
+      .map((message) => message.id);
+  }, [messages, searchQuery]);
+
+  const activeMatchId = matchingMessageIds[currentMatchIndex] ?? null;
+
   useEffect(() => {
     if (conversation.mode === "HUMAN") {
       setTab((current) => (current === "note" ? "reply" : current));
@@ -101,7 +124,62 @@ export function ChatWindow({
 
   useEffect(() => {
     setReplyingTo(null);
+    setSearchOpen(false);
+    setSearchQuery("");
+    setCurrentMatchIndex(0);
   }, [conversation.id]);
+
+  useEffect(() => {
+    setCurrentMatchIndex(0);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    if (!searchOpen) return;
+    const timer = window.setTimeout(() => searchInputRef.current?.focus(), 0);
+    return () => window.clearTimeout(timer);
+  }, [searchOpen]);
+
+  useEffect(() => {
+    if (!searchOpen || !activeMatchId) return;
+    const element = scrollRef.current?.querySelector(
+      `[data-message-id="${activeMatchId}"]`
+    );
+    element?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [searchOpen, activeMatchId, scrollRef]);
+
+  useEffect(() => {
+    if (!searchOpen) return;
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setSearchOpen(false);
+        setSearchQuery("");
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [searchOpen]);
+
+  function openSearch() {
+    setSearchOpen(true);
+  }
+
+  function closeSearch() {
+    setSearchOpen(false);
+    setSearchQuery("");
+    setCurrentMatchIndex(0);
+  }
+
+  function goToPreviousMatch() {
+    if (matchingMessageIds.length === 0) return;
+    setCurrentMatchIndex(
+      (index) => (index - 1 + matchingMessageIds.length) % matchingMessageIds.length
+    );
+  }
+
+  function goToNextMatch() {
+    if (matchingMessageIds.length === 0) return;
+    setCurrentMatchIndex((index) => (index + 1) % matchingMessageIds.length);
+  }
 
   function handleModeChange(mode: "BOT" | "HUMAN") {
     if (mode === conversation.mode) return;
@@ -154,45 +232,101 @@ export function ChatWindow({
           </div>
         </div>
         <div className="flex items-center gap-1.5">
-          <Select
-            value={conversation.mode}
-            onValueChange={(v) => handleModeChange(v as "BOT" | "HUMAN")}
+          <ConversationModeSwitch
+            mode={conversation.mode}
             disabled={pending}
-          >
-            <SelectTrigger className="h-8 rounded-full border-[#7678ed]/25 bg-[#7678ed]/8 text-xs font-medium text-[#7678ed]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="BOT">Bot activo</SelectItem>
-              <SelectItem value="HUMAN">Modo humano</SelectItem>
-            </SelectContent>
-          </Select>
-          <button
-            type="button"
-            className="rounded-full p-2 text-[#202022]/40 transition-colors hover:bg-[#f9fafc] hover:text-[#7678ed]"
-          >
-            <Search className="size-4" />
-          </button>
-          {canClearChat && (
-            <button
-              type="button"
-              onClick={() => setClearDialogOpen(true)}
-              disabled={clearPending || messages.length === 0}
-              className="rounded-full p-2 text-[#202022]/40 transition-colors hover:bg-[#f9fafc] hover:text-[#7678ed] disabled:cursor-not-allowed disabled:opacity-40"
-              title="Limpiar chat"
-              aria-label="Limpiar chat"
+            onModeChange={handleModeChange}
+          />
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={
+                <button
+                  type="button"
+                  className="rounded-full p-2 text-[#202022]/40 transition-colors hover:bg-[#f9fafc] hover:text-[#7678ed]"
+                  aria-label="Más opciones"
+                />
+              }
             >
-              <Eraser className="size-4" />
-            </button>
+              <MoreHorizontal className="size-4" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="min-w-44">
+              <DropdownMenuItem
+                onClick={openSearch}
+                className="text-[#111b21] focus:bg-accent focus:text-[#111b21] data-highlighted:text-[#111b21] [&>svg]:text-[#111b21] hover:[&>svg]:text-[#7678ed] focus:[&>svg]:text-[#7678ed] data-highlighted:[&>svg]:text-[#7678ed]"
+              >
+                <Search />
+                Buscar
+              </DropdownMenuItem>
+              {canClearChat && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    disabled={clearPending || messages.length === 0}
+                    onClick={() => setClearDialogOpen(true)}
+                    className="text-[#111b21] focus:bg-accent focus:text-[#111b21] data-highlighted:text-[#111b21] [&>svg]:text-[#111b21] hover:[&>svg]:text-destructive focus:[&>svg]:text-destructive data-highlighted:[&>svg]:text-destructive"
+                  >
+                    <Eraser />
+                    Limpiar chat
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </header>
+
+      {searchOpen && (
+        <div className="flex items-center gap-2 border-b border-[#d1d7db] bg-[#f0f2f5] px-5 py-2">
+          <Search className="size-4 shrink-0 text-[#667781]" />
+          <Input
+            ref={searchInputRef}
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                if (event.shiftKey) goToPreviousMatch();
+                else goToNextMatch();
+              }
+            }}
+            placeholder="Buscar en la conversación..."
+            className="h-8 flex-1 border-[#d1d7db] bg-white text-sm text-[#111b21] placeholder:text-[#667781]"
+          />
+          {searchQuery.trim() && (
+            <span className="shrink-0 text-xs text-[#667781]">
+              {matchingMessageIds.length === 0
+                ? "0/0"
+                : `${currentMatchIndex + 1}/${matchingMessageIds.length}`}
+            </span>
           )}
           <button
             type="button"
-            className="rounded-full p-2 text-[#202022]/40 transition-colors hover:bg-[#f9fafc] hover:text-[#7678ed]"
+            onClick={goToPreviousMatch}
+            disabled={matchingMessageIds.length === 0}
+            className="rounded-full p-1.5 text-[#667781] transition-colors hover:bg-white hover:text-[#7678ed] disabled:cursor-not-allowed disabled:opacity-40"
+            aria-label="Resultado anterior"
           >
-            <MoreHorizontal className="size-4" />
+            <ChevronUp className="size-4" />
+          </button>
+          <button
+            type="button"
+            onClick={goToNextMatch}
+            disabled={matchingMessageIds.length === 0}
+            className="rounded-full p-1.5 text-[#667781] transition-colors hover:bg-white hover:text-[#7678ed] disabled:cursor-not-allowed disabled:opacity-40"
+            aria-label="Siguiente resultado"
+          >
+            <ChevronDown className="size-4" />
+          </button>
+          <button
+            type="button"
+            onClick={closeSearch}
+            className="rounded-full p-1.5 text-[#667781] transition-colors hover:bg-white hover:text-[#7678ed]"
+            aria-label="Cerrar búsqueda"
+          >
+            <X className="size-4" />
           </button>
         </div>
-      </header>
+      )}
 
       <div className="relative min-h-0 flex-1">
         <div
@@ -217,23 +351,39 @@ export function ChatWindow({
                 No hay mensajes en esta conversación
               </p>
             ) : (
-              messages.map((msg) => (
-                <div key={msg.id} data-message-id={msg.id}>
+              messages.map((msg) => {
+                const isMatch = matchingMessageIds.includes(msg.id);
+                const isActiveMatch = activeMatchId === msg.id;
+
+                return (
+                <div
+                  key={msg.id}
+                  data-message-id={msg.id}
+                  className={cn(
+                    "rounded-lg transition-colors",
+                    isMatch && "bg-[#00a884]/8",
+                    isActiveMatch && "ring-2 ring-[#00a884] ring-offset-2 ring-offset-[#efeae2]"
+                  )}
+                >
                   <ChatMessageBubble
                     message={msg}
                     messageById={messageById}
                     conversationId={conversation.id}
+                    customerDisplayName={displayName}
                     lastReadAt={lastReadAt[conversation.id]}
                     highlightUnread={mounted}
                     canReply={canReply}
+                    showCustomerMessageAudit={showCustomerMessageAudit}
                     onResent={() => void refresh()}
+                    onEdited={() => void refresh()}
                     onReply={(target) => {
                       setReplyingTo(target);
                       setTab("reply");
                     }}
                   />
                 </div>
-              ))
+              );
+              })
             )}
           </div>
         </div>
@@ -266,8 +416,8 @@ export function ChatWindow({
             className={cn(
               "flex flex-1 items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold transition-all",
               tab === "reply"
-                ? "bg-[#7678ed] text-white shadow-md shadow-[#7678ed]/25"
-                : "border border-[#202022]/10 bg-[#f9fafc] text-[#202022]/55 hover:border-[#7678ed]/30 hover:text-[#7678ed]",
+                ? "bg-[#00a884] text-white shadow-md shadow-[#00a884]/25"
+                : "border border-[#202022]/10 bg-[#f9fafc] text-[#202022]/55 hover:border-[#00a884]/30 hover:text-[#00a884]",
               !canReply && "cursor-not-allowed opacity-45"
             )}
           >
@@ -291,10 +441,10 @@ export function ChatWindow({
 
         <div
           className={cn(
-            "rounded-xl p-4 transition-colors",
+            "rounded-xl p-3 transition-colors",
             tab === "reply"
-              ? "border border-[#7678ed]/20 bg-[#7678ed]/5"
-              : "border-2 border-dashed border-amber-200 bg-amber-50/60"
+              ? "border border-[#d1d7db]/80 bg-[#f0f2f5]"
+              : "border-2 border-dashed border-amber-200 bg-amber-50/60 p-4"
           )}
         >
           {tab === "reply" ? (
@@ -309,8 +459,8 @@ export function ChatWindow({
                 }}
               />
             ) : (
-              <p className="text-sm text-[#202022]/50">
-                Activa el <strong className="font-medium text-[#7678ed]">modo humano</strong> para
+              <p className="text-sm text-[#667781]">
+                Activa el <strong className="font-medium text-[#00a884]">modo humano</strong> para
                 responder al cliente desde aquí.
               </p>
             )

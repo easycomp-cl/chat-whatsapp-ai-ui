@@ -6,7 +6,7 @@ import { fetchConversationMessages } from "@/lib/conversations/fetch-conversatio
 import { ConversationsInbox } from "@/features/conversations/components/conversations-inbox";
 import { ChatWindow } from "@/features/conversations/components/chat-window";
 import { ContactDetailsPanel } from "@/features/conversations/components/contact-details-panel";
-import { isAgent, canClearConversationChat } from "@/lib/rbac";
+import { isAgent, canClearConversationChat, canViewCustomerMessageAudit } from "@/lib/rbac";
 import type { Conversation, Customer, Message, ConversationNote } from "@/types/database.types";
 
 export default async function ConversationDetailPage({
@@ -86,6 +86,7 @@ export default async function ConversationDetailPage({
         conversation={convWithCustomer}
         messages={(messages ?? []) as Message[]}
         canClearChat={canClearConversationChat(profile.role)}
+        showCustomerMessageAudit={canViewCustomerMessageAudit(profile.role)}
       />
       <ContactDetailsPanel
         conversation={convWithCustomer}

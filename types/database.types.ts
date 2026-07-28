@@ -88,6 +88,9 @@ export type Message = {
   reply_to_message_id?: string | null;
   quoted_text?: string | null;
   quoted_sender_type?: string | null;
+  content_text_snapshot?: string | null;
+  customer_edited_at?: string | null;
+  customer_revoked_at?: string | null;
   reactions?: MessageReaction[];
 };
 

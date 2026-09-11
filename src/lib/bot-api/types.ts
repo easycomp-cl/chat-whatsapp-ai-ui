@@ -23,10 +23,243 @@ export type KnowledgeDocument = {
 
 import type { Conversation, Customer } from "@/types/database.types";
 
+export type CustomerInvoiceType = "RECEIPT" | "INVOICE" | "NONE";
+
+export type CustomerProfileFields = {
+  display_alias?: string | null;
+  email?: string | null;
+  tax_id?: string | null;
+  invoice_type?: CustomerInvoiceType | null;
+  company_name?: string | null;
+  business_activity?: string | null;
+  delivery1_line1?: string | null;
+  delivery1_commune?: string | null;
+  delivery1_region?: string | null;
+  delivery1_notes?: string | null;
+  profile_metadata?: Record<string, unknown> | null;
+};
+
+export type CustomerProfilePatch = Partial<CustomerProfileFields>;
+
+export type FlowRunStatus =
+  | "RUNNING"
+  | "AWAITING_CUSTOMER"
+  | "AWAITING_AGENT_INPUT"
+  | "AWAITING_REVIEW"
+  | "PAUSED"
+  | "COMPLETED"
+  | "CANCELLED"
+  | "FAILED";
+
+export type FlowDefinitionStatus = "DRAFT" | "ACTIVE" | "ARCHIVED";
+
+export type FlowVersionStatus = "DRAFT" | "PUBLISHED";
+
+export type PendingAgentInputField = {
+  key: string;
+  label: string;
+  type: string;
+  required?: boolean;
+  value?: unknown;
+};
+
+export type PendingAgentInput = {
+  template: string;
+  fields: PendingAgentInputField[];
+  prefilled?: Record<string, unknown>;
+};
+
+export type ActiveFlowRunInbox = {
+  id: string;
+  status: FlowRunStatus;
+  pending_agent_input: PendingAgentInput | null;
+};
+
+export type ActiveFlowRunDetail = ActiveFlowRunInbox & {
+  flow_name: string;
+  flow_version: number;
+  current_node_id: string | null;
+};
+
+export type ConversationFlowState = {
+  flow_mode_locked: boolean;
+  active_flow_run: ActiveFlowRunDetail | ActiveFlowRunInbox | null;
+};
+
 /** Respuesta de GET /businesses/:id/conversations/inbox (snake_case, alineado con Supabase). */
 export type InboxConversation = Conversation & {
   customers: Customer | null;
   last_message_preview?: string | null;
+  flow_mode_locked?: boolean;
+  active_flow_run?: ActiveFlowRunInbox | null;
+};
+
+export type FlowAdminRef = {
+  id: string;
+  name: string;
+};
+
+export type FlowTrigger = {
+  id: string;
+  tenant_id: string;
+  flow_version_id: string;
+  trigger_type: string;
+  channel: string | null;
+  priority: number;
+  configuration_json: Record<string, unknown>;
+  is_enabled: boolean;
+  has_webhook_secret: boolean;
+  created_at: string;
+};
+
+export type FlowVersion = {
+  id: string;
+  tenant_id: string;
+  flow_definition_id: string;
+  version_number: number;
+  status: FlowVersionStatus;
+  published_at: string | null;
+  graph_json?: unknown;
+  triggers?: FlowTrigger[];
+  created_by_admin_id: string;
+  created_by_admin?: FlowAdminRef;
+  created_at: string;
+};
+
+export type FlowDefinition = {
+  id: string;
+  tenant_id: string;
+  name: string;
+  description: string | null;
+  status: FlowDefinitionStatus;
+  current_version_id: string | null;
+  current_version: FlowVersion | null;
+  versions_count?: number;
+  created_by_admin_id: string;
+  created_by_admin?: FlowAdminRef;
+  updated_by_admin_id: string | null;
+  updated_by_admin?: FlowAdminRef | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type FlowRun = {
+  id: string;
+  tenant_id: string;
+  flow_version_id: string;
+  conversation_id: string;
+  customer_id: string;
+  current_node_id: string | null;
+  status: FlowRunStatus;
+  variables_json: Record<string, unknown> | null;
+  pending_agent_input: PendingAgentInput | null;
+  started_by: string;
+  started_by_admin_id: string | null;
+  lock_version: number;
+  started_at: string;
+  updated_at: string;
+  completed_at: string | null;
+};
+
+export type FlowRunDetail = FlowRun & {
+  flow_name?: string;
+  flow_version?: number;
+  pending_review?: FlowReview | null;
+};
+
+export type FlowReviewStatus = "PENDING" | "IN_REVIEW" | "APPROVED" | "REJECTED" | "CHANGES_REQUESTED";
+
+export type FlowReviewFile = {
+  id: string;
+  original_filename: string;
+  mime_type: string;
+  file_size?: number;
+  signed_url: string;
+  signed_url_expires_in_seconds: number;
+};
+
+export type FlowReview = {
+  id: string;
+  tenant_id: string;
+  flow_run_id: string;
+  node_id: string;
+  reviewer_admin_id: string | null;
+  subject_type: string;
+  subject_reference: string | null;
+  status: FlowReviewStatus;
+  resolution: string | null;
+  notes: string | null;
+  attempt: number;
+  created_at: string;
+  resolved_at: string | null;
+  file?: FlowReviewFile;
+};
+
+export type FlowWebhookDeliveryStatus =
+  | "PENDING"
+  | "DELIVERING"
+  | "DELIVERED"
+  | "FAILED"
+  | "DEAD_LETTER";
+
+export type FlowWebhookDelivery = {
+  id: string;
+  tenant_id: string;
+  flow_run_id: string;
+  flow_run_event_id: string | null;
+  node_id: string | null;
+  event_type: string;
+  target_url: string;
+  payload_json: Record<string, unknown>;
+  status: FlowWebhookDeliveryStatus;
+  attempt_count: number;
+  max_attempts: number;
+  last_http_status: number | null;
+  last_error: string | null;
+  last_attempt_at: string | null;
+  delivered_at: string | null;
+  next_retry_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type FlowWebhookIntegration =
+  | { configured: false }
+  | {
+      configured: true;
+      url: string;
+      enabled: boolean;
+      events: string[] | null;
+      has_secret: boolean;
+      webhook_secret?: string;
+    };
+
+export type FlowSimulationResult = {
+  detected_intent: string | null;
+  captured_fields: Record<string, unknown>;
+  missing_fields: string[];
+  doubtful_fields: string[];
+  current_node_id: string | null;
+  next_node_id: string | null;
+  next_message: string | null;
+  evaluated_conditions: Array<{
+    edge_id: string;
+    matched: boolean;
+    reason: string;
+  }>;
+  output_preview: Record<string, unknown> | null;
+  logs: string[];
+};
+
+export type FlowRunResult = FlowRun & {
+  replies?: string[];
+  sent_messages?: unknown[];
+};
+
+export type SignedUrlResponse = {
+  file_id: string;
+  signed_url: string;
+  expires_in_seconds: number;
 };
 
 export type Faq = {
@@ -333,4 +566,70 @@ export type PatchDeliveryCommuneBody = {
 export type SeedDeliveryCommunesResult = {
   seeded: number;
   region: DeliveryRegion;
+};
+
+export type ResponseSelection = "random" | "round_robin" | "by_warmth";
+
+export type ConversationalResponseVariant = {
+  text: string;
+  warmth?: GreetingWarmth;
+  weight?: number;
+};
+
+export type ConversationalResponse = {
+  trigger: string;
+  enabled: boolean;
+  selection: ResponseSelection;
+  variants: ConversationalResponseVariant[];
+};
+
+export type ConversationalTriggerMeta = {
+  id: string;
+  label: string;
+  description: string;
+  default_selection: ResponseSelection;
+};
+
+export type BotPersonality = {
+  bot_name: string;
+  bot_tone: string;
+  greeting_message: string;
+  fallback_message: string;
+  handoff_message: string;
+  out_of_hours_message: string;
+  greeting_config: GreetingConfig;
+  tone_greetings: SuggestedGreeting[];
+  conversational_responses: ConversationalResponse[];
+  handoff_on_low_confidence: boolean;
+  placeholders: string[];
+  triggers: ConversationalTriggerMeta[];
+};
+
+export type BotPersonalityPatch = Partial<
+  Pick<
+    BotPersonality,
+    | "bot_name"
+    | "bot_tone"
+    | "greeting_message"
+    | "fallback_message"
+    | "handoff_message"
+    | "out_of_hours_message"
+    | "greeting_config"
+    | "tone_greetings"
+    | "conversational_responses"
+    | "handoff_on_low_confidence"
+  >
+>;
+
+export const SELECTION_LABELS: Record<ResponseSelection, string> = {
+  random: "Aleatorio",
+  round_robin: "Rotación",
+  by_warmth: "Por tono del cliente",
+};
+
+export const DEFAULT_CONVERSATIONAL_DEFAULTS: Record<string, string> = {
+  greeting_pure: "{saludo} ¿En qué te puedo ayudar hoy?",
+  thanks: "¡Con gusto! Si necesitas algo más, aquí estoy.",
+  ack: "Perfecto. Si tienes otra consulta, escríbeme.",
+  soft_fallback: "(usa el mensaje «Sin información»)",
 };

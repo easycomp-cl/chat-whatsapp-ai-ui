@@ -1,12 +1,20 @@
 "use client";
 
 import { useTransition } from "react";
-import { AlertCircle, CheckCheck, Clock3, Loader2, RotateCcw } from "lucide-react";
+import {
+  AlertCircle,
+  Check,
+  CheckCheck,
+  Clock3,
+  Loader2,
+  RotateCcw,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
   canResendWhatsappMessage,
+  getWhatsappDeliveryStatusLabel,
   resolveWhatsappDeliveryStatus,
   type WhatsappDeliveryStatus,
 } from "@/lib/conversations/delivery-status";
@@ -16,25 +24,31 @@ import type { Message } from "@/types/database.types";
 type MessageDeliveryStatusProps = {
   message: Message;
   conversationId: string;
-  isHuman?: boolean;
   onResent?: () => void;
 };
 
-function statusLabel(status: WhatsappDeliveryStatus): string {
-  switch (status) {
-    case "pending":
-      return "Enviando a WhatsApp…";
-    case "failed":
-      return "No entregado";
-    case "sent":
-      return "Entregado";
+const TICK_MUTED = "text-[#8696a0]";
+const TICK_READ = "text-[#53bdeb]";
+
+function DeliveryTicks({ status }: { status: WhatsappDeliveryStatus }) {
+  if (status === "sent") {
+    return <Check className={cn("size-3.5", TICK_MUTED)} />;
   }
+
+  if (status === "delivered") {
+    return <CheckCheck className={cn("size-3.5", TICK_MUTED)} />;
+  }
+
+  if (status === "read") {
+    return <CheckCheck className={cn("size-3.5", TICK_READ)} />;
+  }
+
+  return null;
 }
 
 export function MessageDeliveryStatus({
   message,
   conversationId,
-  isHuman = false,
   onResent,
 }: MessageDeliveryStatusProps) {
   const [pending, startTransition] = useTransition();
@@ -42,9 +56,7 @@ export function MessageDeliveryStatus({
   const showResend = canResendWhatsappMessage(message) && !pending;
 
   if (!status) {
-    return (
-      <CheckCheck className={cn("size-3.5", isHuman ? "text-[#53bdeb]" : "text-[#8696a0]")} />
-    );
+    return null;
   }
 
   function handleResend() {
@@ -61,29 +73,31 @@ export function MessageDeliveryStatus({
     });
   }
 
+  const label = getWhatsappDeliveryStatusLabel(status, message);
+  const showTicks = status === "sent" || status === "delivered" || status === "read";
+  const showLabel = status === "pending" || status === "failed";
+
   return (
     <div className="flex flex-col items-end gap-1">
       <div
         className={cn(
-          "flex items-center gap-1 text-[10px]",
+          "flex items-center gap-0.5 text-[10px]",
           status === "failed" && "text-[#ea0038]",
           status === "pending" && "text-[#8696a0]",
-          status === "sent" && "text-[#667781]"
+          showTicks && "text-[#667781]"
         )}
-        title={statusLabel(status)}
+        title={label}
+        aria-label={label}
       >
-        {status === "pending" && (
-          pending ? (
+        {status === "pending" &&
+          (pending ? (
             <Loader2 className="size-3 animate-spin" />
           ) : (
             <Clock3 className="size-3" />
-          )
-        )}
+          ))}
         {status === "failed" && <AlertCircle className="size-3.5" />}
-        {status === "sent" && (
-          <CheckCheck className={cn("size-3.5", isHuman ? "text-[#53bdeb]" : "text-[#8696a0]")} />
-        )}
-        <span>{statusLabel(status)}</span>
+        {showTicks && <DeliveryTicks status={status} />}
+        {showLabel && <span>{label}</span>}
       </div>
       {showResend && (
         <Button

@@ -2,10 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { fetchConversationsInboxAction } from "@/lib/actions/flow-actions";
 import type { ConversationRow } from "@/lib/conversations/load-conversations";
 import type { Conversation, Customer, Message } from "@/types/database.types";
 
 const POLL_MS = 15000;
+const REALTIME_DEBOUNCE_MS = 400;
 
 function buildConversationRows(
   convs: Conversation[],
@@ -50,6 +52,12 @@ export function useLiveConversationsList(
 ) {
   const [conversations, setConversations] = useState(initial);
   const initialRef = useRef(initial);
+  const conversationsRef = useRef(initial);
+  const refreshGenRef = useRef(0);
+
+  useEffect(() => {
+    conversationsRef.current = conversations;
+  }, [conversations]);
 
   useEffect(() => {
     initialRef.current = initial;
@@ -61,12 +69,29 @@ export function useLiveConversationsList(
   useEffect(() => {
     const supabase = createClient();
     let cancelled = false;
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
-    async function refresh() {
+    async function refreshFromBotApi() {
+      const generation = ++refreshGenRef.current;
+      try {
+        const rows = await fetchConversationsInboxAction(agentId);
+        if (cancelled || generation !== refreshGenRef.current) return;
+        if (rows.length > 0 || conversationsRef.current.length === 0) {
+          setConversations(rows);
+        }
+      } catch (error) {
+        console.error("[conversations-list] inbox API error:", error);
+        await refreshFromSupabase();
+      }
+    }
+
+    async function refreshFromSupabase() {
+      const generation = ++refreshGenRef.current;
+
       const {
         data: { session },
       } = await supabase.auth.getSession();
-      if (!session || cancelled) return;
+      if (!session || cancelled || generation !== refreshGenRef.current) return;
 
       let convQuery = supabase
         .from("conversations")
@@ -80,7 +105,7 @@ export function useLiveConversationsList(
       }
 
       const { data: convs, error } = await convQuery;
-      if (cancelled) return;
+      if (cancelled || generation !== refreshGenRef.current) return;
 
       if (error) {
         console.error("[conversations-list] refresh error:", error);
@@ -88,25 +113,42 @@ export function useLiveConversationsList(
       }
 
       if (!convs?.length) {
-        if (initialRef.current.length > 0) return;
+        if (
+          initialRef.current.length > 0 ||
+          conversationsRef.current.length > 0
+        ) {
+          return;
+        }
         setConversations([]);
         return;
       }
 
       const customerIds = [...new Set(convs.map((c) => c.customer_id))];
-      const { data: customers } = await supabase
+      const { data: customers, error: customersError } = await supabase
         .from("customers")
         .select("*")
         .in("id", customerIds);
 
-      const { data: recentMessages } = await supabase
+      if (cancelled || generation !== refreshGenRef.current) return;
+
+      if (customersError) {
+        console.error("[conversations-list] customers error:", customersError);
+        return;
+      }
+
+      const { data: recentMessages, error: messagesError } = await supabase
         .from("messages")
         .select("conversation_id, content_text, created_at")
         .eq("business_id", businessId)
         .order("created_at", { ascending: false })
         .limit(300);
 
-      if (cancelled) return;
+      if (cancelled || generation !== refreshGenRef.current) return;
+
+      if (messagesError) {
+        console.error("[conversations-list] messages preview error:", messagesError);
+        return;
+      }
 
       setConversations(
         buildConversationRows(
@@ -120,37 +162,45 @@ export function useLiveConversationsList(
       );
     }
 
-    if (initialRef.current.length === 0) {
-      void refresh();
+    function scheduleRefresh() {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        debounceTimer = null;
+        void refreshFromBotApi();
+      }, REALTIME_DEBOUNCE_MS);
     }
-    const interval = setInterval(() => void refresh(), POLL_MS);
+
+    void refreshFromBotApi();
+    const interval = setInterval(() => void refreshFromBotApi(), POLL_MS);
 
     const channel = supabase
       .channel(`business-conversations-${businessId}`)
       .on(
         "postgres_changes",
         {
-          event: "*",
+          event: "INSERT",
           schema: "public",
-          table: "messages",
-          filter: `business_id=eq.${businessId}`,
+          table: "Message",
+          filter: `tenantId=eq.${businessId}`,
         },
-        () => void refresh()
+        () => scheduleRefresh()
       )
       .on(
         "postgres_changes",
         {
           event: "UPDATE",
           schema: "public",
-          table: "conversations",
-          filter: `business_id=eq.${businessId}`,
+          table: "Conversation",
+          filter: `tenantId=eq.${businessId}`,
         },
-        () => void refresh()
+        () => scheduleRefresh()
       )
       .subscribe();
 
     return () => {
       cancelled = true;
+      refreshGenRef.current += 1;
+      if (debounceTimer) clearTimeout(debounceTimer);
       clearInterval(interval);
       void supabase.removeChannel(channel);
     };

@@ -53,6 +53,19 @@
   --chat-accent: #ff7a55;
   --chat-dark: #202022;
   --chat-surface: #f9fafc;
+  --landing-bg: #f7f8ff;
+  --landing-ink: #111326;
+  --landing-muted: #5c5f6b;
+  --landing-accent: #6d5ef5;
+  --landing-accent-deep: #4438ca;
+  --landing-blue: #397bff;
+  --landing-cyan: #3ee6d0;
+  --landing-violet: #a78bfa;
+  --landing-dark: #090b1a;
+  --landing-dark-surface: #10132b;
+  --landing-dark-ink: #f2f3ff;
+  --landing-dark-muted: #a8adcf;
+  --landing-violet-tint: #f0eefd;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
@@ -121,6 +134,62 @@
   --sidebar-ring: oklch(0.556 0 0);
 }
 
+@keyframes inbox-contact-slide-in {
+  from {
+    transform: translateX(100%);
+    opacity: 0.72;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes inbox-contact-slide-out {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(100%);
+    opacity: 0.72;
+  }
+}
+
+@keyframes inbox-contact-backdrop-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes inbox-contact-backdrop-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+.animate-inbox-contact-slide-in {
+  animation: inbox-contact-slide-in 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-inbox-contact-slide-out {
+  animation: inbox-contact-slide-out 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-inbox-contact-backdrop-in {
+  animation: inbox-contact-backdrop-in 360ms ease-out both;
+}
+
+.animate-inbox-contact-backdrop-out {
+  animation: inbox-contact-backdrop-out 280ms ease-in both;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -130,5 +199,85 @@
   }
   html {
     @apply font-sans;
+    scroll-behavior: smooth;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+  }
+
+  .landing-page section[id] {
+    scroll-margin-top: 5.5rem;
+  }
+}
+
+/* Ambientes de la landing */
+.landing-ambient-dark {
+  background: radial-gradient(
+      circle at 15% 0%,
+      color-mix(in oklch, var(--landing-accent) 22%, transparent),
+      transparent 55%
+    ),
+    radial-gradient(
+      circle at 85% 100%,
+      color-mix(in oklch, var(--landing-cyan) 16%, transparent),
+      transparent 55%
+    ),
+    var(--landing-dark);
+  color: var(--landing-dark-ink);
+}
+
+.landing-ambient-violet {
+  background: linear-gradient(
+    180deg,
+    var(--landing-violet-tint) 0%,
+    var(--landing-bg) 100%
+  );
+}
+
+@keyframes landing-draw-line {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes landing-pulse-dot {
+  0%,
+  100% {
+    opacity: 0.5;
+    transform: scale(0.85);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+}
+
+.landing-pulse-dot {
+  animation: landing-pulse-dot 2.4s ease-in-out infinite;
+}
+
+/* Páginas legales públicas */
+@media print {
+  .legal-page header,
+  .legal-page footer,
+  .legal-page nav[aria-label="Tabla de contenidos"] {
+    break-inside: avoid;
+  }
+
+  .legal-page a[href]::after {
+    content: " (" attr(href) ")";
+    font-size: 0.85em;
+    color: #555;
+  }
+
+  .legal-page a[href^="mailto:"]::after,
+  .legal-page a[href^="#"]::after {
+    content: "";
   }
 }

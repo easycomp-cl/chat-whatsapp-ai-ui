@@ -1,6 +1,7 @@
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import type { Profile, UserRole } from "@/types/database.types";
+import { isCollaboratorRole } from "@/lib/roles/labels";
 import { redirect } from "next/navigation";
 
 export const getSessionUser = cache(async () => {
@@ -42,7 +43,7 @@ export async function requireProfile() {
 
 export async function requireBusinessAdmin() {
   const profile = await requireProfile();
-  if (profile.role === "AGENT") redirect("/app/conversations");
+  if (isCollaboratorRole(profile.role)) redirect("/app/conversations");
   if (profile.role === "SUPER_ADMIN") redirect("/admin/businesses");
   if (!profile.business_id) redirect("/login?error=no_business");
   return profile;

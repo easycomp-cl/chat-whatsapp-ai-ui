@@ -6,13 +6,14 @@ type ConversationAvatarProps = {
   name?: string | null;
   phone?: string;
   seed: string;
-  size?: "xs" | "sm" | "md" | "lg";
+  size?: "bubble" | "xs" | "sm" | "md" | "lg";
   showChannel?: boolean;
   className?: string;
   channelClassName?: string;
 };
 
 const sizes = {
+  bubble: "size-7 text-[10px]",
   xs: "size-10 text-xs",
   sm: "size-11 text-sm",
   md: "size-14 text-base",

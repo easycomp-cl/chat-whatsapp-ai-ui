@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { ConversationListPanel } from "@/features/conversations/components/conversation-list-panel";
 import { ConversationsEmptyState } from "@/features/conversations/components/conversations-empty-state";
+import { InboxColumnLayout } from "@/features/conversations/components/inbox-column-layout";
 import type { ConversationRow } from "@/lib/conversations/load-conversations";
 
 export function ConversationsInbox({
@@ -8,22 +9,27 @@ export function ConversationsInbox({
   businessId,
   agentId,
   children,
+  contactPanel,
 }: {
   conversations: ConversationRow[];
   businessId: string;
   agentId?: string | null;
   children?: React.ReactNode;
+  contactPanel?: React.ReactNode;
 }) {
   return (
-    <div className="flex h-full min-h-0 overflow-hidden rounded-xl border border-[#202022]/8 bg-white shadow-[0_8px_40px_rgba(32,32,34,0.08)] md:rounded-2xl">
-      <Suspense>
-        <ConversationListPanel
-          conversations={conversations}
-          businessId={businessId}
-          agentId={agentId}
-        />
-      </Suspense>
-      {children ?? <ConversationsEmptyState />}
-    </div>
+    <InboxColumnLayout
+      listPanel={
+        <Suspense>
+          <ConversationListPanel
+            conversations={conversations}
+            businessId={businessId}
+            agentId={agentId}
+          />
+        </Suspense>
+      }
+      chatPanel={children ?? <ConversationsEmptyState />}
+      contactPanel={contactPanel}
+    />
   );
 }

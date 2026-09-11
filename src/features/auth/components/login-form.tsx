@@ -74,7 +74,7 @@ export function LoginForm() {
       <CardHeader>
         <CardTitle>Iniciar sesión</CardTitle>
         <CardDescription>
-          Accede al dashboard de ConversAI
+          Accede al dashboard de easycomp-chat-bot-manager
         </CardDescription>
       </CardHeader>
       <CardContent>

@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { BRAND_ASSETS, PRODUCT_NAME } from "@/lib/brand/constants";
 import { cn } from "@/lib/utils";
 
 type LogoProps = {
@@ -17,8 +18,8 @@ export function Logo({ className, size = "md" }: LogoProps) {
 
   return (
     <Image
-      src="/conversai-logo.png"
-      alt="ConversAI"
+      src={BRAND_ASSETS.logo}
+      alt={PRODUCT_NAME}
       width={width}
       height={height}
       className={cn(sizeClass, className)}

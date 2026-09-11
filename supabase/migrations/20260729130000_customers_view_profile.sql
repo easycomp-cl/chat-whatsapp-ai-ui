@@ -1,0 +1,36 @@
+-- Expose customer profile fields (incl. manual_returning) to the dashboard UI
+
+CREATE OR REPLACE VIEW public.customers AS
+SELECT
+  id,
+  "tenantId" AS business_id,
+  "phoneNumber" AS phone_number,
+  name,
+  "displayAlias" AS display_alias,
+  email,
+  "taxId" AS tax_id,
+  "invoiceType"::text AS invoice_type,
+  "companyName" AS company_name,
+  "businessActivity" AS business_activity,
+  "delivery1Line1" AS delivery1_line1,
+  "delivery1Line2" AS delivery1_line2,
+  "delivery1Commune" AS delivery1_commune,
+  "delivery1Region" AS delivery1_region,
+  "delivery1Notes" AS delivery1_notes,
+  "delivery2Line1" AS delivery2_line1,
+  "delivery2Line2" AS delivery2_line2,
+  "delivery2Commune" AS delivery2_commune,
+  "delivery2Region" AS delivery2_region,
+  "delivery2Notes" AS delivery2_notes,
+  "billingLine1" AS billing_line1,
+  "billingLine2" AS billing_line2,
+  "billingCommune" AS billing_commune,
+  "billingRegion" AS billing_region,
+  "billingNotes" AS billing_notes,
+  "billingSameAsDelivery"::text AS billing_same_as_delivery,
+  "profileMetadata" AS profile_metadata,
+  "profileUpdatedAt" AS profile_updated_at,
+  "profileUpdatedBy" AS profile_updated_by,
+  "firstSeenAt" AS first_seen_at,
+  "lastSeenAt" AS last_seen_at
+FROM public."Customer";

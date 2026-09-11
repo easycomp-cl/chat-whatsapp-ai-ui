@@ -5,14 +5,24 @@ import { createClient } from "@/lib/supabase/client";
 import { usePendingMessages } from "@/features/conversations/context/pending-messages-context";
 import { fetchConversationMessages } from "@/lib/conversations/fetch-conversation-messages";
 import { normalizeMessages } from "@/lib/conversations/message-display";
-import { mapApiMessageToMessage, mergeServerWithLocal } from "@/lib/conversations/merge-messages";
+import { mapApiMessageToMessage, mergeOutboundMessage, mergeServerWithLocal, isOptimisticMessage } from "@/lib/conversations/merge-messages";
+import {
+  isDeliveryStatusRealtimePatch,
+  patchMessageFromRealtimeRow,
+} from "@/lib/conversations/patch-realtime-message";
+import type { OutboundSenderContext } from "@/lib/conversations/outbound-sender";
 import type { Conversation, Customer, Message } from "@/types/database.types";
 
 const POLL_MS = 2500;
 
 type MessageRow = {
+  id?: string;
   conversationId?: string;
   conversation_id?: string;
+  whatsappDeliveryStatus?: string | null;
+  whatsapp_delivery_status?: string | null;
+  externalId?: string | null;
+  external_id?: string | null;
 };
 
 function matchesConversation(row: MessageRow, conversationId: string) {
@@ -22,7 +32,8 @@ function matchesConversation(row: MessageRow, conversationId: string) {
 export function useLiveConversation(
   conversationId: string,
   initialConversation: Conversation & { customers: Customer | null },
-  initialMessages: Message[]
+  initialMessages: Message[],
+  outboundSender?: OutboundSenderContext | null
 ) {
   const [conversation, setConversation] = useState(initialConversation);
   const [messages, setMessages] = useState(() => normalizeMessages(initialMessages));
@@ -32,6 +43,8 @@ export function useLiveConversation(
   conversationRef.current = conversation;
   const messagesRef = useRef(messages);
   messagesRef.current = messages;
+  const outboundSenderRef = useRef(outboundSender);
+  outboundSenderRef.current = outboundSender;
   const { syncConversationMessages } = usePendingMessages();
   const businessId = conversation.business_id;
 
@@ -47,12 +60,29 @@ export function useLiveConversation(
     syncConversationMessages(conversationId, messages);
   }, [conversationId, messages, syncConversationMessages]);
 
-  const applyMessages = useCallback((server: Message[]) => {
-    setMessages((prev) => {
-      const merged = mergeServerWithLocal(server, prev);
-      prevCountRef.current = merged.length;
-      return merged;
-    });
+  const applyMessages = useCallback(
+    (server: Message[], options?: { authoritative?: boolean }) => {
+      setMessages((prev) => {
+        const merged = mergeServerWithLocal(server, prev, options);
+        prevCountRef.current = merged.length;
+        return merged;
+      });
+    },
+    []
+  );
+
+  const clearChatView = useCallback(() => {
+    const clearedAt = new Date().toISOString();
+    setMessages([]);
+    prevCountRef.current = 0;
+    setConversation((prev) => ({
+      ...prev,
+      chat_cleared_at: clearedAt,
+    }));
+    conversationRef.current = {
+      ...conversationRef.current,
+      chat_cleared_at: clearedAt,
+    };
   }, []);
 
   const refresh = useCallback(async () => {
@@ -90,7 +120,7 @@ export function useLiveConversation(
     }
 
     if (msgRes.data) {
-      applyMessages(msgRes.data);
+      applyMessages(msgRes.data, { authoritative: Boolean(chatClearedAt) });
     }
   }, [applyMessages, conversationId]);
 
@@ -100,10 +130,28 @@ export function useLiveConversation(
     void refresh();
     const interval = setInterval(() => void refresh(), POLL_MS);
 
-    const onMessageChange = (payload: { new: MessageRow }) => {
+    const onMessageInsert = (payload: { new: MessageRow }) => {
       if (matchesConversation(payload.new, conversationId)) {
         void refresh();
       }
+    };
+
+    const onMessageUpdate = (payload: { new: MessageRow }) => {
+      const row = payload.new;
+      if (!matchesConversation(row, conversationId)) {
+        return;
+      }
+
+      if (row.id && isDeliveryStatusRealtimePatch(row)) {
+        setMessages((prev) =>
+          prev.map((message) =>
+            message.id === row.id ? patchMessageFromRealtimeRow(message, row) : message
+          )
+        );
+        return;
+      }
+
+      void refresh();
     };
 
     const channel = supabase
@@ -116,7 +164,7 @@ export function useLiveConversation(
           table: "Message",
           filter: `tenantId=eq.${businessId}`,
         },
-        onMessageChange
+        onMessageInsert
       )
       .on(
         "postgres_changes",
@@ -126,7 +174,7 @@ export function useLiveConversation(
           table: "Message",
           filter: `tenantId=eq.${businessId}`,
         },
-        onMessageChange
+        onMessageUpdate
       )
       .on(
         "postgres_changes",
@@ -163,6 +211,7 @@ export function useLiveConversation(
   }, [businessId, conversationId, refresh]);
 
   const appendOptimisticOutbound = useCallback((text: string) => {
+    const sender = outboundSenderRef.current;
     const optimistic: Message = {
       id: `optimistic-${Date.now()}`,
       conversation_id: conversationId,
@@ -173,7 +222,10 @@ export function useLiveConversation(
       content_type: "TEXT",
       ai_generated: false,
       created_at: new Date().toISOString(),
+      whatsapp_delivery_status: "pending",
       reactions: [],
+      sender_user_id: sender?.userId ?? null,
+      sender_display_name: sender?.displayName ?? null,
     };
 
     setMessages((prev) => {
@@ -183,6 +235,14 @@ export function useLiveConversation(
     });
   }, [conversationId]);
 
+  const appendOptimisticMessage = useCallback((optimistic: Message) => {
+    setMessages((prev) => {
+      const next = normalizeMessages([...prev, optimistic]);
+      prevCountRef.current = next.length;
+      return next;
+    });
+  }, []);
+
   const upsertServerMessage = useCallback(
     (raw: Record<string, unknown>) => {
       const mapped = mapApiMessageToMessage(raw, {
@@ -191,15 +251,29 @@ export function useLiveConversation(
       });
 
       setMessages((prev) => {
-        const withoutMatchingOptimistic = prev.filter(
+        const matchingOptimistic = prev.find(
           (m) =>
-            !m.id.startsWith("optimistic-") ||
-            m.content_text.trim() !== mapped.content_text.trim()
+            isOptimisticMessage(m) &&
+            !m.id.startsWith("optimistic-media-") &&
+            m.content_text.trim() === mapped.content_text.trim()
         );
-        const exists = withoutMatchingOptimistic.some((m) => m.id === mapped.id);
+
+        const withoutMatchingOptimistic = prev.filter((m) => {
+          if (!m.id.startsWith("optimistic-")) return true;
+          if (m.id.startsWith("optimistic-media-")) return false;
+          return m.content_text.trim() !== mapped.content_text.trim();
+        });
+
+        const mappedWithSender = matchingOptimistic
+          ? mergeOutboundMessage(matchingOptimistic, mapped)
+          : mapped;
+
+        const exists = withoutMatchingOptimistic.some((m) => m.id === mappedWithSender.id);
         const next = exists
-          ? withoutMatchingOptimistic
-          : normalizeMessages([...withoutMatchingOptimistic, mapped]);
+          ? withoutMatchingOptimistic.map((m) =>
+              m.id === mappedWithSender.id ? mergeOutboundMessage(m, mappedWithSender) : m
+            )
+          : normalizeMessages([...withoutMatchingOptimistic, mappedWithSender]);
         prevCountRef.current = next.length;
         return next;
       });
@@ -208,15 +282,26 @@ export function useLiveConversation(
   );
 
   const refreshAfterSend = useCallback(
-    async (text: string, serverMessage?: Record<string, unknown> | null) => {
-      if (serverMessage) {
-        upsertServerMessage(serverMessage);
-      } else {
+    async (payload: {
+      text?: string;
+      optimistic?: Message;
+      serverMessage?: Record<string, unknown> | null;
+      previewOnly?: boolean;
+    }) => {
+      if (payload.optimistic) {
+        appendOptimisticMessage(payload.optimistic);
+      } else if (payload.serverMessage) {
+        upsertServerMessage(payload.serverMessage);
+      } else if (payload.text) {
         const alreadyOptimistic = messagesRef.current.some(
           (m) =>
-            m.id.startsWith("optimistic-") && m.content_text.trim() === text.trim()
+            m.id.startsWith("optimistic-") && m.content_text.trim() === payload.text!.trim()
         );
-        if (!alreadyOptimistic) appendOptimisticOutbound(text);
+        if (!alreadyOptimistic) appendOptimisticOutbound(payload.text);
+      }
+
+      if (payload.previewOnly) {
+        return;
       }
 
       await refresh();
@@ -224,7 +309,7 @@ export function useLiveConversation(
       window.setTimeout(() => void refresh(), 2000);
       window.setTimeout(() => void refresh(), 5000);
     },
-    [appendOptimisticOutbound, refresh, upsertServerMessage]
+    [appendOptimisticMessage, appendOptimisticOutbound, refresh, upsertServerMessage]
   );
 
   return {
@@ -233,5 +318,6 @@ export function useLiveConversation(
     scrollRef,
     refresh,
     refreshAfterSend,
+    clearChatView,
   };
 }

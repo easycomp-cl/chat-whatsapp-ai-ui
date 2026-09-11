@@ -1,10 +1,15 @@
-export type UserRole = "SUPER_ADMIN" | "BUSINESS_ADMIN" | "AGENT";
+export type UserRole = "SUPER_ADMIN" | "BUSINESS_ADMIN" | "COLLABORATOR" | "AGENT";
+
+export type CustomerInvoiceType = "RECEIPT" | "INVOICE" | "NONE";
 
 export type Profile = {
   id: string;
   user_id: string;
   business_id: string | null;
   full_name: string | null;
+  first_name?: string | null;
+  last_name?: string | null;
+  personal_phone?: string | null;
   role: UserRole;
   agent_id: string | null;
   active: boolean;
@@ -50,6 +55,19 @@ export type Customer = {
   business_id: string;
   phone_number: string;
   name: string | null;
+  first_seen_at?: string | null;
+  last_seen_at?: string | null;
+  display_alias?: string | null;
+  email?: string | null;
+  tax_id?: string | null;
+  invoice_type?: CustomerInvoiceType | null;
+  company_name?: string | null;
+  business_activity?: string | null;
+  delivery1_line1?: string | null;
+  delivery1_commune?: string | null;
+  delivery1_region?: string | null;
+  delivery1_notes?: string | null;
+  profile_metadata?: Record<string, unknown> | null;
 };
 
 export type MessageReaction = {
@@ -70,6 +88,14 @@ export type MessageReactionRow = {
   createdAt: string;
 };
 
+export type MessageMedia = {
+  has_media: boolean;
+  mime_type: string | null;
+  filename: string | null;
+  file_size: number | null;
+  media_url_path: string | null;
+};
+
 export type Message = {
   id: string;
   conversation_id: string;
@@ -83,6 +109,8 @@ export type Message = {
   content_type?: string | null;
   external_id?: string | null;
   whatsapp_delivery_status?: string | null;
+  whatsapp_delivery_error_code?: number | null;
+  whatsapp_delivery_error_message?: string | null;
   ai_generated: boolean;
   created_at: string;
   reply_to_message_id?: string | null;
@@ -92,6 +120,17 @@ export type Message = {
   customer_edited_at?: string | null;
   customer_revoked_at?: string | null;
   reactions?: MessageReaction[];
+  media?: MessageMedia;
+  /** Preview local en cliente (mensaje optimista antes de enviar media). */
+  _local_preview_url?: string;
+  /** Transcripción Whisper (notas de voz / audio). */
+  audio_transcript?: string | null;
+  /** Botones o lista interactiva (flujos / bot). */
+  interactive?: unknown | null;
+  /** Usuario del dashboard que envió el mensaje (auditoría). */
+  sender_user_id?: string | null;
+  /** Nombre visible del remitente humano (cache UI / futuro backend). */
+  sender_display_name?: string | null;
 };
 
 export type Faq = {
@@ -138,7 +177,12 @@ export type ConversationNote = {
   conversation_id: string;
   user_id: string;
   note: string;
+  color: string | null;
   created_at: string;
+};
+
+export type ConversationNoteWithAuthor = ConversationNote & {
+  author_name: string;
 };
 
 export type UsageEvent = {

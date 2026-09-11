@@ -6,8 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { getChatImportMessagesAction } from "@/lib/actions/chat-import-actions";
 import type { ImportedMessage } from "@/lib/bot-api/types";
-import { format } from "date-fns";
-import { es } from "date-fns/locale";
+import { formatCompactDateTime } from "@/lib/format-datetime";
 
 export function MessagesPreviewPanel({
   importJobId,
@@ -74,9 +73,7 @@ export function MessagesPreviewPanel({
                       <span>{msg.sender_label ?? "Desconocido"}</span>
                       {msg.message_at && (
                         <span>
-                          {format(new Date(msg.message_at), "dd/MM HH:mm", {
-                            locale: es,
-                          })}
+                          {formatCompactDateTime(msg.message_at)}
                         </span>
                       )}
                       {msg.is_question && (

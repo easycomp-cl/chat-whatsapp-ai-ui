@@ -13,7 +13,11 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { activateProfileAction } from "@/lib/actions/app-actions";
-import type { Profile } from "@/types/database.types";
+import {
+  normalizeRoleForDb,
+  ROLE_LABELS,
+} from "@/lib/roles/labels";
+import type { Profile, UserRole } from "@/types/database.types";
 import { useState } from "react";
 
 export function ActivateProfileForm({
@@ -26,7 +30,7 @@ export function ActivateProfileForm({
   agents: Array<{ id: string; name: string }>;
 }) {
   const [selectedProfile, setSelectedProfile] = useState("");
-  const [role, setRole] = useState<"BUSINESS_ADMIN" | "AGENT">("BUSINESS_ADMIN");
+  const [role, setRole] = useState<UserRole>("BUSINESS_ADMIN");
   const [agentId, setAgentId] = useState("");
   const [pending, startTransition] = useTransition();
 
@@ -39,8 +43,8 @@ export function ActivateProfileForm({
         await activateProfileAction(
           selectedProfile,
           businessId,
-          role,
-          role === "AGENT" ? agentId : undefined
+          normalizeRoleForDb(role),
+          role === "COLLABORATOR" || role === "AGENT" ? agentId : undefined
         );
         toast.success("Usuario activado");
       } catch {
@@ -51,7 +55,7 @@ export function ActivateProfileForm({
 
   return (
     <Card>
-      <CardHeader><CardTitle>Asignar usuarios</CardTitle></CardHeader>
+      <CardHeader><CardTitle>Asignar acceso al negocio</CardTitle></CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2">
           <Label>Usuario pendiente</Label>
@@ -68,19 +72,19 @@ export function ActivateProfileForm({
         </div>
         <div className="space-y-2">
           <Label>Rol</Label>
-          <Select value={role} onValueChange={(v) => setRole((v ?? "BUSINESS_ADMIN") as "BUSINESS_ADMIN" | "AGENT")}>
+          <Select value={role} onValueChange={(v) => setRole((v ?? "BUSINESS_ADMIN") as UserRole)}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="BUSINESS_ADMIN">Business Admin</SelectItem>
-              <SelectItem value="AGENT">Agent</SelectItem>
+              <SelectItem value="BUSINESS_ADMIN">{ROLE_LABELS.BUSINESS_ADMIN}</SelectItem>
+              <SelectItem value="COLLABORATOR">{ROLE_LABELS.COLLABORATOR}</SelectItem>
             </SelectContent>
           </Select>
         </div>
-        {role === "AGENT" && (
+        {(role === "COLLABORATOR" || role === "AGENT") && (
           <div className="space-y-2">
-            <Label>Agente vinculado</Label>
+            <Label>Miembro del equipo vinculado</Label>
             <Select value={agentId} onValueChange={(v) => setAgentId(v ?? "")}>
-              <SelectTrigger><SelectValue placeholder="Seleccionar agente" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder="Seleccionar usuario" /></SelectTrigger>
               <SelectContent>
                 {agents.map((a) => (
                   <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>

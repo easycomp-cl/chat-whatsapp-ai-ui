@@ -11,6 +11,8 @@ import {
 import { createClient } from "@/lib/supabase/server";
 import { patchTenantInDatabase } from "@/lib/business/patch-tenant";
 import { patchConversationInDatabase } from "@/lib/conversation/patch-conversation";
+import { isAgent } from "@/lib/rbac";
+import type { UserRole } from "@/types/database.types";
 import { parseCsvFaqs, parseJsonFaqs } from "@/lib/faqs/parse-faq-import";
 import type {
   FaqInput,
@@ -19,6 +21,8 @@ import type {
   SettingsInput,
   NoteInput,
   ReplyInput,
+  InteractiveReplyInput,
+  EditMessageInput,
   ShopifyConnectInput,
   DeliveryRegionInput,
   DeliveryRegionPatchInput,
@@ -51,6 +55,17 @@ export async function changeConversationMode(
 ) {
   await requireProfile();
 
+  if (mode === "HUMAN") {
+    try {
+      await botApi.patchConversationMode(conversationId, { mode });
+    } catch (error) {
+      if (error instanceof BotApiError) {
+        throw new Error(error.message);
+      }
+      throw new Error(BOT_API_UNAVAILABLE_MESSAGE);
+    }
+  }
+
   await patchConversationInDatabase(conversationId, {
     mode,
     ...(mode === "BOT"
@@ -62,14 +77,61 @@ export async function changeConversationMode(
       : {}),
   });
 
-  try {
-    await botApi.patchConversationMode(conversationId, { mode });
-  } catch {
-    // Bot API puede usar otra instancia; el dashboard ya quedó actualizado
+  if (mode === "BOT") {
+    try {
+      await botApi.patchConversationMode(conversationId, { mode });
+    } catch {
+      // Bot API puede usar otra instancia; el dashboard ya quedó actualizado
+    }
   }
 
   revalidatePath("/app/conversations");
   revalidatePath(`/app/conversations/${conversationId}`);
+}
+
+export async function enableBotOnAllHumanConversationsAction() {
+  const profile = await requireAppAccess();
+  const businessId = profile.business_id!;
+  const supabase = await createClient();
+
+  let query = supabase
+    .from("conversations")
+    .select("id")
+    .eq("business_id", businessId)
+    .eq("mode", "HUMAN");
+
+  if (isAgent(profile.role) && profile.agent_id) {
+    query = query.eq("assigned_admin_id", profile.agent_id);
+  }
+
+  const { data, error } = await query;
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const conversationIds = (data ?? []).map((row) => row.id as string);
+  if (!conversationIds.length) {
+    return { updated: 0 };
+  }
+
+  for (const conversationId of conversationIds) {
+    await patchConversationInDatabase(conversationId, {
+      mode: "BOT",
+      handoffReason: null,
+      assignedAdminId: null,
+      botResumeAt: null,
+    });
+
+    try {
+      await botApi.patchConversationMode(conversationId, { mode: "BOT" });
+    } catch {
+      // El dashboard ya quedó actualizado en Supabase
+    }
+  }
+
+  revalidatePath("/app/conversations");
+
+  return { updated: conversationIds.length };
 }
 
 export async function createFaqAction(data: FaqInput) {
@@ -288,7 +350,7 @@ export async function createAgentAction(data: AgentInput) {
     role: data.role,
     notify_on_handoff: data.notify_on_handoff,
   });
-  revalidatePath("/app/agents");
+  revalidatePath("/app/users");
 }
 
 export async function updateAgentAction(
@@ -303,7 +365,7 @@ export async function updateAgentAction(
     notify_on_handoff: data.notify_on_handoff,
     active: data.active,
   });
-  revalidatePath("/app/agents");
+  revalidatePath("/app/users");
 }
 
 export async function saveSettingsAction(data: SettingsInput) {
@@ -374,6 +436,108 @@ export async function sendConversationReplyAction(
   }
 }
 
+export async function sendConversationMediaAction(
+  conversationId: string,
+  formData: FormData
+) {
+  const profile = await requireAppAccess();
+  let agentPhone: string | undefined;
+
+  if (profile.agent_id) {
+    const supabase = await createClient();
+    const { data: agent } = await supabase
+      .from("business_agents")
+      .select("phone")
+      .eq("id", profile.agent_id)
+      .single();
+    agentPhone = agent?.phone ?? undefined;
+  }
+
+  if (agentPhone) {
+    formData.set("agent_phone", agentPhone);
+  }
+
+  try {
+    const created = await botApi.sendConversationMediaMessage(conversationId, formData);
+
+    revalidatePath("/app/conversations");
+    revalidatePath(`/app/conversations/${conversationId}`);
+
+    return created;
+  } catch (error) {
+    if (error instanceof BotApiError) {
+      if (error.message === "No active WhatsApp channel for this business") {
+        throw new Error(
+          "Este negocio no tiene un canal de WhatsApp activo. Actívalo en configuración o contacta al administrador."
+        );
+      }
+      throw new Error(error.message);
+    }
+    throw error;
+  }
+}
+
+export async function sendConversationInteractiveAction(
+  conversationId: string,
+  data: InteractiveReplyInput
+) {
+  const profile = await requireAppAccess();
+  let agentPhone: string | undefined;
+
+  if (profile.agent_id) {
+    const supabase = await createClient();
+    const { data: agent } = await supabase
+      .from("business_agents")
+      .select("phone")
+      .eq("id", profile.agent_id)
+      .single();
+    agentPhone = agent?.phone ?? undefined;
+  }
+
+  try {
+    const created = await botApi.sendConversationInteractiveMessage(conversationId, {
+      interactive: data.interactive,
+      ...(agentPhone ? { agent_phone: agentPhone } : {}),
+      ...(data.reply_to_message_id
+        ? { reply_to_message_id: data.reply_to_message_id }
+        : {}),
+    });
+
+    revalidatePath("/app/conversations");
+    revalidatePath(`/app/conversations/${conversationId}`);
+
+    return created as Record<string, unknown> | null;
+  } catch (error) {
+    if (error instanceof BotApiError) {
+      if (error.message === "No active WhatsApp channel for this business") {
+        throw new Error(
+          "Este negocio no tiene un canal de WhatsApp activo. Actívalo en configuración o contacta al administrador."
+        );
+      }
+      if (error.status === 404) {
+        throw new Error(
+          "El backend aún no expone el envío de mensajes interactivos desde el dashboard. Ver docs/pending/to-backend/backend-whatsapp-interactive-outbound-human.md"
+        );
+      }
+      throw new Error(error.message);
+    }
+    throw error;
+  }
+}
+
+export async function getMessageMediaUrlAction(messageId: string, expiresIn = 3600) {
+  await requireAppAccess();
+
+  try {
+    return await botApi.getMessageMediaUrl(messageId, expiresIn);
+  } catch (error) {
+    if (error instanceof BotApiError) {
+      throw new Error(error.message);
+    }
+    throw error;
+  }
+}
+
 export async function resendMessageAction(messageId: string, conversationId: string) {
   await requireAppAccess();
 
@@ -390,18 +554,108 @@ export async function resendMessageAction(messageId: string, conversationId: str
   }
 }
 
+export async function editMessageAction(
+  messageId: string,
+  conversationId: string,
+  data: EditMessageInput
+) {
+  await requireAppAccess();
+
+  try {
+    const updated = await botApi.editMessage(messageId, { text: data.text });
+    revalidatePath("/app/conversations");
+    revalidatePath(`/app/conversations/${conversationId}`);
+    return updated;
+  } catch (error) {
+    if (error instanceof BotApiError) {
+      throw new Error(error.message || "No se pudo editar el mensaje en WhatsApp");
+    }
+    throw error;
+  }
+}
+
+function isMissingNoteColorColumnError(error: { message?: string } | null) {
+  const message = error?.message?.toLowerCase() ?? "";
+  return (
+    message.includes("color") &&
+    (message.includes("could not find") ||
+      message.includes("column") ||
+      message.includes("schema cache"))
+  );
+}
+
 export async function addConversationNoteAction(
   conversationId: string,
   data: NoteInput
-) {
+): Promise<{ id: string; colorPersisted: boolean }> {
   const profile = await requireAppAccess();
   const supabase = await createClient();
-  const { error } = await supabase.from("conversation_notes").insert({
+  const basePayload = {
     business_id: profile.business_id!,
     conversation_id: conversationId,
     user_id: profile.user_id,
     note: data.note,
-  });
+  };
+
+  let colorPersisted = true;
+  let insertedId: string | null = null;
+
+  const withColor = await supabase
+    .from("conversation_notes")
+    .insert({
+      ...basePayload,
+      color: data.color ?? "lemon",
+    })
+    .select("id")
+    .single();
+
+  if (isMissingNoteColorColumnError(withColor.error)) {
+    colorPersisted = false;
+    const fallback = await supabase
+      .from("conversation_notes")
+      // Sin `color`: compatibilidad si la migración aún no está en Supabase.
+      .insert(basePayload as never)
+      .select("id")
+      .single();
+
+    if (fallback.error) throw new Error(fallback.error.message);
+    insertedId = fallback.data.id;
+  } else if (withColor.error) {
+    throw new Error(withColor.error.message);
+  } else {
+    insertedId = withColor.data.id;
+  }
+
+  revalidatePath(`/app/conversations/${conversationId}`);
+  return { id: insertedId!, colorPersisted };
+}
+
+export async function updateConversationNoteColorAction(
+  conversationId: string,
+  noteId: string,
+  color: NoteInput["color"]
+) {
+  const profile = await requireAppAccess();
+  const supabase = await createClient();
+
+  const { data: note } = await supabase
+    .from("conversation_notes")
+    .select("id, business_id")
+    .eq("id", noteId)
+    .eq("conversation_id", conversationId)
+    .single();
+
+  if (!note || note.business_id !== profile.business_id) {
+    throw new Error("Nota no encontrada");
+  }
+
+  const { error } = await supabase
+    .from("conversation_notes")
+    .update({ color })
+    .eq("id", noteId)
+    .eq("conversation_id", conversationId);
+
+  if (isMissingNoteColorColumnError(error)) return;
   if (error) throw new Error(error.message);
   revalidatePath(`/app/conversations/${conversationId}`);
 }
@@ -485,7 +739,7 @@ export async function clearConversationChatAction(conversationId: string) {
 export async function activateProfileAction(
   profileId: string,
   businessId: string,
-  role: "BUSINESS_ADMIN" | "AGENT",
+  role: UserRole,
   agentId?: string
 ) {
   await requireSuperAdmin();
@@ -506,4 +760,49 @@ export async function activateProfileAction(
 export async function signOutAction() {
   const supabase = await createClient();
   await supabase.auth.signOut();
+}
+
+export async function getSetupStatusAction(businessId: string) {
+  await requireBusinessAdmin();
+  try {
+    return await botApi.getSetupStatus(businessId);
+  } catch (error) {
+    if (error instanceof BotApiError) {
+      throw new Error(error.message);
+    }
+    throw new Error(BOT_API_UNAVAILABLE_MESSAGE);
+  }
+}
+
+export async function patchOnboardingAction(
+  businessId: string,
+  body: import("@/features/onboarding/types").OnboardingPatch
+) {
+  await requireBusinessAdmin();
+  try {
+    return await botApi.patchOnboarding(businessId, body);
+  } catch (error) {
+    if (error instanceof BotApiError) {
+      throw new Error(error.message);
+    }
+    throw new Error(BOT_API_UNAVAILABLE_MESSAGE);
+  }
+}
+
+export async function completeOnboardingAction(
+  businessId: string,
+  body: import("@/features/onboarding/types").CompleteOnboardingBody
+) {
+  await requireBusinessAdmin();
+  try {
+    const result = await botApi.completeOnboarding(businessId, body);
+    revalidatePath("/app/dashboard");
+    revalidatePath("/app/settings");
+    return result;
+  } catch (error) {
+    if (error instanceof BotApiError) {
+      throw new Error(error.message);
+    }
+    throw new Error(BOT_API_UNAVAILABLE_MESSAGE);
+  }
 }

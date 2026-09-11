@@ -1,15 +1,14 @@
-import { format, isToday, isYesterday } from "date-fns";
-import { es } from "date-fns/locale";
+import {
+  formatFullDateTime,
+  formatShortDate,
+  formatTime,
+  isTodayInAppTimezone,
+  isYesterdayInAppTimezone,
+} from "@/lib/format-datetime";
+import { getAvatarInitials } from "@/lib/text/grapheme";
 
 export function getInitials(name: string | null | undefined, phone?: string) {
-  if (name?.trim()) {
-    return name
-      .split(" ")
-      .slice(0, 2)
-      .map((p) => p[0]?.toUpperCase() ?? "")
-      .join("");
-  }
-  return phone?.slice(-2) ?? "?";
+  return getAvatarInitials(name, phone);
 }
 
 const avatarColors = [
@@ -29,11 +28,11 @@ export function getAvatarColor(seed: string) {
 
 export function formatChatTime(date: string) {
   const d = new Date(date);
-  if (isToday(d)) return format(d, "HH:mm");
-  if (isYesterday(d)) return "Ayer";
-  return format(d, "dd/MM/yy", { locale: es });
+  if (isTodayInAppTimezone(d)) return formatTime(d);
+  if (isYesterdayInAppTimezone(d)) return "Ayer";
+  return formatShortDate(d);
 }
 
 export function formatFullTime(date: string) {
-  return format(new Date(date), "dd MMM yyyy, HH:mm", { locale: es });
+  return formatFullDateTime(date);
 }

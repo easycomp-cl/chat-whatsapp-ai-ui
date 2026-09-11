@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Filter, Search, X } from "lucide-react";
+import { Filter, Search, Workflow, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -19,16 +19,16 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { ConversationAvatar } from "@/features/conversations/components/conversation-avatar";
 import { formatChatTime } from "@/lib/conversations/utils";
+import { stripWhatsAppFormatting } from "@/lib/conversations/whatsapp-formatting";
 import type { ConversationRow } from "@/lib/conversations/load-conversations";
 import { PendingIndicator } from "@/features/conversations/components/pending-indicator";
 import { usePendingMessages } from "@/features/conversations/context/pending-messages-context";
 import { useLiveConversationsList } from "@/features/conversations/hooks/use-live-conversations-list";
+import { EnableBotOnAllHumanButton } from "@/features/conversations/components/enable-bot-on-all-human-button";
 import { useMounted } from "@/hooks/use-mounted";
-
-function getShortDisplayName(name: string) {
-  const first = name.trim().split(/\s+/)[0] ?? name;
-  return first.length > 9 ? `${first.slice(0, 8)}…` : first;
-}
+import { useInboxColumnLayoutContext } from "@/features/conversations/context/inbox-column-layout-context";
+import { resolveCustomerDisplayName } from "@/lib/customers/resolve-display-name";
+import { getShortDisplayName } from "@/lib/text/grapheme";
 
 const CONVERSATION_MODE_OPTIONS = [
   { value: "all", label: "Todas" },
@@ -154,6 +154,7 @@ function MobileConversationFiltersPopover({
   draft,
   onDraftChange,
   onApply,
+  humanCount,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -161,6 +162,7 @@ function MobileConversationFiltersPopover({
   draft: FilterDraft;
   onDraftChange: (draft: FilterDraft) => void;
   onApply: () => void;
+  humanCount: number;
 }) {
   const mounted = useMounted();
   const [position, setPosition] = useState({ top: 0, left: 0 });
@@ -281,6 +283,12 @@ function MobileConversationFiltersPopover({
             <Search className="size-4" />
             Aplicar
           </Button>
+
+          <EnableBotOnAllHumanButton
+            humanCount={humanCount}
+            size="sm"
+            className="h-10 w-full rounded-xl border-[#7678ed]/25 text-[#7678ed] hover:bg-[#7678ed]/8"
+          />
         </div>
       </div>
     </>,
@@ -299,6 +307,8 @@ export function ConversationListPanel({
 }) {
   const conversations = useLiveConversationsList(businessId, initialConversations, agentId);
   const mounted = useMounted();
+  const { isLayoutControlled, isListCompact } = useInboxColumnLayoutContext();
+  const isCompactView = !isLayoutControlled || isListCompact;
   const filterBtnRef = useRef<HTMLButtonElement>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [draftFilters, setDraftFilters] = useState<FilterDraft>({
@@ -316,6 +326,7 @@ export function ConversationListPanel({
 
   const activeId = pathname.split("/").pop();
   const hasActiveFilters = mode !== "all" || unreadOnly || Boolean(query);
+  const humanCount = conversations.filter((c) => c.mode === "HUMAN").length;
 
   function replaceSearchParams(update: (params: URLSearchParams) => void) {
     const params = new URLSearchParams(searchParams.toString());
@@ -384,12 +395,14 @@ export function ConversationListPanel({
 
   return (
     <aside
-      className={cn(
-        "flex h-full min-h-0 shrink-0 flex-col border-r border-[#202022]/8 bg-white transition-[width] duration-200",
-        "w-[80px] md:w-full md:max-w-[360px]"
-      )}
+      className="flex h-full min-h-0 w-full flex-col border-r border-[#202022]/8 bg-white"
     >
-      <div className="flex shrink-0 justify-center border-b border-[#202022]/8 py-3 md:hidden">
+      <div
+        className={cn(
+          "flex shrink-0 justify-center border-b border-[#202022]/8 py-3",
+          !isCompactView && "hidden"
+        )}
+      >
         <button
           ref={filterBtnRef}
           type="button"
@@ -417,9 +430,15 @@ export function ConversationListPanel({
         draft={draftFilters}
         onDraftChange={setDraftFilters}
         onApply={applyFilters}
+        humanCount={humanCount}
       />
 
-      <div className="hidden border-b border-[#202022]/8 p-4 md:block">
+      <div
+        className={cn(
+          "border-b border-[#202022]/8 p-4",
+          isCompactView && "hidden"
+        )}
+      >
         <ConversationListFilters
           query={query}
           mode={mode}
@@ -430,6 +449,11 @@ export function ConversationListPanel({
           onModeChange={setModeFilter}
           onUnreadChange={setUnreadFilter}
         />
+        <EnableBotOnAllHumanButton
+          humanCount={humanCount}
+          size="sm"
+          className="mt-4 w-full rounded-xl border-[#7678ed]/25 text-[#7678ed] hover:bg-[#7678ed]/8"
+        />
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto">
@@ -437,25 +461,26 @@ export function ConversationListPanel({
           <p
             className={cn(
               "p-6 text-center text-sm text-[#202022]/45",
-              "max-md:px-1 max-md:py-4 max-md:text-[10px]"
+              isCompactView && "px-1 py-4 text-[10px]"
             )}
           >
-            <span className="md:hidden">—</span>
-            <span className="hidden md:inline">
-              {conversations.length === 0
+            {isCompactView ? (
+              <span>—</span>
+            ) : (
+              conversations.length === 0
                 ? "No hay conversaciones"
-                : "No hay conversaciones con estos filtros"}
-            </span>
+                : "No hay conversaciones con estos filtros"
+            )}
           </p>
         ) : (
           filtered.map((c) => {
             const isActive = activeId === c.id;
-            const displayName =
-              c.customers?.name ?? c.customers?.phone_number ?? "Sin nombre";
+            const displayName = resolveCustomerDisplayName(c.customers);
             const shortName = getShortDisplayName(displayName);
-            const preview =
+            const preview = stripWhatsAppFormatting(
               c.last_message_preview ??
-              (c.handoff_reason ? `Derivación: ${c.handoff_reason}` : "Sin mensajes");
+                (c.handoff_reason ? `Derivación: ${c.handoff_reason}` : "Sin mensajes")
+            );
             const isPending = mounted && !isActive && hasPending(c.id);
 
             return (
@@ -465,9 +490,13 @@ export function ConversationListPanel({
                 title={displayName}
                 className={cn(
                   "shrink-0 border-b border-[#202022]/5 transition-all hover:bg-[#f9fafc]",
-                  "flex flex-col items-center gap-1 px-1.5 py-3 md:flex-row md:items-start md:gap-3 md:px-4 md:py-3.5",
+                  isCompactView
+                    ? "flex flex-col items-center gap-1 px-1.5 py-3"
+                    : "flex flex-row items-start gap-3 px-4 py-3.5",
                   isActive &&
-                    "bg-[#00a884]/14 hover:bg-[#00a884]/18 md:border-l-[3px] md:border-l-[#00a884]",
+                    (isCompactView
+                      ? "bg-[#00a884]/14 hover:bg-[#00a884]/18"
+                      : "bg-[#00a884]/14 hover:bg-[#00a884]/18 border-l-[3px] border-l-[#00a884]"),
                   isPending && !isActive && "bg-[#ff7a55]/5"
                 )}
               >
@@ -475,16 +504,21 @@ export function ConversationListPanel({
                   className={cn(
                     "relative",
                     isActive &&
-                      "max-md:rounded-full max-md:ring-2 max-md:ring-[#00a884] max-md:ring-offset-2"
+                      isCompactView &&
+                      "rounded-full ring-2 ring-[#00a884] ring-offset-2"
                   )}
                 >
                   <ConversationAvatar
-                    name={c.customers?.name}
+                    name={
+                      c.customers?.display_alias?.trim() ||
+                      c.customers?.name ||
+                      undefined
+                    }
                     phone={c.customers?.phone_number}
                     seed={c.customer_id}
                     size="xs"
-                    className="md:size-11 md:text-sm"
-                    channelClassName="max-md:hidden"
+                    className={cn(!isCompactView && "size-11 text-sm")}
+                    channelClassName={isCompactView ? "hidden" : undefined}
                   />
                   {isPending && (
                     <span className="absolute -top-0.5 -right-0.5 flex size-4 items-center justify-center rounded-full bg-[#ff7a55] ring-2 ring-white">
@@ -492,11 +526,17 @@ export function ConversationListPanel({
                     </span>
                   )}
                   {c.handoff_reason && (
-                    <span className="absolute -top-0.5 -left-0.5 size-2.5 rounded-full bg-[#ff7a55] ring-2 ring-white md:hidden" />
+                    <span
+                      className={cn(
+                        "absolute -top-0.5 -left-0.5 size-2.5 rounded-full bg-[#ff7a55] ring-2 ring-white",
+                        !isCompactView && "hidden"
+                      )}
+                    />
                   )}
                 </div>
 
-                <div className="flex w-full flex-col items-center gap-0.5 text-center md:hidden">
+                {isCompactView && (
+                  <div className="flex w-full flex-col items-center gap-0.5 text-center">
                   <p
                     className={cn(
                       "w-full truncate text-[10px] leading-tight font-semibold text-[#202022]",
@@ -509,14 +549,17 @@ export function ConversationListPanel({
                     {formatChatTime(c.last_message_at)}
                   </span>
                 </div>
+                )}
 
-                <div className="hidden min-w-0 flex-1 md:block">
+                {!isCompactView && (
+                  <div className="min-w-0 flex-1">
                   <div className="flex items-start justify-between gap-2">
                     <p
                       className={cn(
-                        "truncate font-semibold text-[#202022]",
+                        "min-w-0 truncate font-semibold text-[#202022]",
                         isPending && "text-[#111b21]"
                       )}
+                      title={displayName}
                     >
                       {displayName}
                     </p>
@@ -544,8 +587,18 @@ export function ConversationListPanel({
                     {c.handoff_reason && (
                       <span className="size-2 rounded-full bg-[#ff7a55]" />
                     )}
+                    {c.active_flow_run && (
+                      <span
+                        className="inline-flex items-center gap-0.5 rounded-full bg-[#7678ed]/12 px-2 py-0.5 text-[10px] font-semibold text-[#7678ed]"
+                        title="Flujo activo"
+                      >
+                        <Workflow className="size-3" />
+                        Flujo
+                      </span>
+                    )}
                   </div>
                 </div>
+                )}
               </Link>
             );
           })

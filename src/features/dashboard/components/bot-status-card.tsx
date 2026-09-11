@@ -7,8 +7,7 @@ import { Bot, Pause } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { toggleBotGlobal } from "@/lib/actions/app-actions";
-import { formatDistanceToNow } from "date-fns";
-import { es } from "date-fns/locale";
+import { formatRelativeFromNow } from "@/lib/format-datetime";
 
 type BotStatusCardProps = {
   enabled: boolean;
@@ -58,11 +57,7 @@ export function BotStatusCard({ enabled, updatedAt, canToggle }: BotStatusCardPr
               {localEnabled ? "Bot activo" : "Bot pausado"}
             </p>
             <p className="text-sm text-muted-foreground">
-              Actualizado{" "}
-              {formatDistanceToNow(new Date(updatedAt), {
-                addSuffix: true,
-                locale: es,
-              })}
+              Actualizado {formatRelativeFromNow(updatedAt)}
             </p>
           </div>
           {canToggle && (

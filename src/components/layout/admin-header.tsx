@@ -20,7 +20,7 @@ export function AdminHeader({ userName }: { userName: string }) {
     <header className="flex h-14 items-center gap-4 border-b px-4">
       <SidebarTrigger />
       <div className="flex flex-1 items-center justify-between">
-        <h1 className="text-sm font-semibold">Panel ConversAI</h1>
+        <h1 className="text-sm font-semibold">Panel easycomp-chat-bot-manager</h1>
         <div className="flex items-center gap-3">
           <span className="text-sm text-muted-foreground">{userName}</span>
           <Button variant="ghost" size="sm" onClick={handleSignOut}>

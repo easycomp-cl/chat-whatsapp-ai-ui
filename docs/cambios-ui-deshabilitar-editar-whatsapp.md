@@ -2,7 +2,7 @@
 
 > **Fecha:** 2026-07-28  
 > **Repositorio:** `chat-whatsapp-ai-ui`  
-> **Backend relacionado:** `PATCH /messages/:id` (ahora HTTP 501), ver `chat-whatsapp-ai/docs/pending/backend-editar-mensaje-whatsapp.md`
+> **Backend relacionado:** `PATCH /messages/:id` (HTTP 501 — cerrado), ver [docs/pending/done/backend-editar-mensaje-whatsapp.md](../pending/done/backend-editar-mensaje-whatsapp.md)
 
 ## Resumen
 

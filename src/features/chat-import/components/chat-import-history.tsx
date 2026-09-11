@@ -3,8 +3,7 @@
 import { useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { format } from "date-fns";
-import { es } from "date-fns/locale";
+import { formatFullDateTime } from "@/lib/format-datetime";
 import { toast } from "sonner";
 import { History, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -134,7 +133,7 @@ function HistoryRow({ job }: { job: ImportJob }) {
       <TableCell>{job.total_messages || "—"}</TableCell>
       <TableCell>{job.detected_faq_count || "—"}</TableCell>
       <TableCell className="text-muted-foreground">
-        {format(new Date(job.created_at), "dd MMM yyyy HH:mm", { locale: es })}
+        {formatFullDateTime(job.created_at)}
       </TableCell>
       <TableCell className="text-right">
         <div className="flex justify-end gap-1">

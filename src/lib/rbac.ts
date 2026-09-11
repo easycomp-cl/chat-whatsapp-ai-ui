@@ -1,4 +1,5 @@
 import type { Profile, UserRole } from "@/types/database.types";
+import { isCollaboratorRole } from "@/lib/roles/labels";
 
 export function canManageFaqs(role: UserRole) {
   return role === "BUSINESS_ADMIN" || role === "SUPER_ADMIN";
@@ -8,9 +9,12 @@ export function canManageKnowledge(role: UserRole) {
   return role === "BUSINESS_ADMIN" || role === "SUPER_ADMIN";
 }
 
-export function canManageAgents(role: UserRole) {
+export function canManageTeam(role: UserRole) {
   return role === "BUSINESS_ADMIN" || role === "SUPER_ADMIN";
 }
+
+/** @deprecated Usar canManageTeam */
+export const canManageAgents = canManageTeam;
 
 export function canManageSettings(role: UserRole) {
   return role === "BUSINESS_ADMIN" || role === "SUPER_ADMIN";
@@ -32,7 +36,7 @@ export function canViewCustomerMessageAudit(role: UserRole) {
 export function canChangeConversationMode(profile: Profile) {
   return (
     profile.role === "BUSINESS_ADMIN" ||
-    profile.role === "AGENT" ||
+    isCollaboratorRole(profile.role) ||
     profile.role === "SUPER_ADMIN"
   );
 }
@@ -41,6 +45,13 @@ export function isSuperAdmin(role: UserRole) {
   return role === "SUPER_ADMIN";
 }
 
-export function isAgent(role: UserRole) {
-  return role === "AGENT";
+export function isCollaborator(role: UserRole) {
+  return isCollaboratorRole(role);
+}
+
+/** @deprecated Usar isCollaborator */
+export const isAgent = isCollaborator;
+
+export function canManageCustomerProfile(role: UserRole) {
+  return role === "BUSINESS_ADMIN" || role === "SUPER_ADMIN";
 }

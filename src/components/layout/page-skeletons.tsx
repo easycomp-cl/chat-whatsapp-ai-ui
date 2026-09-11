@@ -97,7 +97,7 @@ export function DespachosContentSkeleton() {
   );
 }
 
-export function AgentsContentSkeleton() {
+export function UsersContentSkeleton() {
   return <SkeletonTable rows={5} />;
 }
 

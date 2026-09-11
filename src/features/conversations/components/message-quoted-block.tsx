@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { WhatsAppFormattedText } from "@/features/conversations/components/whatsapp-formatted-text";
 
 const SENDER_LABELS: Record<string, string> = {
   CUSTOMER: "Cliente",
@@ -12,6 +13,8 @@ type MessageQuotedBlockProps = {
   quotedSenderType?: string | null;
   inbound: boolean;
   unavailable?: boolean;
+  customerDisplayName?: string;
+  botAgentLabel?: string;
 };
 
 export function MessageQuotedBlock({
@@ -19,9 +22,15 @@ export function MessageQuotedBlock({
   quotedSenderType,
   inbound,
   unavailable = false,
+  customerDisplayName,
+  botAgentLabel = "Agente IA",
 }: MessageQuotedBlockProps) {
   const senderLabel =
-    (quotedSenderType && SENDER_LABELS[quotedSenderType]) ?? "Mensaje citado";
+    quotedSenderType === "CUSTOMER" && customerDisplayName
+      ? customerDisplayName
+      : quotedSenderType === "BOT"
+        ? botAgentLabel
+        : (quotedSenderType && SENDER_LABELS[quotedSenderType]) ?? "Mensaje citado";
 
   return (
     <div
@@ -50,7 +59,7 @@ export function MessageQuotedBlock({
           unavailable ? "italic text-[#8696a0]" : "text-[#667781]"
         )}
       >
-        {quotedText}
+        <WhatsAppFormattedText text={quotedText} />
       </p>
     </div>
   );

@@ -8,6 +8,7 @@ import { TopQuestionsTable } from "@/features/dashboard/components/top-questions
 import { canToggleBot } from "@/lib/rbac";
 import type { TopQuestion } from "@/types/database.types";
 import { startOfMonth } from "date-fns";
+import { formatChartDayLabel, getDateKeyInAppTimezone } from "@/lib/format-datetime";
 import { createClient } from "@/lib/supabase/server";
 
 async function getMetricsSafe(businessId: string) {
@@ -26,7 +27,7 @@ async function getMetricsSafe(businessId: string) {
 
     const dailyMap = new Map<string, { messages: number; ai_responses: number; handoffs: number }>();
     for (const event of dashboard.usage) {
-      const date = new Date(event.createdAt).toISOString().slice(0, 10);
+      const date = getDateKeyInAppTimezone(event.createdAt);
       const entry = dailyMap.get(date) ?? { messages: 0, ai_responses: 0, handoffs: 0 };
       if (event.eventType.includes("MESSAGE_RECEIVED")) entry.messages += 1;
       if (event.eventType.includes("AI_RESPONSE")) entry.ai_responses += 1;
@@ -75,7 +76,7 @@ export async function DashboardPageContent() {
   ]);
 
   const chartData = daily.map((d) => ({
-    date: new Date(d.date).toLocaleDateString("es-CL", { day: "2-digit", month: "short" }),
+    date: formatChartDayLabel(d.date),
     messages: d.messages,
     ai_responses: d.ai_responses,
     handoffs: d.handoffs,

@@ -1,10 +1,18 @@
-import { redirect } from "next/navigation";
-import { getProfile } from "@/lib/auth/session";
+import { LandingPage } from "@/components/landing/LandingPage";
+import { buildLandingJsonLd, buildLandingMetadata } from "@/lib/landing/metadata";
 
-export default async function HomePage() {
-  const profile = await getProfile();
-  if (!profile) redirect("/login");
-  if (profile.role === "SUPER_ADMIN") redirect("/admin/businesses");
-  if (!profile.active || !profile.business_id) redirect("/login");
-  redirect("/app/dashboard");
+export const metadata = buildLandingMetadata();
+
+export default function HomePage() {
+  const jsonLd = buildLandingJsonLd();
+
+  return (
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <LandingPage />
+    </>
+  );
 }

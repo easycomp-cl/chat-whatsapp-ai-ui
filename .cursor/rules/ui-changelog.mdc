@@ -1,0 +1,15 @@
+---
+description: Crear MD en docs/ al cambiar componentes o flujos de la UI
+globs: "src/**/*.{ts,tsx}"
+alwaysApply: false
+---
+
+# Changelog de cambios UI
+
+Al terminar cambios funcionales en `src/` (componentes, actions, hooks, tipos):
+
+1. Añade o actualiza `docs/cambios-ui-<tema>.md`.
+2. Documenta estados visibles, API/backend requerido y pasos de prueba.
+3. Menciona migraciones Supabase en `supabase/migrations/` si aplica.
+
+No omitas el MD aunque el cambio sea pequeño si afecta deploy o comportamiento visible.

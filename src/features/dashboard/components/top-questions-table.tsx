@@ -9,6 +9,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { TopQuestion } from "@/types/database.types";
+import { formatDateOnly } from "@/lib/format-datetime";
 
 export function TopQuestionsTable({ questions }: { questions: TopQuestion[] }) {
   return (
@@ -39,9 +40,7 @@ export function TopQuestionsTable({ questions }: { questions: TopQuestion[] }) {
                   <TableCell className="max-w-xs truncate">{q.question}</TableCell>
                   <TableCell>{q.count}</TableCell>
                   <TableCell>
-                    {q.last_asked_at
-                      ? new Date(q.last_asked_at).toLocaleDateString("es-CL")
-                      : "-"}
+                    {q.last_asked_at ? formatDateOnly(q.last_asked_at) : "-"}
                   </TableCell>
                   <TableCell>
                     <Badge variant="outline">{q.answered_by ?? "IA"}</Badge>

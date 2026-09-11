@@ -97,7 +97,11 @@ function SheetFooter({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="sheet-footer"
-      className={cn("mt-auto flex flex-col gap-2 p-4", className)}
+      className={cn(
+        "mt-auto flex flex-col p-4 sm:flex-row sm:justify-end",
+        "[&>[data-slot=button]+[data-slot=button]]:mt-3 sm:[&>[data-slot=button]+[data-slot=button]]:mt-0 sm:[&>[data-slot=button]+[data-slot=button]]:ms-3",
+        className
+      )}
       {...props}
     />
   )

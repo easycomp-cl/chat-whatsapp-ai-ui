@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useTransition, useState, useCallback } from "react";
 import { toast } from "sonner";
-import { ChevronDown, ChevronUp, Eraser, MoreHorizontal, Search, StickyNote, MessageSquare, X } from "lucide-react";
+import { ChevronDown, ChevronUp, Eraser, MoreHorizontal, PanelRightOpen, Search, StickyNote, MessageSquare, X } from "lucide-react";
 import { changeConversationMode, clearConversationChatAction } from "@/lib/actions/app-actions";
 import { Button } from "@/components/ui/button";
 import {
@@ -35,26 +35,43 @@ import { hasUnreadCustomerReactions, countUnreadCustomerActivity } from "@/lib/c
 import { useChatScroll } from "@/features/conversations/hooks/use-chat-scroll";
 import { useLiveConversation } from "@/features/conversations/hooks/use-live-conversation";
 import { useMounted } from "@/hooks/use-mounted";
+import { resolveCustomerDisplayName } from "@/lib/customers/resolve-display-name";
+import { FlowRunBanner } from "@/features/conversations/components/flow-run-banner";
+import { FlowAgentInputBubble } from "@/features/conversations/components/flow-agent-input-bubble";
+import { useWhatsappServiceWindow } from "@/features/conversations/hooks/use-whatsapp-service-window";
+import { useConversationFlowState } from "@/features/conversations/hooks/use-conversation-flow-state";
+import { useInboxColumnLayoutContext } from "@/features/conversations/context/inbox-column-layout-context";
+import type { ConversationFlowState } from "@/lib/bot-api/types";
+import type { OutboundSenderContext } from "@/lib/conversations/outbound-sender";
 import type { Conversation, Customer, Message } from "@/types/database.types";
 
 type ChatWindowProps = {
   conversation: Conversation & { customers: Customer | null };
   messages: Message[];
+  initialFlowState?: ConversationFlowState | null;
+  outboundSender?: OutboundSenderContext;
   canClearChat?: boolean;
   showCustomerMessageAudit?: boolean;
+  botAgentName?: string | null;
 };
 
 export function ChatWindow({
   conversation: initialConversation,
   messages: initialMessages,
+  initialFlowState = null,
+  outboundSender,
   canClearChat = false,
   showCustomerMessageAudit = false,
+  botAgentName,
 }: ChatWindowProps) {
-  const { conversation, messages, scrollRef, refreshAfterSend, refresh } = useLiveConversation(
-    initialConversation.id,
-    initialConversation,
-    initialMessages
-  );
+  const { conversation, messages, scrollRef, refreshAfterSend, refresh, clearChatView } =
+    useLiveConversation(initialConversation.id, initialConversation, initialMessages, outboundSender);
+  const flowState = useConversationFlowState(initialConversation.id, initialFlowState);
+  const flowModeLocked = flowState?.flow_mode_locked ?? false;
+  const activeFlowRun = flowState?.active_flow_run ?? null;
+  const showAgentInputBubble =
+    activeFlowRun?.status === "AWAITING_AGENT_INPUT" &&
+    activeFlowRun.pending_agent_input != null;
   const { markConversationRead, hasPending, lastReadAt } = usePendingMessages();
   const messagesRef = useRef(messages);
   messagesRef.current = messages;
@@ -80,9 +97,19 @@ export function ChatWindow({
   const [tab, setTab] = useState(conversation.mode === "HUMAN" ? "reply" : "note");
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
   const customer = conversation.customers;
-  const displayName = customer?.name ?? customer?.phone_number ?? "Conversación";
+  const displayName = resolveCustomerDisplayName(customer);
   const canReply = conversation.mode === "HUMAN";
+  const serviceWindow = useWhatsappServiceWindow({
+    messages,
+    customerLastSeenAt: customer?.last_seen_at,
+  });
   const mounted = useMounted();
+  const {
+    showContactOverlayTrigger,
+    showContactColumnReopen,
+    openContactOverlay,
+    toggleContactCollapsed,
+  } = useInboxColumnLayoutContext();
   const unreadCount = useMemo(
     () =>
       mounted
@@ -183,13 +210,21 @@ export function ChatWindow({
 
   function handleModeChange(mode: "BOT" | "HUMAN") {
     if (mode === conversation.mode) return;
+    if (flowModeLocked && mode === "HUMAN") {
+      toast.error(
+        "Hay un flujo activo. Solo finaliza o cancela el flujo para pasar a modo humano."
+      );
+      return;
+    }
     startTransition(async () => {
       try {
         await changeConversationMode(conversation.id, mode);
         toast.success(`Modo ${mode} activado`);
         if (mode === "HUMAN") setTab("reply");
-      } catch {
-        toast.error("No se pudo cambiar el modo");
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : "No se pudo cambiar el modo"
+        );
       }
     });
   }
@@ -198,9 +233,11 @@ export function ChatWindow({
     startClearTransition(async () => {
       try {
         await clearConversationChatAction(conversation.id);
+        clearChatView();
+        acknowledgeRead();
         setClearDialogOpen(false);
         toast.success("Chat limpiado. Los mensajes se conservan en el historial.");
-        await refresh();
+        void refresh();
       } catch {
         toast.error("No se pudo limpiar el chat");
       }
@@ -208,8 +245,8 @@ export function ChatWindow({
   }
 
   return (
-    <section className="flex min-w-0 flex-1 flex-col bg-[#efeae2]">
-      <header className="flex items-center justify-between border-b border-[#d1d7db] bg-[#f0f2f5] px-5 py-3.5">
+    <section className="flex h-full min-h-0 min-w-0 flex-1 flex-col bg-[#efeae2]">
+      <header className="shrink-0 flex items-center justify-between border-b border-[#d1d7db] bg-[#f0f2f5] px-5 py-3.5">
         <div className="flex items-center gap-3">
           <ConversationAvatar
             name={customer?.name}
@@ -231,13 +268,41 @@ export function ChatWindow({
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-1.5">
-          <ConversationModeSwitch
-            mode={conversation.mode}
-            disabled={pending}
-            onModeChange={handleModeChange}
-          />
-          <DropdownMenu>
+        <div className="flex flex-col items-end gap-0.5">
+          {showContactColumnReopen && (
+            <button
+              type="button"
+              onClick={toggleContactCollapsed}
+              className="hidden rounded-lg p-1.5 text-[#7678ed] transition-colors hover:bg-[#7678ed]/10 xl:flex"
+              aria-label="Mostrar información del contacto"
+              title="Mostrar información del contacto"
+            >
+              <PanelRightOpen className="size-4" />
+            </button>
+          )}
+          <div className="flex items-center gap-1.5">
+            {showContactOverlayTrigger && (
+              <button
+                type="button"
+                onClick={openContactOverlay}
+                className="rounded-full p-2 text-[#202022]/40 transition-colors hover:bg-[#f9fafc] hover:text-[#7678ed] xl:hidden"
+                aria-label="Ver información del contacto"
+                title="Ver información del contacto"
+              >
+                <PanelRightOpen className="size-4" />
+              </button>
+            )}
+            <ConversationModeSwitch
+              mode={conversation.mode}
+              disabled={pending || flowModeLocked}
+              lockedReason={
+                flowModeLocked
+                  ? "Hay un flujo activo. Solo finaliza o cancela el flujo para pasar a modo humano."
+                  : undefined
+              }
+              onModeChange={handleModeChange}
+            />
+            <DropdownMenu>
             <DropdownMenuTrigger
               render={
                 <button
@@ -272,11 +337,16 @@ export function ChatWindow({
               )}
             </DropdownMenuContent>
           </DropdownMenu>
+          </div>
         </div>
       </header>
 
+      {activeFlowRun && (
+        <FlowRunBanner run={activeFlowRun} onCancelled={() => void refresh()} />
+      )}
+
       {searchOpen && (
-        <div className="flex items-center gap-2 border-b border-[#d1d7db] bg-[#f0f2f5] px-5 py-2">
+        <div className="shrink-0 flex items-center gap-2 border-b border-[#d1d7db] bg-[#f0f2f5] px-5 py-2">
           <Search className="size-4 shrink-0 text-[#667781]" />
           <Input
             ref={searchInputRef}
@@ -370,10 +440,15 @@ export function ChatWindow({
                     messageById={messageById}
                     conversationId={conversation.id}
                     customerDisplayName={displayName}
+                    customerName={customer?.name}
+                    customerPhone={customer?.phone_number}
+                    customerAvatarSeed={conversation.customer_id}
                     lastReadAt={lastReadAt[conversation.id]}
                     highlightUnread={mounted}
                     canReply={canReply}
                     showCustomerMessageAudit={showCustomerMessageAudit}
+                    outboundSender={outboundSender}
+                    botAgentName={botAgentName}
                     onResent={() => void refresh()}
                     onEdited={() => void refresh()}
                     onReply={(target) => {
@@ -407,7 +482,16 @@ export function ChatWindow({
         )}
       </div>
 
-      <footer className="border-t border-[#202022]/8 bg-white p-4 shadow-[0_-4px_20px_rgba(32,32,34,0.04)]">
+      <footer className="shrink-0 border-t border-[#202022]/8 bg-white shadow-[0_-4px_20px_rgba(32,32,34,0.04)]">
+        {showAgentInputBubble && activeFlowRun?.pending_agent_input && (
+          <FlowAgentInputBubble
+            runId={activeFlowRun.id}
+            pendingAgentInput={activeFlowRun.pending_agent_input}
+            onSubmitted={() => void refresh()}
+          />
+        )}
+
+        <div className="p-4">
         <div className="mb-3 flex gap-2">
           <button
             type="button"
@@ -430,8 +514,8 @@ export function ChatWindow({
             className={cn(
               "flex flex-1 items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold transition-all",
               tab === "note"
-                ? "border-2 border-amber-300 bg-amber-50 text-amber-900 shadow-md shadow-amber-100"
-                : "border border-dashed border-amber-200/80 bg-amber-50/40 text-amber-700/70 hover:border-amber-300 hover:bg-amber-50"
+                ? "border border-[#6b2038] bg-[#7a2840] text-[#fff8f2] shadow-sm"
+                : "border border-[#9a3d55] bg-[#9a3d55] text-[#fff8f2]/95 hover:border-[#6b2038] hover:bg-[#7a2840]"
             )}
           >
             <StickyNote className="size-3.5" />
@@ -444,18 +528,22 @@ export function ChatWindow({
             "rounded-xl p-3 transition-colors",
             tab === "reply"
               ? "border border-[#d1d7db]/80 bg-[#f0f2f5]"
-              : "border-2 border-dashed border-amber-200 bg-amber-50/60 p-4"
+              : "border-0 bg-transparent p-0 shadow-none"
           )}
         >
           {tab === "reply" ? (
             canReply ? (
               <ReplyForm
                 conversationId={conversation.id}
+                businessId={conversation.business_id}
+                outboundSender={outboundSender}
                 replyingTo={replyingTo}
+                serviceWindow={serviceWindow}
+                handoffReason={conversation.handoff_reason}
                 onCancelReply={() => setReplyingTo(null)}
-                onSent={(text, serverMessage) => {
+                onSent={(payload) => {
                   setReplyingTo(null);
-                  void refreshAfterSend(text, serverMessage);
+                  void refreshAfterSend(payload);
                 }}
               />
             ) : (
@@ -465,13 +553,9 @@ export function ChatWindow({
               </p>
             )
           ) : (
-            <>
-              <p className="mb-3 text-[11px] font-medium text-amber-700/80">
-                Solo visible para tu equipo — no se envía por WhatsApp
-              </p>
-              <AddNoteForm conversationId={conversation.id} />
-            </>
+            <AddNoteForm conversationId={conversation.id} />
           )}
+        </div>
         </div>
       </footer>
 
@@ -485,7 +569,7 @@ export function ChatWindow({
               futura.
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter className="border-t-0 bg-transparent p-0 pt-2 sm:justify-end">
+          <DialogFooter>
             <Button
               type="button"
               variant="outline"

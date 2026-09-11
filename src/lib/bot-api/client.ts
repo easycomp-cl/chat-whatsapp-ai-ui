@@ -4,6 +4,8 @@ import type { MetricsSummary, TopQuestion } from "@/types/database.types";
 import type {
   ApproveFaqSuggestionBody,
   ApproveToneBody,
+  BotPersonality,
+  BotPersonalityPatch,
   BusinessSettings,
   CatalogProduct,
   ChatImportUploadResult,
@@ -15,8 +17,17 @@ import type {
   EditFaqSuggestionBody,
   Faq,
   FaqSuggestion,
+  FlowDefinition,
+  FlowReview,
+  FlowRunDetail,
+  FlowRunResult,
+  FlowSimulationResult,
+  FlowVersion,
+  FlowWebhookDelivery,
+  FlowWebhookIntegration,
   InboxConversation,
   ImportJob,
+  SignedUrlResponse,
   ImportResult,
   ImportedMessage,
   KnowledgeDocument,
@@ -65,13 +76,43 @@ function getJsonHeaders() {
   };
 }
 
+function formatHttpErrorBody(text: string, status: number): string {
+  const trimmed = text.trim();
+  const isHtml = trimmed.startsWith("<") || /<html[\s>]/i.test(trimmed);
+
+  if (isHtml) {
+    if (status === 502) {
+      return "El backend del bot no respondió correctamente (502 Bad Gateway). Intenta de nuevo en unos minutos o verifica que el servicio esté desplegado.";
+    }
+    if (status === 503) {
+      return "El backend del bot no está disponible en este momento (503). Verifica que chat-whatsapp-ai esté en línea.";
+    }
+    if (status === 404) {
+      return "El endpoint del backend no existe (404). Puede que falte desplegar la versión más reciente del API.";
+    }
+    return `Error del servidor (${status}).`;
+  }
+
+  return trimmed;
+}
+
 async function parseError(res: Response): Promise<string> {
+  const text = await res.text();
+  if (!text) return res.statusText;
+
   try {
-    const data = (await res.json()) as { error?: string };
-    return data.error ?? res.statusText;
+    const data = JSON.parse(text) as {
+      error?: string;
+      message?: string;
+      action?: string;
+    };
+    const message = data.error ?? data.message;
+    if (message && data.action) {
+      return `${message} ${data.action}`;
+    }
+    return message ?? formatHttpErrorBody(text, res.status);
   } catch {
-    const text = await res.text();
-    return text || res.statusText;
+    return formatHttpErrorBody(text, res.status);
   }
 }
 
@@ -131,6 +172,36 @@ async function botFetchMultipart<T>(path: string, formData: FormData): Promise<T
   });
 }
 
+async function botFetchRaw(path: string): Promise<Response> {
+  const url = `${getBaseUrl()}${path}`;
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      headers: { "X-API-Key": getApiKey() },
+      cache: "no-store",
+    });
+  } catch {
+    throw new BotApiError(connectionErrorMessage(getBaseUrl()), 503);
+  }
+
+  if (!res.ok) {
+    throw new BotApiError(await parseError(res), res.status);
+  }
+
+  return res;
+}
+
+export type MessageMediaUrlResponse = {
+  message_id: string;
+  content_type: string;
+  mime_type: string;
+  filename: string | null;
+  file_size: number | null;
+  media_url: string;
+  backend_proxy: boolean;
+  expires_in_seconds: number;
+};
+
 export const botApi = {
   listBusinesses: () => botFetch<unknown[]>("/businesses"),
 
@@ -145,6 +216,15 @@ export const botApi = {
       knowledge?: KnowledgeSettingsInput;
     }
   ) => botFetch<BusinessSettings>(`/businesses/${id}/settings`, { method: "PATCH", body }),
+
+  getBotPersonality: (businessId: string) =>
+    botFetch<BotPersonality>(`/businesses/${businessId}/bot-personality`),
+
+  patchBotPersonality: (businessId: string, body: BotPersonalityPatch) =>
+    botFetch<BotPersonality>(`/businesses/${businessId}/bot-personality`, {
+      method: "PATCH",
+      body,
+    }),
 
   listKnowledgeDocuments: (businessId: string) =>
     botFetch<KnowledgeDocument[]>(`/businesses/${businessId}/knowledge-documents`),
@@ -296,6 +376,33 @@ export const botApi = {
       method: "POST",
       body,
     }),
+
+  sendConversationInteractiveMessage: (
+    conversationId: string,
+    body: {
+      interactive: Record<string, unknown>;
+      agent_phone?: string;
+      reply_to_message_id?: string;
+    }
+  ) =>
+    botFetch(`/conversations/${conversationId}/messages/interactive`, {
+      method: "POST",
+      body,
+    }),
+
+  sendConversationMediaMessage: (conversationId: string, formData: FormData) =>
+    botFetchMultipart<Record<string, unknown>>(
+      `/conversations/${conversationId}/messages/media`,
+      formData
+    ),
+
+  getMessageMediaUrl: (messageId: string, expiresIn = 3600) =>
+    botFetch<MessageMediaUrlResponse>(`/messages/${messageId}/media-url`, {
+      searchParams: { expires_in: expiresIn },
+    }),
+
+  streamMessageMediaFile: (messageId: string) =>
+    botFetchRaw(`/messages/${messageId}/media/file`),
 
   createAgent: (
     businessId: string,
@@ -499,6 +606,260 @@ export const botApi = {
       content_text: string;
       created_at: string;
     }>(`/messages/${messageId}/resend`, { method: "POST" }),
+
+  editMessage: (messageId: string, body: { text: string }) =>
+    botFetch<{
+      id: string;
+      conversation_id: string;
+      external_id: string | null;
+      whatsapp_delivery_status: string | null;
+      content_text: string;
+      created_at: string;
+    }>(`/messages/${messageId}`, { method: "PATCH", body }),
+
+  getCustomer: (businessId: string, customerId: string) =>
+    botFetch<import("@/types/database.types").Customer>(
+      `/businesses/${businessId}/customers/${customerId}`
+    ),
+
+  patchCustomer: (
+    businessId: string,
+    customerId: string,
+    body: import("./types").CustomerProfilePatch
+  ) =>
+    botFetch<import("@/types/database.types").Customer>(
+      `/businesses/${businessId}/customers/${customerId}`,
+      { method: "PATCH", body }
+    ),
+
+  getConversation: (conversationId: string) =>
+    botFetch<
+      import("@/types/database.types").Conversation & {
+        flow_mode_locked: boolean;
+        active_flow_run: import("./types").ActiveFlowRunDetail | null;
+      }
+    >(`/conversations/${conversationId}`),
+
+  listFlows: (businessId: string, status?: string) =>
+    botFetch<FlowDefinition[]>(`/businesses/${businessId}/flows`, {
+      searchParams: { status },
+    }),
+
+  startConversationFlow: (
+    businessId: string,
+    conversationId: string,
+    flowId: string,
+    body?: { started_by_admin_id?: string; version_id?: string }
+  ) =>
+    botFetch<FlowRunResult>(
+      `/businesses/${businessId}/conversations/${conversationId}/flows/${flowId}/start`,
+      { method: "POST", body: body ?? {} }
+    ),
+
+  createFlow: (
+    businessId: string,
+    body: {
+      name: string;
+      description?: string;
+      created_by_admin_id: string;
+      template?: "default" | "wood_quote";
+    }
+  ) =>
+    botFetch<FlowDefinition>(`/businesses/${businessId}/flows`, {
+      method: "POST",
+      body,
+    }),
+
+  getFlow: (businessId: string, flowId: string) =>
+    botFetch<FlowDefinition>(`/businesses/${businessId}/flows/${flowId}`),
+
+  patchFlow: (
+    businessId: string,
+    flowId: string,
+    body: {
+      name?: string;
+      description?: string | null;
+      status?: "DRAFT" | "ACTIVE" | "ARCHIVED";
+      updated_by_admin_id: string;
+    }
+  ) =>
+    botFetch<FlowDefinition>(`/businesses/${businessId}/flows/${flowId}`, {
+      method: "PATCH",
+      body,
+    }),
+
+  deleteFlow: (businessId: string, flowId: string, updatedByAdminId: string) =>
+    botFetch<{ archived: boolean; flow: FlowDefinition } | void>(
+      `/businesses/${businessId}/flows/${flowId}`,
+      {
+        method: "DELETE",
+        body: { updated_by_admin_id: updatedByAdminId },
+      }
+    ),
+
+  listFlowVersions: (businessId: string, flowId: string) =>
+    botFetch<FlowVersion[]>(`/businesses/${businessId}/flows/${flowId}/versions`),
+
+  getFlowVersion: (businessId: string, flowId: string, versionId: string) =>
+    botFetch<FlowVersion>(
+      `/businesses/${businessId}/flows/${flowId}/versions/${versionId}`
+    ),
+
+  updateFlowVersion: (
+    businessId: string,
+    flowId: string,
+    versionId: string,
+    body: {
+      graph_json: unknown;
+      updated_by_admin_id: string;
+    }
+  ) =>
+    botFetch<FlowVersion>(
+      `/businesses/${businessId}/flows/${flowId}/versions/${versionId}`,
+      { method: "PATCH", body }
+    ),
+
+  createFlowVersion: (
+    businessId: string,
+    flowId: string,
+    body: {
+      created_by_admin_id: string;
+      source_version_id?: string;
+    }
+  ) =>
+    botFetch<FlowVersion>(`/businesses/${businessId}/flows/${flowId}/versions`, {
+      method: "POST",
+      body,
+    }),
+
+  publishFlowVersion: (
+    businessId: string,
+    flowId: string,
+    versionId: string,
+    body: { published_by_admin_id: string }
+  ) =>
+    botFetch<FlowDefinition>(
+      `/businesses/${businessId}/flows/${flowId}/versions/${versionId}/publish`,
+      { method: "POST", body }
+    ),
+
+  simulateFlow: (
+    businessId: string,
+    flowId: string,
+    body: {
+      messages: Array<{
+        role: "customer" | "agent" | "system";
+        content: string;
+        created_at?: string;
+      }>;
+      version_id?: string;
+      use_ai?: boolean;
+    }
+  ) =>
+    botFetch<FlowSimulationResult>(
+      `/businesses/${businessId}/flows/${flowId}/simulate`,
+      { method: "POST", body }
+    ),
+
+  getFlowRun: (businessId: string, runId: string) =>
+    botFetch<FlowRunDetail>(`/businesses/${businessId}/flow-runs/${runId}`),
+
+  cancelFlowRun: (businessId: string, runId: string) =>
+    botFetch<FlowRunResult>(`/businesses/${businessId}/flow-runs/${runId}/cancel`, {
+      method: "POST",
+    }),
+
+  submitFlowRunAgentInput: (
+    businessId: string,
+    runId: string,
+    body: { values: Record<string, unknown>; submitted_by_admin_id: string }
+  ) =>
+    botFetch<FlowRunResult>(
+      `/businesses/${businessId}/flow-runs/${runId}/agent-input`,
+      { method: "POST", body }
+    ),
+
+  listFlowReviews: (businessId: string, status = "PENDING") =>
+    botFetch<FlowReview[]>(`/businesses/${businessId}/flow-reviews`, {
+      searchParams: { status },
+    }),
+
+  resolveFlowReview: (
+    businessId: string,
+    reviewId: string,
+    body: {
+      status: "APPROVED" | "REJECTED" | "CHANGES_REQUESTED";
+      notes?: string;
+      reviewer_admin_id: string;
+    }
+  ) =>
+    botFetch<FlowRunResult>(
+      `/businesses/${businessId}/flow-reviews/${reviewId}/resolve`,
+      { method: "POST", body }
+    ),
+
+  getFlowFileSignedUrl: (businessId: string, fileId: string, expiresIn = 3600) =>
+    botFetch<SignedUrlResponse>(
+      `/businesses/${businessId}/flow-files/${fileId}/signed-url`,
+      { searchParams: { expires_in: expiresIn } }
+    ),
+
+  getFlowWebhookIntegration: (businessId: string) =>
+    botFetch<FlowWebhookIntegration>(
+      `/businesses/${businessId}/integrations/flow-webhook`
+    ),
+
+  upsertFlowWebhookIntegration: (
+    businessId: string,
+    body: {
+      url: string;
+      enabled?: boolean;
+      events?: string[];
+      rotate_secret?: boolean;
+    }
+  ) =>
+    botFetch<FlowWebhookIntegration & { webhook_secret?: string }>(
+      `/businesses/${businessId}/integrations/flow-webhook`,
+      { method: "PUT", body }
+    ),
+
+  listFlowWebhookDeliveries: (
+    businessId: string,
+    query?: { status?: string; flow_run_id?: string; limit?: number }
+  ) =>
+    botFetch<FlowWebhookDelivery[]>(
+      `/businesses/${businessId}/flow-webhook-deliveries`,
+      { searchParams: query }
+    ),
+
+  retryFlowWebhookDelivery: (businessId: string, deliveryId: string) =>
+    botFetch<FlowWebhookDelivery>(
+      `/businesses/${businessId}/flow-webhook-deliveries/${deliveryId}/retry`,
+      { method: "POST" }
+    ),
+
+  getSetupStatus: (businessId: string) =>
+    botFetch<import("@/features/onboarding/types").SetupStatus>(
+      `/businesses/${businessId}/setup-status`
+    ),
+
+  patchOnboarding: (
+    businessId: string,
+    body: import("@/features/onboarding/types").OnboardingPatch
+  ) =>
+    botFetch<import("@/features/onboarding/types").SetupStatus>(
+      `/businesses/${businessId}/onboarding`,
+      { method: "PATCH", body }
+    ),
+
+  completeOnboarding: (
+    businessId: string,
+    body: import("@/features/onboarding/types").CompleteOnboardingBody
+  ) =>
+    botFetch<{ success: boolean }>(`/businesses/${businessId}/onboarding/complete`, {
+      method: "POST",
+      body,
+    }),
 };
 
 export function getCachedFaqs(businessId: string) {

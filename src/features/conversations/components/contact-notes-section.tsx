@@ -1,10 +1,16 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
   Dialog,
   DialogContent,
@@ -13,19 +19,29 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { InternalNoteCard } from "@/features/conversations/components/internal-note-card";
 import {
   deleteConversationNoteAction,
   deleteConversationNotesAction,
 } from "@/lib/actions/app-actions";
-import { formatFullTime } from "@/lib/conversations/utils";
-import type { ConversationNote } from "@/types/database.types";
+import {
+  mergeNotesWithStoredColors,
+  removeStoredNoteColor,
+} from "@/lib/notes/note-color-storage";
+import type { ConversationNoteWithAuthor } from "@/types/database.types";
+
+function sortNotesOldestFirst(notes: ConversationNoteWithAuthor[]) {
+  return [...notes].sort(
+    (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+  );
+}
 
 type ContactNotesSectionProps = {
   conversationId: string;
-  notes: ConversationNote[];
+  notes: ConversationNoteWithAuthor[];
 };
 
-type DeleteTarget = { type: "all" } | { type: "one"; note: ConversationNote };
+type DeleteTarget = { type: "all" } | { type: "one"; note: ConversationNoteWithAuthor };
 
 export function ContactNotesSection({
   conversationId,
@@ -34,6 +50,13 @@ export function ContactNotesSection({
   const router = useRouter();
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
   const [pending, startTransition] = useTransition();
+  const [resolvedNotes, setResolvedNotes] = useState(() =>
+    sortNotesOldestFirst(mergeNotesWithStoredColors(notes))
+  );
+
+  useEffect(() => {
+    setResolvedNotes(sortNotesOldestFirst(mergeNotesWithStoredColors(notes)));
+  }, [notes]);
 
   function handleConfirmDelete() {
     if (!deleteTarget) return;
@@ -42,9 +65,13 @@ export function ContactNotesSection({
       try {
         if (deleteTarget.type === "all") {
           await deleteConversationNotesAction(conversationId);
+          for (const note of resolvedNotes) {
+            removeStoredNoteColor(note.id);
+          }
           toast.success("Notas del contacto eliminadas");
         } else {
           await deleteConversationNoteAction(conversationId, deleteTarget.note.id);
+          removeStoredNoteColor(deleteTarget.note.id);
           toast.success("Nota eliminada");
         }
         setDeleteTarget(null);
@@ -61,50 +88,46 @@ export function ContactNotesSection({
 
   return (
     <>
-      <section className="rounded-xl border border-[#202022]/8 bg-white p-4 shadow-sm">
-        <div className="mb-2.5 flex items-center justify-between gap-2">
-          <h4 className="text-xs font-semibold uppercase tracking-wide text-[#202022]/50">
+      <section className="min-w-0 rounded-xl border border-[#202022]/8 bg-white p-4 shadow-sm">
+        <div className="mb-3 flex min-w-0 items-center justify-between gap-2">
+          <h4 className="min-w-0 truncate text-xs font-semibold uppercase tracking-wide text-[#202022]/50">
             Notas del contacto
           </h4>
           {notes.length > 1 && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-7 px-2 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
-              onClick={() => setDeleteTarget({ type: "all" })}
-            >
-              <Trash2 className="mr-1 size-3.5" />
-              Borrar todas
-            </Button>
+            <TooltipProvider delay={400}>
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="size-7 shrink-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                      onClick={() => setDeleteTarget({ type: "all" })}
+                      aria-label="Borrar todas"
+                    />
+                  }
+                >
+                  <Trash2 className="size-3.5" />
+                </TooltipTrigger>
+                <TooltipContent side="top">Borrar todas</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           )}
         </div>
-        {notes.length === 0 ? (
+        {resolvedNotes.length === 0 ? (
           <p className="text-sm text-[#202022]/40">Sin notas internas</p>
         ) : (
-          <div className="space-y-2">
-            {notes.map((n) => (
-              <div
-                key={n.id}
-                className="group rounded-lg border border-dashed border-amber-200 bg-amber-50/70 p-3 text-sm"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <p className="min-w-0 flex-1 text-[#202022]/80">{n.note}</p>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="size-7 shrink-0 text-[#202022]/30 opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100"
-                    onClick={() => setDeleteTarget({ type: "one", note: n })}
-                    aria-label="Borrar nota"
-                  >
-                    <Trash2 className="size-3.5" />
-                  </Button>
-                </div>
-                <p className="mt-1 text-[10px] text-amber-700/60">
-                  {formatFullTime(n.created_at)}
-                </p>
-              </div>
+          <div className="space-y-2.5">
+            {resolvedNotes.map((note) => (
+              <InternalNoteCard
+                key={note.id}
+                note={note.note}
+                authorName={note.author_name}
+                createdAt={note.created_at}
+                color={note.color}
+                onDelete={() => setDeleteTarget({ type: "one", note })}
+              />
             ))}
           </div>
         )}
@@ -119,7 +142,7 @@ export function ContactNotesSection({
             <DialogDescription>
               {deleteTarget?.type === "all" ? (
                 <>
-                  Se eliminarán permanentemente las {notes.length} notas internas de este contacto.
+                  Se eliminarán permanentemente las {resolvedNotes.length} notas internas de este contacto.
                   Esta acción no se puede deshacer.
                 </>
               ) : (
@@ -130,11 +153,14 @@ export function ContactNotesSection({
             </DialogDescription>
           </DialogHeader>
           {deleteTarget?.type === "one" && (
-            <p className="rounded-lg border border-dashed border-amber-200 bg-amber-50/70 p-3 text-sm text-[#202022]/80">
-              {deleteTarget.note.note}
-            </p>
+            <InternalNoteCard
+              note={deleteTarget.note.note}
+              authorName={deleteTarget.note.author_name}
+              createdAt={deleteTarget.note.created_at}
+              color={deleteTarget.note.color}
+            />
           )}
-          <DialogFooter className="border-t-0 bg-transparent p-0 pt-2 sm:justify-end">
+          <DialogFooter>
             <Button
               type="button"
               variant="outline"

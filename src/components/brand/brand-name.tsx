@@ -1,3 +1,4 @@
+import { PRODUCT_NAME } from "@/lib/brand/constants";
 import { cn } from "@/lib/utils";
 
 type BrandNameProps = {
@@ -7,7 +8,7 @@ type BrandNameProps = {
 export function BrandName({ className }: BrandNameProps) {
   return (
     <span className={cn("text-lg font-semibold tracking-tight", className)}>
-      ConversAI
+      {PRODUCT_NAME}
     </span>
   );
 }

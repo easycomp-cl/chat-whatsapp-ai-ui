@@ -1,10 +1,13 @@
 import { createClient } from "@/lib/supabase/server";
-import { botApi } from "@/lib/bot-api/client";
+import { botApi, BotApiError } from "@/lib/bot-api/client";
 import type { Conversation, Customer, Message } from "@/types/database.types";
+import type { ActiveFlowRunInbox } from "@/lib/bot-api/types";
 
 export type ConversationRow = Conversation & {
   customers: Customer | null;
   last_message_preview?: string | null;
+  flow_mode_locked?: boolean;
+  active_flow_run?: ActiveFlowRunInbox | null;
 };
 
 export async function loadConversationsInbox(
@@ -18,8 +21,13 @@ export async function loadConversationsInbox(
     });
     return conversations;
   } catch (error) {
-    console.error("[loadConversationsInbox] bot API error:", error);
-    return [];
+    const inboxNotDeployed = error instanceof BotApiError && error.status === 404;
+
+    if (!inboxNotDeployed) {
+      console.error("[loadConversationsInbox] bot API error, fallback Supabase:", error);
+    }
+
+    return loadConversations(businessId, agentId);
   }
 }
 

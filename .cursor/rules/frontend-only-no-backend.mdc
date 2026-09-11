@@ -1,0 +1,31 @@
+---
+description: Este repo es solo frontend; nunca editar backend ni BD directamente
+alwaysApply: true
+---
+
+# Solo frontend — `chat-whatsapp-ai-ui`
+
+Este repositorio es **únicamente la UI** (Next.js). El backend vive en **`chat-whatsapp-ai`** y lo implementa otro equipo.
+
+## Prohibido
+
+- Editar archivos en `../chat-whatsapp-ai` o cualquier ruta fuera de este repo con código de API/workers/Prisma.
+- Aplicar migraciones Prisma en el backend.
+- Implementar webhooks, colas, ingest o lógica de Meta en el repo del backend.
+- Crear migraciones Supabase que cambien schema de tablas Prisma sin documentar para backend (las vistas `public.messages` en este repo solo reflejan lo que ya existe en BD).
+
+## Obligatorio ante cambios que requieran backend o BD
+
+1. Implementar **solo** lo necesario en `src/`, `types/`, y vistas SQL de lectura si aplica.
+2. Crear o actualizar un documento en **`docs/pending/to-backend/backend-<tema>.md`** con:
+   - Resumen y qué bloquea en la UI
+   - Contrato API / campos de BD esperados
+   - Migraciones SQL o enum Prisma sugeridas (como especificación, no como cambio aplicado)
+   - Webhooks, workers y reglas de negocio
+   - Pasos de prueba e integración
+3. Actualizar `docs/cambios-ui-<tema>.md` si el comportamiento visible cambió.
+4. Indicar al usuario que el backend debe implementarse en `chat-whatsapp-ai` según el doc pendiente.
+
+## Realtime
+
+La UI puede suscribirse a Supabase Realtime sobre tablas que el backend ya actualiza. Si falta que el backend persista un campo, **documentar** — no implementar el persist en backend desde aquí.

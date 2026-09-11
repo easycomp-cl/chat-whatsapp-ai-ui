@@ -10,8 +10,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { saveSettingsAction } from "@/lib/actions/app-actions";
 import { NotificationSoundSettings } from "@/features/settings/components/notification-sound-settings";
+import { BotSettingsPanel } from "@/features/bot-config/components/bot-settings-panel";
 import type { Business } from "@/types/database.types";
-import type { KnowledgeSettings } from "@/lib/bot-api/types";
+import type { BotPersonality, KnowledgeSettings } from "@/lib/bot-api/types";
 
 const defaultKnowledge: KnowledgeSettings = {
   enabled: true,
@@ -26,9 +27,11 @@ const defaultKnowledge: KnowledgeSettings = {
 export function SettingsForm({
   business,
   knowledge,
+  botPersonality,
 }: {
   business: Business;
   knowledge?: KnowledgeSettings;
+  botPersonality?: BotPersonality | null;
 }) {
   const [pending, startTransition] = useTransition();
   const [botEnabled, setBotEnabled] = useState(business.bot_global_enabled);
@@ -76,9 +79,9 @@ export function SettingsForm({
     <Tabs defaultValue="general">
       <TabsList>
         <TabsTrigger value="general">General</TabsTrigger>
+        <TabsTrigger value="bot">Bot</TabsTrigger>
         <TabsTrigger value="knowledge">Base de conocimiento</TabsTrigger>
         <TabsTrigger value="notifications">Notificaciones</TabsTrigger>
-        <TabsTrigger value="messages">Mensajes</TabsTrigger>
       </TabsList>
 
       <TabsContent value="general" className="space-y-4">
@@ -122,6 +125,10 @@ export function SettingsForm({
             </Button>
           </CardContent>
         </Card>
+      </TabsContent>
+
+      <TabsContent value="bot">
+        <BotSettingsPanel initial={botPersonality ?? null} businessName={business.name} />
       </TabsContent>
 
       <TabsContent value="knowledge" className="space-y-4">
@@ -212,20 +219,6 @@ export function SettingsForm({
           </CardHeader>
           <CardContent>
             <NotificationSoundSettings />
-          </CardContent>
-        </Card>
-      </TabsContent>
-
-      <TabsContent value="messages">
-        <Card>
-          <CardHeader>
-            <CardTitle>Mensajes personalizados</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">
-              Los mensajes de bienvenida, derivación y fuera de horario se configuran
-              desde el backend del bot (TenantConfig). Próximamente editable desde aquí.
-            </p>
           </CardContent>
         </Card>
       </TabsContent>

@@ -1,0 +1,61 @@
+/* Overrides de React Flow para el editor de flujos */
+.flow-editor-canvas .react-flow__controls {
+  border: 1px solid #B8C9C6;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgb(15 35 34 / 28%);
+}
+
+.flow-editor-canvas .react-flow__controls-button {
+  background: #E8EEED;
+  border-bottom: 1px solid #B8C9C6;
+  color: #1A4543;
+  width: 32px;
+  height: 32px;
+}
+
+.flow-editor-canvas .react-flow__controls-button:hover {
+  background: #D8E8E5;
+}
+
+.flow-editor-canvas .react-flow__controls-button:last-child {
+  border-bottom: none;
+}
+
+.flow-editor-canvas .react-flow__minimap {
+  border: 1px solid #B8C9C6;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #2A5C58;
+  box-shadow: 0 2px 8px rgb(15 35 34 / 22%);
+}
+
+.flow-editor-canvas .react-flow__edge-path {
+  stroke-width: 2.5;
+}
+
+.flow-editor-canvas .react-flow__edge.selected .react-flow__edge-path {
+  stroke-width: 3;
+}
+
+.flow-editor-canvas .react-flow__handle {
+  width: 10px;
+  height: 10px;
+  border: 2px solid #E8EEED;
+}
+
+.flow-editor-canvas .react-flow__pane {
+  cursor: default;
+}
+
+.flow-editor-canvas .react-flow__pane.drag-over {
+  cursor: copy;
+}
+
+.flow-editor-palette-item[draggable="true"] {
+  user-select: none;
+}
+
+.flow-editor-palette-item[draggable="true"]:active {
+  opacity: 0.85;
+}

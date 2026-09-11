@@ -23,11 +23,34 @@ import {
 import { MessageDeliveryStatus } from "@/features/conversations/components/message-delivery-status";
 import { MessageEditableText } from "@/features/conversations/components/message-editable-text";
 import { WhatsAppFormattedText } from "@/features/conversations/components/whatsapp-formatted-text";
+import { ChatMediaDocument, ChatMediaImage } from "@/features/conversations/components/chat-media-preview";
+import { ChatInteractiveMessage } from "@/features/conversations/components/chat-interactive-message";
+import { ChatAudioPlayer } from "@/features/conversations/components/chat-audio-player";
 import { MessageCustomerChangeBadge } from "@/features/conversations/components/message-customer-change-badge";
+import { ConversationAvatar } from "@/features/conversations/components/conversation-avatar";
 import {
   getMessageDisplayText,
   isCustomerRevokedMessage,
 } from "@/lib/conversations/customer-message-change";
+import { parseMessageInteractive, isInteractivePreviewMessage, resolveMessageInteractive, isInteractiveReplySelection, findCustomerSelectionForInteractive } from "@/lib/conversations/interactive-message";
+import {
+  EMPTY_MESSAGE_MEDIA,
+  getAudioTranscriptText,
+  getMediaCaption,
+  isAudioContentType,
+  isAudioPendingTranscript,
+  isDocumentContentType,
+  isImageContentType,
+  isInteractiveContentType,
+  isMediaMessage,
+  mayHaveRemoteMedia,
+} from "@/lib/conversations/message-media";
+import {
+  resolveAiAgentAvatarInitial,
+  resolveAiAgentSenderLabel,
+  resolveHumanSenderLabel,
+  type OutboundSenderContext,
+} from "@/lib/conversations/outbound-sender";
 import type { Message } from "@/types/database.types";
 import { Bot, CornerUpLeft, Pencil, User } from "lucide-react";
 
@@ -36,6 +59,9 @@ type ChatMessageBubbleProps = {
   messageById: Map<string, Message>;
   conversationId: string;
   customerDisplayName?: string;
+  customerName?: string | null;
+  customerPhone?: string | null;
+  customerAvatarSeed?: string;
   lastReadAt?: string;
   highlightUnread?: boolean;
   canReply?: boolean;
@@ -43,6 +69,8 @@ type ChatMessageBubbleProps = {
   onResent?: () => void;
   onEdited?: () => void;
   showCustomerMessageAudit?: boolean;
+  outboundSender?: OutboundSenderContext;
+  botAgentName?: string | null;
 };
 
 function hasUnreadReaction(
@@ -60,6 +88,7 @@ function hasUnreadReaction(
 
 function MessageBody({
   message,
+  messageById,
   conversationId,
   isHuman,
   inbound,
@@ -69,6 +98,7 @@ function MessageBody({
   showCustomerMessageAudit = false,
 }: {
   message: Message;
+  messageById: Map<string, Message>;
   conversationId: string;
   isHuman: boolean;
   inbound: boolean;
@@ -77,6 +107,104 @@ function MessageBody({
   onEdited?: () => void;
   showCustomerMessageAudit?: boolean;
 }) {
+  const media = message.media ?? EMPTY_MESSAGE_MEDIA;
+  const caption = getMediaCaption(message);
+  const showMedia = isMediaMessage(message);
+  const canLoadRemoteMedia = mayHaveRemoteMedia(message);
+  const audioTranscript = getAudioTranscriptText(message);
+  const audioPending = isAudioPendingTranscript(message);
+  const parentMessage = message.reply_to_message_id
+    ? messageById.get(message.reply_to_message_id)
+    : undefined;
+  const displayText = getMessageDisplayText(message, showCustomerMessageAudit);
+  const isInteractiveSelection =
+    inbound && isInteractiveReplySelection(displayText, parentMessage);
+
+  if (isInteractiveContentType(message.content_type) || resolveMessageInteractive(message)) {
+    const interactive = resolveMessageInteractive(message);
+    const customerSelection =
+      !inbound && interactive
+        ? findCustomerSelectionForInteractive(message.id, messageById, message)
+        : null;
+
+    return (
+      <>
+        {interactive ? (
+          <ChatInteractiveMessage
+            interactive={interactive}
+            inbound={inbound}
+            isLocalPreview={isInteractivePreviewMessage(message)}
+            customerSelection={customerSelection}
+          />
+        ) : (
+          <p className="leading-relaxed whitespace-pre-wrap">
+            <WhatsAppFormattedText text={getMessageDisplayText(message, showCustomerMessageAudit)} />
+          </p>
+        )}
+        {inbound && (
+          <MessageCustomerChangeBadge
+            message={message}
+            showAudit={showCustomerMessageAudit}
+          />
+        )}
+      </>
+    );
+  }
+
+  if (showMedia) {
+    return (
+      <>
+        {isImageContentType(message.content_type) ? (
+          <ChatMediaImage
+            messageId={message.id}
+            hasMedia={canLoadRemoteMedia}
+            localPreviewUrl={message._local_preview_url}
+            alt={caption ?? "Imagen"}
+          />
+        ) : isAudioContentType(message.content_type) ? (
+          <ChatAudioPlayer
+            messageId={message.id}
+            hasMedia={canLoadRemoteMedia}
+            localPreviewUrl={message._local_preview_url}
+          />
+        ) : isDocumentContentType(message.content_type) ? (
+          <ChatMediaDocument
+            messageId={message.id}
+            hasMedia={canLoadRemoteMedia}
+            filename={media.filename}
+            fileSize={media.file_size}
+            mimeType={media.mime_type}
+          />
+        ) : null}
+        {isAudioContentType(message.content_type) &&
+          (audioTranscript || audioPending) &&
+          (audioTranscript ? (
+            <div className="mt-1.5 space-y-0.5">
+              <p className="text-[10px] font-medium uppercase tracking-wide text-[#667781]">
+                Transcripción
+              </p>
+              <p className="text-sm leading-relaxed whitespace-pre-wrap text-[#54656f]">
+                <WhatsAppFormattedText text={audioTranscript} />
+              </p>
+            </div>
+          ) : (
+            <p className="mt-1 text-xs text-[#667781]">Transcribiendo…</p>
+          ))}
+        {caption && (
+          <p className="mt-1.5 leading-relaxed whitespace-pre-wrap">
+            <WhatsAppFormattedText text={caption} />
+          </p>
+        )}
+        {inbound && (
+          <MessageCustomerChangeBadge
+            message={message}
+            showAudit={showCustomerMessageAudit}
+          />
+        )}
+      </>
+    );
+  }
+
   if (WHATSAPP_MESSAGE_EDIT_UI_ENABLED && isHuman && !inbound) {
     return (
       <MessageEditableText
@@ -94,12 +222,13 @@ function MessageBody({
       <p
         className={cn(
           "leading-relaxed whitespace-pre-wrap",
+          isInteractiveSelection && "font-medium text-[#00a884]",
           showCustomerMessageAudit &&
             isCustomerRevokedMessage(message) &&
             "text-[#667781] line-through decoration-[#ea0038]/50"
         )}
       >
-        <WhatsAppFormattedText text={getMessageDisplayText(message, showCustomerMessageAudit)} />
+        <WhatsAppFormattedText text={displayText} />
       </p>
       {inbound && (
         <MessageCustomerChangeBadge
@@ -116,6 +245,9 @@ export function ChatMessageBubble({
   messageById,
   conversationId,
   customerDisplayName = "Cliente",
+  customerName,
+  customerPhone,
+  customerAvatarSeed = "customer",
   lastReadAt,
   highlightUnread = false,
   canReply = false,
@@ -123,6 +255,8 @@ export function ChatMessageBubble({
   onResent,
   onEdited,
   showCustomerMessageAudit = false,
+  outboundSender,
+  botAgentName,
 }: ChatMessageBubbleProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [canEdit, setCanEdit] = useState(
@@ -171,6 +305,16 @@ export function ChatMessageBubble({
     WHATSAPP_MESSAGE_EDIT_UI_ENABLED && isHuman && !inbound && canEdit && !isEditing;
   const showReply =
     canReply && onReply && (!WHATSAPP_MESSAGE_EDIT_UI_ENABLED || !isEditing);
+  const humanSenderLabel = isHuman
+    ? resolveHumanSenderLabel(message, outboundSender?.senderNameByUserId ?? {})
+    : null;
+  const humanAvatarInitial = humanSenderLabel?.trim().charAt(0).toUpperCase() || "A";
+  const botSenderLabel = resolveAiAgentSenderLabel(botAgentName);
+  const botAvatarInitial = resolveAiAgentAvatarInitial(botAgentName);
+  const isInteractiveOutbound =
+    !inbound &&
+    (isInteractiveContentType(message.content_type) ||
+      Boolean(resolveMessageInteractive(message)));
 
   return (
     <div
@@ -180,28 +324,35 @@ export function ChatMessageBubble({
       )}
     >
       {inbound && (
-        <div className="mt-1 flex size-7 shrink-0 items-center justify-center rounded-full bg-[#dfe5e7] text-[10px] font-semibold text-[#54656f]">
-          C
+        <div className="mt-1 shrink-0">
+          <ConversationAvatar
+            name={customerName}
+            phone={customerPhone ?? undefined}
+            seed={customerAvatarSeed}
+            size="bubble"
+            showChannel={false}
+          />
         </div>
       )}
       <div className={cn("max-w-[75%]", !inbound && "order-first")}>
         {inbound && (
           <p className="mb-0.5 text-[11px] font-medium text-[#00a884]">{customerDisplayName}</p>
         )}
-        {!inbound && (
+        {!inbound && !isInteractiveOutbound && (
           <p
             className={cn(
               "mb-0.5 text-right text-[11px] font-medium",
               isHuman ? "text-[#00a884]" : "text-[#027eb5]"
             )}
           >
-            {isHuman ? "Asesor humano" : isBot ? "Bot automático" : "Sistema"}
+            {isHuman ? humanSenderLabel : isBot ? botSenderLabel : "Sistema"}
           </p>
         )}
         <div className={cn("relative", showReactions && "pb-2")}>
           <div
             className={cn(
-              "relative rounded-lg px-3 py-1.5 text-sm shadow-sm",
+              "relative rounded-lg text-sm shadow-sm",
+              isInteractiveOutbound ? "overflow-hidden px-0 py-0" : "px-3 py-1.5",
               inbound
                 ? cn(
                     "rounded-tl-none bg-white text-[#111b21]",
@@ -250,10 +401,12 @@ export function ChatMessageBubble({
                 inbound={inbound}
                 unavailable={quoted.unavailable}
                 customerDisplayName={customerDisplayName}
+                botAgentLabel={botSenderLabel}
               />
             )}
             <MessageBody
               message={message}
+              messageById={messageById}
               conversationId={conversationId}
               isHuman={isHuman}
               inbound={inbound}
@@ -264,19 +417,23 @@ export function ChatMessageBubble({
             />
             <div
               className={cn(
-                "mt-0.5 flex items-center gap-1 text-[10px] text-[#667781]",
+                "flex items-center gap-1 text-[10px] text-[#667781]",
+                isInteractiveOutbound ? "justify-end px-3 py-1" : "mt-0.5",
                 !inbound && "justify-end",
                 showReactions && (inbound ? "pr-6" : "pl-6")
               )}
             >
-              {isBot && !inbound && <Bot className="size-3 text-[#027eb5]" />}
-              {isHuman && !inbound && <User className="size-3 text-[#00a884]" />}
+              {isBot && !inbound && !isInteractiveOutbound && (
+                <Bot className="size-3 text-[#027eb5]" />
+              )}
+              {isHuman && !inbound && !isInteractiveOutbound && (
+                <User className="size-3 text-[#00a884]" />
+              )}
               <span>{formatFullTime(message.created_at)}</span>
               {!inbound && (
                 <MessageDeliveryStatus
                   message={message}
                   conversationId={conversationId}
-                  isHuman={isHuman}
                   onResent={onResent}
                 />
               )}
@@ -285,14 +442,14 @@ export function ChatMessageBubble({
           <MessageReactions reactions={reactions} inbound={inbound} />
         </div>
       </div>
-      {!inbound && (
+      {!inbound && !isInteractiveOutbound && (
         <div
           className={cn(
             "mt-1 flex size-7 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold text-white",
             isHuman ? "bg-[#00a884]" : "bg-[#027eb5]"
           )}
         >
-          {isHuman ? "A" : "B"}
+          {isHuman ? humanAvatarInitial : botAvatarInitial}
         </div>
       )}
     </div>

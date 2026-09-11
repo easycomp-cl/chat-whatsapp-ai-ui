@@ -14,6 +14,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { MetricsSummary } from "@/types/database.types";
 import { startOfMonth } from "date-fns";
+import { formatDateOnly, getDateKeyInAppTimezone } from "@/lib/format-datetime";
 
 export async function UsagePageContent() {
   const profile = await requireBusinessAdmin();
@@ -55,7 +56,7 @@ export async function UsagePageContent() {
 
   const dailyMap = new Map<string, { messages: number; ai: number; cost: number }>();
   for (const e of events ?? []) {
-    const date = new Date(e.created_at).toISOString().slice(0, 10);
+    const date = getDateKeyInAppTimezone(e.created_at);
     const entry = dailyMap.get(date) ?? { messages: 0, ai: 0, cost: 0 };
     if (e.event_type.includes("MESSAGE")) entry.messages += 1;
     if (e.event_type.includes("AI_RESPONSE")) entry.ai += 1;
@@ -105,7 +106,7 @@ export async function UsagePageContent() {
             <TableBody>
               {[...dailyMap.entries()].map(([date, stats]) => (
                 <TableRow key={date}>
-                  <TableCell>{date}</TableCell>
+                  <TableCell>{formatDateOnly(date)}</TableCell>
                   <TableCell>{stats.messages}</TableCell>
                   <TableCell>{stats.ai}</TableCell>
                   <TableCell>${stats.cost.toFixed(4)}</TableCell>

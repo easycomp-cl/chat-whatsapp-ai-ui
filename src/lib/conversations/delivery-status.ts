@@ -1,9 +1,59 @@
 import type { Message } from "@/types/database.types";
 
-export type WhatsappDeliveryStatus = "pending" | "sent" | "failed";
+/**
+ * Estados alineados con los webhooks de Meta Cloud API:
+ * sent → delivered → read (ver docs de status messages).
+ */
+export type WhatsappDeliveryStatus =
+  | "pending"
+  | "sent"
+  | "delivered"
+  | "read"
+  | "failed";
 
 const PENDING_GRACE_MS = 20_000;
 export const WHATSAPP_MESSAGE_EDIT_WINDOW_MS = 15 * 60 * 1000;
+
+const STATUS_RANK: Record<WhatsappDeliveryStatus, number> = {
+  pending: 0,
+  failed: -1,
+  sent: 1,
+  delivered: 2,
+  read: 3,
+};
+
+function normalizeRawDeliveryStatus(raw: string): WhatsappDeliveryStatus | null {
+  const value = raw.trim().toLowerCase();
+  if (value === "pending") return "pending";
+  if (value === "failed") return "failed";
+  if (value === "sent") return "sent";
+  if (value === "delivered") return "delivered";
+  if (value === "read") return "read";
+  return null;
+}
+
+/** Elige el estado más avanzado (p. ej. read > delivered > sent). */
+export function maxWhatsappDeliveryStatus(
+  a: WhatsappDeliveryStatus,
+  b: WhatsappDeliveryStatus
+): WhatsappDeliveryStatus {
+  return STATUS_RANK[a] >= STATUS_RANK[b] ? a : b;
+}
+
+export function mergeWhatsappDeliveryStatusString(
+  current?: string | null,
+  incoming?: string | null
+): string | null | undefined {
+  if (!incoming?.trim()) return current ?? null;
+  if (!current?.trim()) return incoming;
+
+  const normalizedCurrent = normalizeRawDeliveryStatus(current);
+  const normalizedIncoming = normalizeRawDeliveryStatus(incoming);
+  if (!normalizedCurrent) return incoming;
+  if (!normalizedIncoming) return current;
+
+  return maxWhatsappDeliveryStatus(normalizedCurrent, normalizedIncoming);
+}
 
 export function resolveWhatsappDeliveryStatus(
   message: Message
@@ -12,9 +62,10 @@ export function resolveWhatsappDeliveryStatus(
     return null;
   }
 
-  const raw = message.whatsapp_delivery_status?.toLowerCase();
-  if (raw === "pending" || raw === "sent" || raw === "failed") {
-    return raw;
+  const raw = message.whatsapp_delivery_status;
+  const fromDb = raw ? normalizeRawDeliveryStatus(raw) : null;
+  if (fromDb) {
+    return fromDb;
   }
 
   if (message.external_id) {
@@ -32,6 +83,29 @@ export function resolveWhatsappDeliveryStatus(
 export function canResendWhatsappMessage(message: Message): boolean {
   const status = resolveWhatsappDeliveryStatus(message);
   return status === "failed";
+}
+
+export function getWhatsappDeliveryStatusLabel(
+  status: WhatsappDeliveryStatus,
+  message?: Pick<Message, "whatsapp_delivery_error_message" | "whatsapp_delivery_error_code">
+): string {
+  switch (status) {
+    case "pending":
+      return "Enviando a WhatsApp…";
+    case "sent":
+      return "Enviado";
+    case "delivered":
+      return "Entregado";
+    case "read":
+      return "Visto";
+    case "failed": {
+      const detail = message?.whatsapp_delivery_error_message?.trim();
+      if (detail) return detail;
+      const code = message?.whatsapp_delivery_error_code;
+      if (code != null) return `No entregado (${code})`;
+      return "No entregado";
+    }
+  }
 }
 
 export function getWhatsappEditRemainingMs(message: Message): number {
@@ -56,7 +130,7 @@ export function canEditWhatsappMessage(message: Message): boolean {
   if (contentType !== "text") return false;
 
   const status = resolveWhatsappDeliveryStatus(message);
-  if (status !== "sent") return false;
+  if (status !== "sent" && status !== "delivered" && status !== "read") return false;
   if (!message.external_id) return false;
   if (getWhatsappEditRemainingMs(message) <= 0) return false;
 

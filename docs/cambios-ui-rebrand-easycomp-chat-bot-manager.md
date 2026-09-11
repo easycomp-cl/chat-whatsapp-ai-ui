@@ -30,9 +30,10 @@ Refactor técnico y rebrand completo del nombre de producto **ConversAI** a **ea
 
 ## Sin cambiar (infraestructura real)
 
-- `api.conversai.easycomp.cl`
-- `soporte@conversai.cl`
+- `api.conversai.easycomp.cl` (hostname del backend; no es branding de UI)
 - `BOT_API_BASE_URL` en `.env.example`
+
+El correo visible de soporte pasó de `soporte@conversai.cl` a `igonzalez@easycomp.cl` (`SUPPORT_EMAIL`).
 
 ## Variable de entorno Spline
 

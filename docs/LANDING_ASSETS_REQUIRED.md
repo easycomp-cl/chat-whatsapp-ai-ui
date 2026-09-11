@@ -1,15 +1,15 @@
-# Assets requeridos — Landing easycomp-chat-bot-manager
+# Assets requeridos — Landing easyCOMP Chat Bot Manager
 
 ## Logo
 
 | Asset | Estado | Uso |
 |-------|--------|-----|
-| `public/easycomp-chat-bot-manager-logo.png` | ✅ Existe | Navbar, favicon |
-| `public/easycomp-chat-bot-manager-mark.png` | ✅ Existe (fondo transparente, solo ícono) | Núcleo 3D del hero fallback (`HeroFallback.tsx`) |
-| `public/easycomp-chat-bot-manager-lockup-transparent.png` | ✅ Existe (fondo transparente, ícono + wordmark) | Disponible para futuros usos (ej. OG image) |
-| `easycomp-chat-bot-manager-logo.svg` | ❌ Pendiente | Extrusión 3D precisa en Spline, OG image vectorial |
+| `public/easycomp-chat-bot-manager-mark.png` | ✅ Isotipo EasyComp (robot + C, fondo transparente) | Navbar, sidebar, favicon, núcleo 3D del hero |
+| `public/easycomp-chat-bot-manager-lockup-transparent.png` | ✅ Lockup EasyComp (isotipo + easyCOMP + chat bot manager) | Login, recuperar contraseña, footer, páginas legales |
+| `public/favicon.png` | ✅ Mark 192×192 | Favicon del navegador |
+| `easycomp-chat-bot-manager-mark.svg` | ❌ Pendiente | Extrusión 3D vectorial en Spline |
 
-**Acción:** proporcionar SVG del logo con proporciones originales para reemplazar la aproximación 3D en Spline.
+**Uso correcto:** el isotipo (`mark`) en espacios compactos; el lockup apilado en pantallas de acceso y pie de página. No mezclar con assets antiguos.
 
 ## Open Graph
 

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Logo } from "@/components/brand/logo";
+import { PRODUCT_DISPLAY_NAME } from "@/lib/brand/constants";
 import {
   Card,
   CardContent,
@@ -74,7 +75,7 @@ export function LoginForm() {
       <CardHeader>
         <CardTitle>Iniciar sesión</CardTitle>
         <CardDescription>
-          Accede al dashboard de easycomp-chat-bot-manager
+          Accede al dashboard de {PRODUCT_DISPLAY_NAME}
         </CardDescription>
       </CardHeader>
       <CardContent>

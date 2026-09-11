@@ -1,4 +1,4 @@
-import { PRODUCT_NAME } from "@/lib/brand/constants";
+import { PRODUCT_SHORT_NAME } from "@/lib/brand/constants";
 import { cn } from "@/lib/utils";
 
 type BrandNameProps = {
@@ -8,7 +8,7 @@ type BrandNameProps = {
 export function BrandName({ className }: BrandNameProps) {
   return (
     <span className={cn("text-lg font-semibold tracking-tight", className)}>
-      {PRODUCT_NAME}
+      {PRODUCT_SHORT_NAME}
     </span>
   );
 }

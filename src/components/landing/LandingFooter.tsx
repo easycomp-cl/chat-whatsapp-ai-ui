@@ -8,7 +8,7 @@ export function LandingFooter() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col gap-8 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <Logo size="sm" />
+            <Logo variant="lockup" size="sm" />
             <p className="mt-3 max-w-xs text-sm text-[var(--landing-muted)]">
               El sistema operativo de conversaciones y atención comercial para
               pymes.

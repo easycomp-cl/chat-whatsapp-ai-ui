@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Menu, X } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
+import { PRODUCT_SHORT_NAME } from "@/lib/brand/constants";
 import { Button } from "@/components/ui/button";
 import { LANDING_NAV_LINKS, LANDING_SECTIONS } from "@/lib/landing/constants";
 import { trackLandingEvent } from "@/lib/landing/analytics";
@@ -37,8 +38,15 @@ export function LandingNavbar() {
       )}
     >
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
-        <Link href="/" className="shrink-0" aria-label="easycomp-chat-bot-manager inicio">
-          <Logo size="sm" />
+        <Link
+          href="/"
+          className="flex shrink-0 items-center gap-2.5"
+          aria-label="easyCOMP Chat Bot Manager inicio"
+        >
+          <Logo variant="mark" size="sm" priority />
+          <span className="text-base font-semibold tracking-tight text-[var(--landing-ink)]">
+            {PRODUCT_SHORT_NAME}
+          </span>
         </Link>
 
         <nav

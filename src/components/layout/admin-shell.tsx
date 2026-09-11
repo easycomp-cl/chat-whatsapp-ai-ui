@@ -16,7 +16,8 @@ import {
   SidebarProvider,
   SidebarInset,
 } from "@/components/ui/sidebar";
-import { BrandName } from "@/components/brand/brand-name";
+import { Logo } from "@/components/brand/logo";
+import { PRODUCT_SHORT_NAME } from "@/lib/brand/constants";
 import { AdminHeader } from "@/components/layout/admin-header";
 
 const adminNav = [
@@ -38,8 +39,17 @@ export function AdminShell({
   return (
     <SidebarProvider>
       <Sidebar>
-        <SidebarHeader className="border-b px-4 py-4">
-          <BrandName />
+        <SidebarHeader className="border-b px-3 py-4">
+          <Link
+            href="/admin"
+            className="flex items-center gap-2.5 px-1 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0"
+            aria-label="easyCOMP Chat Bot Manager"
+          >
+            <Logo variant="mark" size="sm" className="size-9 shrink-0" />
+            <span className="text-sm font-semibold tracking-tight text-sidebar-foreground group-data-[collapsible=icon]:hidden">
+              {PRODUCT_SHORT_NAME}
+            </span>
+          </Link>
         </SidebarHeader>
         <SidebarContent>
           <SidebarGroup>

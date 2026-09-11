@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Geist_Mono, Poppins } from "next/font/google";
-import { BRAND_ASSETS, PRODUCT_NAME } from "@/lib/brand/constants";
+import { BRAND_ASSETS, PRODUCT_DISPLAY_NAME } from "@/lib/brand/constants";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import "./globals.css";
@@ -17,11 +17,11 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: PRODUCT_NAME,
+  title: PRODUCT_DISPLAY_NAME,
   description: "Portal web para administrar el Bot IA de WhatsApp",
   icons: {
-    icon: BRAND_ASSETS.logo,
-    apple: BRAND_ASSETS.logo,
+    icon: BRAND_ASSETS.mark,
+    apple: BRAND_ASSETS.mark,
   },
 };
 

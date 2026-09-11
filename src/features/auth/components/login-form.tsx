@@ -69,7 +69,7 @@ export function LoginForm() {
 
   return (
     <div className="flex w-full max-w-md flex-col items-center gap-6">
-      <Logo size="lg" />
+      <Logo variant="lockup" size="lg" priority />
       <Card className="w-full">
       <CardHeader>
         <CardTitle>Iniciar sesión</CardTitle>

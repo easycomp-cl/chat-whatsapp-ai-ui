@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { BrandName } from "@/components/brand/brand-name";
+import { Logo } from "@/components/brand/logo";
+import { PRODUCT_SHORT_NAME } from "@/lib/brand/constants";
 import {
   BookOpen,
   HelpCircle,
@@ -137,8 +138,17 @@ export function AppShell({
   return (
     <SidebarProvider>
       <Sidebar className="[&_[data-slot=sidebar-inner]]:shadow-xl">
-        <SidebarHeader className="border-b border-sidebar-border px-4 py-5">
-          <BrandName className="text-sidebar-foreground" />
+        <SidebarHeader className="border-b border-sidebar-border px-3 py-4">
+          <Link
+            href="/app/dashboard"
+            className="flex items-center gap-2.5 px-1 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0"
+            aria-label="easyCOMP Chat Bot Manager"
+          >
+            <Logo variant="mark" size="sm" className="size-9 shrink-0" />
+            <span className="text-sm font-semibold tracking-tight text-sidebar-foreground group-data-[collapsible=icon]:hidden">
+              {PRODUCT_SHORT_NAME}
+            </span>
+          </Link>
         </SidebarHeader>
         <SidebarContent className="flex flex-col">
           <SidebarGroup className="px-3 py-2">

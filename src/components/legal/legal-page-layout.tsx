@@ -21,7 +21,7 @@ export function LegalPageLayout({
       <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
         <div className="mx-auto flex max-w-[56rem] items-center justify-between gap-4 px-4 py-4 sm:px-6">
           <Link href="/" className="inline-flex items-center gap-3">
-            <Logo size="sm" />
+            <Logo variant="lockup" size="sm" priority />
           </Link>
           <nav aria-label="Enlaces legales" className="flex flex-wrap gap-3 text-sm">
             {relatedLinks.map((link) => (

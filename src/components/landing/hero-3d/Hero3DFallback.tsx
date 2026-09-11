@@ -59,22 +59,19 @@ export function Hero3DFallback({
           }
         >
           <div
-            className="absolute inset-0 rounded-[2.25rem] bg-[#4438ca]/70 blur-[2px]"
+            className="absolute inset-0 rounded-[2.25rem] bg-[#7A0B12]/70 blur-[2px]"
             style={{ transform: "translateZ(-28px) scale(0.94)" }}
           />
           <div
             className="absolute inset-0 rounded-[2.25rem]"
             style={{
               transform: "translateZ(-12px) scale(0.98)",
-              background: `linear-gradient(135deg, ${HERO_3D_COLORS.violet}cc, ${HERO_3D_COLORS.blue}b3)`,
+              background: `linear-gradient(135deg, ${HERO_3D_COLORS.redDeep}cc, ${HERO_3D_COLORS.ink}b3)`,
             }}
           />
           <div
-            className="relative flex size-44 items-center justify-center rounded-[2.25rem] border border-white/40 shadow-[0_30px_90px_rgba(68,56,202,0.5)] sm:size-52"
-            style={{
-              transform: "translateZ(4px)",
-              background: `linear-gradient(135deg, ${HERO_3D_COLORS.violet}, #5b6bf0, ${HERO_3D_COLORS.blue})`,
-            }}
+            className="relative flex size-44 items-center justify-center rounded-[2.25rem] border border-white/10 bg-[#0a0a0a] shadow-[0_30px_90px_rgba(196,18,26,0.35)] sm:size-52"
+            style={{ transform: "translateZ(4px)" }}
           >
             <Image
               src={LOGO_ASSET_STATUS.markPng}
@@ -82,7 +79,7 @@ export function Hero3DFallback({
               width={200}
               height={200}
               unoptimized
-              className="relative z-10 size-24 drop-shadow-[0_8px_20px_rgba(0,0,0,0.25)] sm:size-28"
+              className="relative z-10 size-24 drop-shadow-[0_8px_20px_rgba(196,18,26,0.45)] sm:size-28"
               priority={false}
             />
           </div>

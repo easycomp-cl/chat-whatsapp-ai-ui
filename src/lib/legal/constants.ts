@@ -1,7 +1,7 @@
-import { META_APP_NAME, PRODUCT_NAME } from "@/lib/brand/constants";
+import { META_APP_NAME, PRODUCT_DISPLAY_NAME } from "@/lib/brand/constants";
 
 /** Constantes compartidas para páginas legales públicas. */
-export const LEGAL_PRODUCT_NAME = PRODUCT_NAME;
+export const LEGAL_PRODUCT_NAME = PRODUCT_DISPLAY_NAME;
 export const LEGAL_BRAND_NAME = "EasyComp";
 export const LEGAL_COUNTRY = "Chile";
 export const LEGAL_GENERAL_EMAIL = "igonzalez@easycomp.cl";

@@ -12,22 +12,18 @@ export const HERO_3D_COLORS = {
   violetDeep: "#4438CA",
   blue: "#397BFF",
   cyan: "#3EE6D0",
+  red: "#C4121A",
+  redDeep: "#7A0B12",
   white: "#FFFFFF",
   ink: "#111326",
   softWhite: "#F4F6FF",
 } as const;
 
-/**
- * TEMPORARY emblem geometry.
- * Official easycomp-chat-bot-manager mark SVG is not in the repo yet
- * (`docs/LANDING_ASSETS_REQUIRED.md`). Replace via `EasycompChatBotManagerLogo3D` /
- * `logo-geometry.ts` when `easycomp-chat-bot-manager-mark.svg` arrives — scene wiring stays.
- */
+/** Official EasyComp mark PNG used in the 3D core and HTML fallback. */
 export const LOGO_ASSET_STATUS = {
   hasOfficialSvg: false,
   markPng: "/easycomp-chat-bot-manager-mark.png",
-  requiredSvg: "public/easycomp-chat-bot-manager-mark.svg",
-  temporaryEmblem: true,
+  temporaryEmblem: false,
 } as const;
 
 export const INTRO_TIMELINE = {

@@ -31,6 +31,7 @@ import {
 } from "../utils";
 import { validateScheduleString } from "../schedule-utils";
 import { TWC_SAMPLE_OFFERINGS } from "../twc-sample-data";
+import { SUPPORT_EMAIL } from "@/lib/brand/constants";
 
 const STEP_TITLES: Record<number, { title: string; description: string }> = {
   1: {
@@ -286,7 +287,7 @@ export function OnboardingWizardDialog({
               onStepClick={goToStep}
             />
             <a
-              href="mailto:soporte@conversai.cl"
+              href={`mailto:${SUPPORT_EMAIL}`}
               className="mt-6 flex items-center gap-2 text-xs text-muted-foreground transition-colors hover:text-[#7678ed]"
             >
               <Headphones className="size-3.5" />

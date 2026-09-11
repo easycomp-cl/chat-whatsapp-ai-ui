@@ -20,7 +20,7 @@ export const metadata: Metadata = {
   title: PRODUCT_DISPLAY_NAME,
   description: "Portal web para administrar el Bot IA de WhatsApp",
   icons: {
-    icon: BRAND_ASSETS.mark,
+    icon: "/favicon.png",
     apple: BRAND_ASSETS.mark,
   },
 };

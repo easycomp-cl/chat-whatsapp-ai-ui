@@ -50,7 +50,7 @@ export function ConversationCore() {
       <mesh ref={glowRef} position={[0, 0, -0.35]}>
         <sphereGeometry args={[0.95, 24, 24]} />
         <meshBasicMaterial
-          color={HERO_3D_COLORS.violet}
+          color={HERO_3D_COLORS.red}
           transparent
           opacity={0.18}
           depthWrite={false}
@@ -70,7 +70,7 @@ export function ConversationCore() {
       <EasycompChatBotManagerLogo3D />
       <pointLight
         ref={lightARef}
-        color={HERO_3D_COLORS.violet}
+        color={HERO_3D_COLORS.red}
         intensity={0}
         distance={4.5}
         decay={2}

@@ -63,29 +63,29 @@ export function HeroFallback() {
         >
           {/* Panel trasero — sugiere profundidad */}
           <div
-            className="absolute inset-0 rounded-[2.25rem] bg-[#4438ca]/70 blur-[2px]"
+            className="absolute inset-0 rounded-[2.25rem] bg-[#7A0B12]/70 blur-[2px]"
             style={{ transform: "translateZ(-28px) scale(0.94)" }}
           />
           {/* Panel medio */}
           <div
-            className="absolute inset-0 rounded-[2.25rem] bg-gradient-to-br from-[#6d5ef5]/80 to-[#397bff]/70"
+            className="absolute inset-0 rounded-[2.25rem] bg-gradient-to-br from-[#7A0B12]/80 to-[#111326]/70"
             style={{ transform: "translateZ(-12px) scale(0.98)" }}
           />
 
           {/* Panel frontal con el logo */}
           <div
-            className="relative flex size-44 items-center justify-center rounded-[2.25rem] border border-white/40 bg-gradient-to-br from-[#6d5ef5] via-[#5b6bf0] to-[#397bff] shadow-[0_30px_90px_rgba(68,56,202,0.5)] sm:size-52"
+            className="relative flex size-44 items-center justify-center rounded-[2.25rem] border border-white/10 bg-[#0a0a0a] shadow-[0_30px_90px_rgba(196,18,26,0.35)] sm:size-52"
             style={{ transform: "translateZ(4px)" }}
           >
-            <div className="absolute inset-0 rounded-[2.25rem] bg-white/8" />
-            <div className="absolute inset-2 rounded-[1.9rem] border border-white/15" />
+            <div className="absolute inset-0 rounded-[2.25rem] bg-red-600/10" />
+            <div className="absolute inset-2 rounded-[1.9rem] border border-white/8" />
             <Image
               src="/easycomp-chat-bot-manager-mark.png"
               alt=""
               width={200}
               height={200}
               unoptimized
-              className="relative z-10 size-24 drop-shadow-[0_8px_20px_rgba(0,0,0,0.25)] sm:size-28"
+              className="relative z-10 size-24 drop-shadow-[0_8px_20px_rgba(196,18,26,0.45)] sm:size-28"
               priority
             />
             {/* Rim light cian */}

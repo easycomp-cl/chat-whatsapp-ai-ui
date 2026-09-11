@@ -1,36 +1,40 @@
 "use client";
 
 import { useMemo, useRef } from "react";
-import { useFrame } from "@react-three/fiber";
+import { useFrame, useLoader } from "@react-three/fiber";
 import * as THREE from "three";
+import { BRAND_ASSETS } from "@/lib/brand/constants";
 import { HERO_3D_COLORS, INTRO_TIMELINE } from "./hero-3d.config";
 import { introFactor, useIntroClock } from "./hero-3d-intro";
 import { usePointer } from "./hero-3d-pointer";
-import { createEasycompChatBotManagerLogoGeometry } from "./logo-geometry";
 
 /**
- * The brand mark — protagonist of the scene. Idles with a slow float/turn,
- * and subtly "looks" toward the cursor (damped, limited amplitude) so the
- * whole core reads as alive without feeling like a manipulable object.
+ * Official EasyComp mark as a textured plane (transparent PNG).
  */
 export function EasycompChatBotManagerLogo3D() {
   const groupRef = useRef<THREE.Group>(null);
   const gaze = useRef({ x: 0, y: 0 });
-  const geometry = useMemo(() => createEasycompChatBotManagerLogoGeometry(), []);
+  const texture = useLoader(THREE.TextureLoader, BRAND_ASSETS.mark);
   const { elapsedRef, reducedMotion } = useIntroClock();
   const { pointerRef } = usePointer();
 
+  useMemo(() => {
+    texture.colorSpace = THREE.SRGBColorSpace;
+    texture.anisotropy = 8;
+    texture.premultiplyAlpha = true;
+    texture.needsUpdate = true;
+  }, [texture]);
+
   const material = useMemo(
     () =>
-      new THREE.MeshStandardMaterial({
-        vertexColors: true,
-        metalness: 0.34,
-        roughness: 0.26,
-        envMapIntensity: 0.75,
-        emissive: new THREE.Color(HERO_3D_COLORS.violet),
-        emissiveIntensity: 0.07,
+      new THREE.MeshBasicMaterial({
+        map: texture,
+        transparent: true,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+        toneMapped: false,
       }),
-    []
+    [texture]
   );
 
   useFrame((state, delta) => {
@@ -68,7 +72,18 @@ export function EasycompChatBotManagerLogo3D() {
 
   return (
     <group ref={groupRef} dispose={null}>
-      <mesh geometry={geometry} material={material} castShadow={false} />
+      <mesh material={material} position={[0, 0, 0.02]}>
+        <planeGeometry args={[1.55, 1.52]} />
+      </mesh>
+      <mesh position={[0, 0, -0.04]}>
+        <circleGeometry args={[0.82, 48]} />
+        <meshBasicMaterial
+          color={HERO_3D_COLORS.ink}
+          transparent
+          opacity={0.55}
+          depthWrite={false}
+        />
+      </mesh>
     </group>
   );
 }

@@ -153,14 +153,16 @@ export function useFacebookEmbeddedSignup() {
 
       try {
         login(
-          async (response: FacebookLoginResponse) => {
+          (response: FacebookLoginResponse) => {
             const code = response.authResponse?.code;
             if (code) {
               sessionRef.current = { ...sessionRef.current, code };
+              const settle = () => finish({ ...sessionRef.current, code });
               if (!sessionRef.current.waba_id && !sessionRef.current.phone_number_id) {
-                await wait(SESSION_INFO_WAIT_MS);
+                void wait(SESSION_INFO_WAIT_MS).then(settle);
+                return;
               }
-              finish({ ...sessionRef.current, code });
+              settle();
               return;
             }
 

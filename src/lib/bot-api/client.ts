@@ -41,6 +41,9 @@ import type {
   SeedDeliveryCommunesResult,
   ShopifyIntegration,
   ToneAnalysis,
+  EmbeddedSignupCompleteBody,
+  EmbeddedSignupCompleteResponse,
+  WhatsappConnection,
 } from "./types";
 
 type BotApiOptions = {
@@ -58,7 +61,8 @@ class BotApiError extends Error {
 }
 
 function getBaseUrl() {
-  const url = process.env.BOT_API_BASE_URL;
+  const url =
+    process.env.BOT_API_BASE_URL || process.env.NEXT_PUBLIC_BOT_API_BASE_URL;
   if (!url) throw new Error("BOT_API_BASE_URL is not configured");
   return url.replace(/\/$/, "");
 }
@@ -860,6 +864,15 @@ export const botApi = {
       method: "POST",
       body,
     }),
+
+  completeWhatsappEmbeddedSignup: (body: EmbeddedSignupCompleteBody) =>
+    botFetch<EmbeddedSignupCompleteResponse>("/whatsapp/embedded-signup/complete", {
+      method: "POST",
+      body,
+    }),
+
+  getWhatsappConnection: (businessId: string) =>
+    botFetch<WhatsappConnection>(`/businesses/${businessId}/whatsapp/connection`),
 };
 
 export function getCachedFaqs(businessId: string) {

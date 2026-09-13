@@ -8,7 +8,7 @@ Se implementó el wizard de configuración inicial del negocio como **modal/dial
 
 - En **desarrollo** (`NODE_ENV=development`), aparece la sección **Desarrollo** al final del sidebar con el botón **Onboarding wizard** y enlaces a **Landing page** (`/`), **Política de privacidad** y **Eliminación de datos**.
 - Al pulsarlo se abre un modal centrado sobre la app (backdrop con blur).
-- El wizard tiene **5 pasos**: Tu negocio → Qué ofreces → Operación → Contacto humano → Tu bot.
+- El wizard tiene **5 pasos**: Tu negocio → Qué ofreces → Operación → Contacto humano → Tu bot. Al completar, redirige a `/onboarding/whatsapp` para Embedded Signup.
 - Barra de progreso y stepper vertical (desktop) / horizontal (móvil) con color `#7678ed`.
 - Descripción del negocio: mín. 50 / máx. 1.000 caracteres con contador.
 - Paso Operación: horario con selector tipo alarma (días + hora apertura/cierre), región y comuna en selects dependientes, medios de pago con checkboxes multi-selección.

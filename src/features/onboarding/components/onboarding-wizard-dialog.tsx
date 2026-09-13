@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { ChevronRight, Headphones, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -32,6 +33,7 @@ import {
 import { validateScheduleString } from "../schedule-utils";
 import { TWC_SAMPLE_OFFERINGS } from "../twc-sample-data";
 import { SUPPORT_EMAIL } from "@/lib/brand/constants";
+import { WHATSAPP_ONBOARDING_PATH } from "@/lib/meta/embedded-signup";
 
 const STEP_TITLES: Record<number, { title: string; description: string }> = {
   1: {
@@ -69,6 +71,7 @@ export function OnboardingWizardDialog({
   open,
   onOpenChange,
 }: OnboardingWizardDialogProps) {
+  const router = useRouter();
   const [step, setStep] = useState(1);
   const [draft, setDraft] = useState<OnboardingDraft>(createEmptyDraft());
   const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
@@ -244,7 +247,7 @@ export function OnboardingWizardDialog({
           handoff_on_low_confidence: true,
         });
         toast.success("¡Tu asistente está listo!", {
-          description: "El bot ha sido activado con la configuración ingresada.",
+          description: "Ahora conecta WhatsApp Business con Meta.",
         });
       } else {
         toast.success("¡Configuración completada en modo local!", {
@@ -252,11 +255,13 @@ export function OnboardingWizardDialog({
         });
       }
       onOpenChange(false);
+      router.push(WHATSAPP_ONBOARDING_PATH);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Error al activar";
       if (process.env.NODE_ENV === "development") {
         toast.warning("No se pudo completar en el backend", { description: message });
         onOpenChange(false);
+        router.push(WHATSAPP_ONBOARDING_PATH);
       } else {
         setError(message);
       }
@@ -379,8 +384,8 @@ export function OnboardingWizardDialog({
               >
                 {pending ? (
                   <Loader2 className="size-4 animate-spin" />
-                ) : isLastStep ? (
-                  "Activar asistente"
+                )                 : isLastStep ? (
+                  "Activar y conectar"
                 ) : (
                   <>
                     Siguiente

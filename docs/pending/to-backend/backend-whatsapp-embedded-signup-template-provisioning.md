@@ -43,19 +43,58 @@ Extender `TenantChannel` (o tabla `whatsapp_connections`):
 | `connectedAt` | datetime | |
 | `connectedByUserId` | uuid? | Perfil que conectó |
 
-### API sugerida
+### API que la UI ya llama (implementar en `chat-whatsapp-ai`)
+
+Base: `https://api-chatbotmanager.easycomp.cl`  
+Auth: `X-API-Key` (igual que el resto del bot API).  
+**No** intercambiar el `code` en el browser.
 
 ```
-GET  /businesses/:businessId/whatsapp/connection
-     → { connected, waba_id, phone_number, status }
+POST /whatsapp/embedded-signup/complete
+```
 
+Body (la UI envía exactamente esto):
+
+```json
+{
+  "code": "<exchangeable token code de FB.login>",
+  "waba_id": "123",
+  "phone_number_id": "456",
+  "business_id": "789",
+  "tenant_id": "<uuid del negocio en easyCOMP>",
+  "redirect_uri": "https://chatbotmanager.easycomp.cl/onboarding/whatsapp/callback"
+}
+```
+
+Campos `waba_id` / `phone_number_id` / `business_id` pueden venir `null` si el `postMessage` no llegó; el backend debe descubrirlos con `debug_token` + Graph.
+
+Respuesta 200 esperada:
+
+```json
+{
+  "connected": true,
+  "phone_number": "+56912345678",
+  "phone_number_id": "456",
+  "waba_id": "123",
+  "business_id": "789",
+  "status": "connected"
+}
+```
+
+```
+GET /businesses/:businessId/whatsapp/connection
+→ { connected, waba_id, phone_number, phone_number_id, business_id, status }
+```
+
+Alias aceptable (si prefieren anidar en el negocio):
+
+```
 POST /businesses/:businessId/whatsapp/connection/complete
-     Body: { code, redirect_uri }  // tras Embedded Signup
-     → 200 { connected: true, phone_number }
-
-DELETE /businesses/:businessId/whatsapp/connection
-     → desconectar (revocar en Meta si aplica)
 ```
+
+Hoy la UI **no** usa ese alias: implementen `POST /whatsapp/embedded-signup/complete` o avisen para cambiar el path.
+
+### Persistencia sugerida
 
 ### Permisos Meta requeridos
 
@@ -63,10 +102,12 @@ DELETE /businesses/:businessId/whatsapp/connection
 - `whatsapp_business_messaging`
 - `business_management`
 
-### UI (este repo, cuando API exista)
+### UI (este repo — ya implementado)
 
-- Onboarding paso final o ajustes: botón **Conectar WhatsApp**.
-- Si `whatsapp_channel.done === false` → mostrar CTA (ver `onboarding-setup-wizard-ui.md`).
+- `/onboarding/whatsapp` — botón **Conectar con Meta**.
+- Tras Embedded Signup: `POST /whatsapp/embedded-signup/complete`.
+- Si el endpoint aún no existe, la UI muestra IDs y estado “autorizado en Meta”.
+- Detalle de rutas y OAuth URIs: [../../cambios-ui-whatsapp-embedded-signup.md](../../cambios-ui-whatsapp-embedded-signup.md).
 
 ---
 

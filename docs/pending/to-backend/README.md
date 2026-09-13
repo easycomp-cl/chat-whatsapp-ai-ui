@@ -22,7 +22,7 @@ Ver también [../whatsapp-cta-templates-roadmap.md](../whatsapp-cta-templates-ro
 
 | Fase | Documento | Qué falta | Esfuerzo |
 |------|-----------|-----------|----------|
-| P1 | [backend-whatsapp-embedded-signup-template-provisioning.md](./backend-whatsapp-embedded-signup-template-provisioning.md) | Embedded Signup + conectar WABA | Alto |
+| P1 | [backend-whatsapp-embedded-signup-template-provisioning.md](./backend-whatsapp-embedded-signup-template-provisioning.md) | **UI lista.** Falta `POST /whatsapp/embedded-signup/complete` + persistir WABA/token | Alto |
 | — | [backend-whatsapp-interactive-outbound-human.md](./backend-whatsapp-interactive-outbound-human.md) | `POST .../messages/interactive` asesor humano | Medio |
 | P2–P3 | [backend-whatsapp-message-templates.md](./backend-whatsapp-message-templates.md) | Listar + enviar plantillas Meta | Medio–alto |
 | P5–P6 | [backend-whatsapp-embedded-signup-template-provisioning.md](./backend-whatsapp-embedded-signup-template-provisioning.md) | Crear pack UTILITY desde app | Alto |

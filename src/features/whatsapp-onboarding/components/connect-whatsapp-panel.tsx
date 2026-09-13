@@ -161,24 +161,32 @@ export function ConnectWhatsappPanel({
     }
   }, [autoComplete, autoRan, persistCapture, view]);
 
-  async function handleConnect() {
+  function handleConnect() {
     setError(null);
     setStatus("connecting");
-    try {
-      const capture = await launch();
-      persistCapture({
-        code: capture.code,
-        waba_id: capture.waba_id,
-        phone_number_id: capture.phone_number_id,
-        business_id: capture.business_id,
+    launch()
+      .then((capture) => {
+        try {
+          persistCapture({
+            code: capture.code,
+            waba_id: capture.waba_id,
+            phone_number_id: capture.phone_number_id,
+            business_id: capture.business_id,
+          });
+        } catch (err: unknown) {
+          const message =
+            err instanceof Error ? err.message : mapEmbeddedSignupError({ kind: "unknown" });
+          setStatus("error");
+          setError(message);
+        }
+      })
+      .catch((err: unknown) => {
+        const message =
+          err instanceof Error ? err.message : mapEmbeddedSignupError({ kind: "unknown" });
+        const cancelled = message.toLowerCase().includes("cancelaste");
+        setStatus(cancelled ? "cancelled" : "error");
+        setError(message);
       });
-    } catch (err) {
-      const message =
-        err instanceof Error ? err.message : mapEmbeddedSignupError({ kind: "unknown" });
-      const cancelled = message.toLowerCase().includes("cancelaste");
-      setStatus(cancelled ? "cancelled" : "error");
-      setError(message);
-    }
   }
 
   const statusBadge = useMemo(() => {
@@ -205,9 +213,10 @@ export function ConnectWhatsappPanel({
 
   return (
     <>
+      <div id="fb-root" />
       <Script
         id="facebook-jssdk"
-        src="https://connect.facebook.net/es_LA/sdk.js"
+        src="https://connect.facebook.net/en_US/sdk.js"
         strategy="afterInteractive"
         onReady={() => {
           initSdk();
@@ -280,12 +289,11 @@ export function ConnectWhatsappPanel({
                 </p>
               )}
 
-              <Button
+              <button
                 type="button"
-                size="lg"
                 onClick={handleConnect}
                 disabled={busy || !sdkReady}
-                className="h-11 min-w-[220px] bg-[#1877F2] text-white hover:bg-[#1877F2]/90"
+                className="inline-flex h-11 min-w-[220px] items-center justify-center gap-1.5 rounded-lg bg-[#1877F2] px-4 text-sm font-medium text-white transition-colors hover:bg-[#1877F2]/90 disabled:pointer-events-none disabled:opacity-50"
               >
                 {busy ? (
                   <Loader2 className="size-4 animate-spin" />
@@ -297,7 +305,7 @@ export function ConnectWhatsappPanel({
                   : status === "connecting"
                     ? "Esperando a Meta…"
                     : "Conectar con Meta"}
-              </Button>
+              </button>
               {!sdkReady && !sdkError && (
                 <p className="text-xs text-muted-foreground">Cargando Facebook SDK…</p>
               )}

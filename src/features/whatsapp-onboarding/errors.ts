@@ -9,16 +9,31 @@ export function mapEmbeddedSignupError(input: {
     | "timeout"
     | "popup"
     | "sdk"
+    | "login"
     | "missing_code"
     | "config"
     | "backend_pending"
     | "unknown";
+  rawError?: string | null;
 }): string {
   if (input.kind === "config") {
     return "Falta configurar la app de Meta en este entorno. Revisa NEXT_PUBLIC_META_APP_ID y NEXT_PUBLIC_META_EMBEDDED_SIGNUP_CONFIG_ID.";
   }
   if (input.kind === "sdk") {
     return "No se pudo cargar el inicio de sesión de Meta. Recarga la página e inténtalo de nuevo.";
+  }
+  if (input.kind === "login") {
+    const raw = (input.rawError ?? "").toLowerCase();
+    if (raw.includes("before") && raw.includes("init")) {
+      return "Meta no terminó de inicializarse. Recarga la página e inténtalo de nuevo.";
+    }
+    if (raw.includes("popup") || raw.includes("blocked")) {
+      return "El navegador bloqueó la ventana de Meta. Permite ventanas emergentes para este sitio e inténtalo otra vez.";
+    }
+    if (input.rawError?.trim()) {
+      return `No se pudo abrir Meta: ${input.rawError.trim()}`;
+    }
+    return "No se pudo abrir la ventana de Meta. Recarga e inténtalo de nuevo.";
   }
   if (input.kind === "popup") {
     return "El navegador bloqueó la ventana de Meta. Permite ventanas emergentes para este sitio e inténtalo otra vez.";

@@ -4,7 +4,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   EMBEDDED_SIGNUP_TIMEOUT_MS,
   META_EMBEDDED_SIGNUP_EVENT,
-  SESSION_INFO_VERSION,
   SESSION_INFO_WAIT_MS,
   getMetaSdkConfig,
 } from "@/lib/meta/embedded-signup";
@@ -13,7 +12,11 @@ import { mapEmbeddedSignupError } from "./errors";
 import type { EmbeddedSignupCapture, EmbeddedSignupMessage } from "./types";
 
 function isFacebookOrigin(origin: string) {
-  return origin.endsWith("facebook.com");
+  return (
+    origin === "https://www.facebook.com" ||
+    origin === "https://web.facebook.com" ||
+    origin.endsWith(".facebook.com")
+  );
 }
 
 function parseSessionMessage(data: unknown): EmbeddedSignupMessage | null {
@@ -35,10 +38,15 @@ function wait(ms: number) {
   });
 }
 
+function rawErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : String(error);
+}
+
 export function useFacebookEmbeddedSignup() {
   const [sdkReady, setSdkReady] = useState(false);
   const [sdkError, setSdkError] = useState<string | null>(null);
   const sessionRef = useRef<EmbeddedSignupCapture>({});
+  const initializedRef = useRef(false);
 
   const applySessionMessage = useCallback((message: EmbeddedSignupMessage) => {
     if (message.type !== META_EMBEDDED_SIGNUP_EVENT) return;
@@ -55,17 +63,21 @@ export function useFacebookEmbeddedSignup() {
 
   const initSdk = useCallback(() => {
     const { appId, graphVersion } = getMetaSdkConfig();
+    const facebook = window.FB;
     if (!appId) {
       setSdkError(mapEmbeddedSignupError({ kind: "config" }));
       return false;
     }
-    if (!window.FB) return false;
-    window.FB.init({
-      appId,
-      autoLogAppEvents: true,
-      xfbml: true,
-      version: graphVersion,
-    });
+    if (!facebook?.init || !facebook.login) return false;
+    if (!initializedRef.current) {
+      facebook.init({
+        appId,
+        autoLogAppEvents: true,
+        xfbml: true,
+        version: graphVersion,
+      });
+      initializedRef.current = true;
+    }
     setSdkReady(true);
     setSdkError(null);
     return true;
@@ -85,7 +97,7 @@ export function useFacebookEmbeddedSignup() {
     if (initSdk()) return;
 
     const timeout = window.setTimeout(() => {
-      if (!window.FB) {
+      if (!window.FB?.login) {
         setSdkError(mapEmbeddedSignupError({ kind: "sdk" }));
       }
     }, 12000);
@@ -107,11 +119,18 @@ export function useFacebookEmbeddedSignup() {
     return () => window.removeEventListener("message", onMessage);
   }, [applySessionMessage]);
 
-  const launch = useCallback(async (): Promise<EmbeddedSignupCapture> => {
+  const launch = useCallback((): Promise<EmbeddedSignupCapture> => {
     const { configId } = getMetaSdkConfig();
     const facebook = window.FB;
-    if (!configId || !facebook) {
-      throw new Error(mapEmbeddedSignupError({ kind: facebook ? "config" : "sdk" }));
+    const login = facebook?.login;
+    if (!configId) {
+      return Promise.reject(new Error(mapEmbeddedSignupError({ kind: "config" })));
+    }
+    if (!login) {
+      return Promise.reject(new Error(mapEmbeddedSignupError({ kind: "sdk" })));
+    }
+    if (!initializedRef.current) {
+      initSdk();
     }
 
     sessionRef.current = {};
@@ -133,7 +152,7 @@ export function useFacebookEmbeddedSignup() {
       };
 
       try {
-        facebook.login(
+        login(
           async (response: FacebookLoginResponse) => {
             const code = response.authResponse?.code;
             if (code) {
@@ -154,6 +173,13 @@ export function useFacebookEmbeddedSignup() {
               finish(sessionRef.current, new Error(mapEmbeddedSignupError({ event: "ERROR" })));
               return;
             }
+            if (response.status === "unknown") {
+              finish(
+                sessionRef.current,
+                new Error(mapEmbeddedSignupError({ kind: "popup" }))
+              );
+              return;
+            }
             finish(
               sessionRef.current,
               new Error(mapEmbeddedSignupError({ kind: "cancelled" }))
@@ -165,15 +191,22 @@ export function useFacebookEmbeddedSignup() {
             override_default_response_type: true,
             extras: {
               setup: {},
-              sessionInfoVersion: SESSION_INFO_VERSION,
             },
           }
         );
-      } catch {
-        finish(sessionRef.current, new Error(mapEmbeddedSignupError({ kind: "popup" })));
+      } catch (error) {
+        finish(
+          sessionRef.current,
+          new Error(
+            mapEmbeddedSignupError({
+              kind: "login",
+              rawError: rawErrorMessage(error),
+            })
+          )
+        );
       }
     });
-  }, []);
+  }, [initSdk]);
 
   return { sdkReady, sdkError, launch, initSdk };
 }

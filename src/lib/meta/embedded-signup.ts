@@ -6,7 +6,7 @@ export const FACEBOOK_OAUTH_CALLBACK_PATH = "/api/auth/callback/facebook";
 export const FACEBOOK_OAUTH_COOKIE = "wa_es_oauth";
 
 export const META_EMBEDDED_SIGNUP_EVENT = "WA_EMBEDDED_SIGNUP";
-export const DEFAULT_META_GRAPH_VERSION = "v21.0";
+export const DEFAULT_META_GRAPH_VERSION = "v25.0";
 export const SESSION_INFO_VERSION = "3";
 
 export const EMBEDDED_SIGNUP_TIMEOUT_MS = 3 * 60 * 1000;

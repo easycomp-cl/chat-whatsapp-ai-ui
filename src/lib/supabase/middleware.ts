@@ -28,8 +28,13 @@ export async function updateSession(request: NextRequest) {
   const path = request.nextUrl.pathname;
   const isAuthRoute =
     path.startsWith("/login") || path.startsWith("/forgot-password");
-  const isAuthCallback = path.startsWith("/auth/callback");
-  const isAppRoute = path.startsWith("/app") || path.startsWith("/admin");
+  const isAuthCallback =
+    path.startsWith("/auth/callback") ||
+    path.startsWith("/api/auth/callback/facebook");
+  const isAppRoute =
+    path.startsWith("/app") ||
+    path.startsWith("/admin") ||
+    path.startsWith("/onboarding");
   const isProtected = isAppRoute;
 
   if (!user && !isAuthCallback && isProtected) {

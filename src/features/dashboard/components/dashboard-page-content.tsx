@@ -5,6 +5,8 @@ import { BotStatusCard } from "@/features/dashboard/components/bot-status-card";
 import { MetricCard } from "@/features/dashboard/components/metric-card";
 import { ActivityChart } from "@/features/dashboard/components/activity-chart";
 import { TopQuestionsTable } from "@/features/dashboard/components/top-questions-table";
+import { getWhatsappConnectionSafeAction } from "@/lib/actions/whatsapp-onboarding-actions";
+import { WhatsappConnectionCard } from "@/features/whatsapp-onboarding/components/whatsapp-connection-card";
 import { canToggleBot } from "@/lib/rbac";
 import type { TopQuestion } from "@/types/database.types";
 import { startOfMonth } from "date-fns";
@@ -70,9 +72,10 @@ async function getMetricsSafe(businessId: string) {
 export async function DashboardPageContent() {
   const profile = await requireAppAccess();
   const businessId = profile.business_id!;
-  const [business, { summary, questions, daily }] = await Promise.all([
+  const [business, { summary, questions, daily }, whatsapp] = await Promise.all([
     getBusinessById(businessId),
     getMetricsSafe(businessId),
+    getWhatsappConnectionSafeAction(),
   ]);
 
   const chartData = daily.map((d) => ({
@@ -84,6 +87,9 @@ export async function DashboardPageContent() {
 
   return (
     <>
+      {canToggleBot(profile.role) && !whatsapp?.connected && (
+        <WhatsappConnectionCard connected={false} />
+      )}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <BotStatusCard
           enabled={business?.bot_global_enabled ?? false}

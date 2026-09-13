@@ -633,3 +633,32 @@ export const DEFAULT_CONVERSATIONAL_DEFAULTS: Record<string, string> = {
   ack: "Perfecto. Si tienes otra consulta, escríbeme.",
   soft_fallback: "(usa el mensaje «Sin información»)",
 };
+
+export type WhatsappConnectionStatus =
+  | "connected"
+  | "pending"
+  | "disconnected"
+  | "error";
+
+export type WhatsappConnection = {
+  connected: boolean;
+  status?: WhatsappConnectionStatus | string;
+  phone_number?: string | null;
+  phone_number_id?: string | null;
+  waba_id?: string | null;
+  business_id?: string | null;
+  display_phone_number?: string | null;
+};
+
+export type EmbeddedSignupCompleteBody = {
+  code: string;
+  waba_id?: string | null;
+  phone_number_id?: string | null;
+  business_id?: string | null;
+  tenant_id: string;
+  redirect_uri: string;
+};
+
+export type EmbeddedSignupCompleteResponse = WhatsappConnection & {
+  persisted?: boolean;
+};

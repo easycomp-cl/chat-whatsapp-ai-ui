@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { FileText, Layout, Scale, Sparkles } from "lucide-react";
+import { FileText, Layout, Scale, Smartphone, Sparkles } from "lucide-react";
 import {
   SidebarGroup,
   SidebarGroupContent,
@@ -19,6 +19,11 @@ type OnboardingDevTriggerProps = {
 };
 
 const DEV_LINKS = [
+  {
+    href: "/onboarding/whatsapp",
+    label: "Conectar WhatsApp",
+    icon: Smartphone,
+  },
   {
     href: "/",
     label: "Landing page",

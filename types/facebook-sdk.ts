@@ -22,13 +22,13 @@ export type FacebookLoginOptions = {
 };
 
 export type FacebookSDK = {
-  init: (options: {
+  init?: (options: {
     appId: string;
     autoLogAppEvents?: boolean;
     xfbml?: boolean;
     version: string;
   }) => void;
-  login: (
+  login?: (
     callback: (response: FacebookLoginResponse) => void,
     options: FacebookLoginOptions
   ) => void;

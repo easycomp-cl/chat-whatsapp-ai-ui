@@ -70,7 +70,7 @@ Si esos endpoints aún no existen (404/501), la UI muestra **Autorizado en Meta*
 NEXT_PUBLIC_APP_URL=https://chatbotmanager.easycomp.cl
 NEXT_PUBLIC_META_APP_ID=1642810900259407
 NEXT_PUBLIC_META_EMBEDDED_SIGNUP_CONFIG_ID=1919146745399628
-NEXT_PUBLIC_META_GRAPH_VERSION=v21.0
+NEXT_PUBLIC_META_GRAPH_VERSION=v25.0
 NEXT_PUBLIC_BOT_API_BASE_URL=https://api-chatbotmanager.easycomp.cl
 BOT_API_BASE_URL=https://api-chatbotmanager.easycomp.cl
 BOT_API_SECRET=<mismo INTERNAL_API_KEY del backend>
@@ -80,15 +80,14 @@ No hay tokens de larga duración en el front. `config_id` y `app_id` sí son pú
 
 ## Embedded Signup (docs vigentes)
 
-`FB.login` con:
+`FB.login` se llama **síncrono en el click** (si hay un `await` antes, Chrome bloquea el popup). Parámetros:
 
 - `config_id`: `1919146745399628`
 - `response_type`: `"code"`
 - `override_default_response_type`: `true`
 - `extras.setup`: `{}`
-- `extras.sessionInfoVersion`: `"3"` (session logging actual para IDs)
 
-No se envía `featureType` (eso es Coexistence / WhatsApp Business app). No se envían campos deprecados de versión Embedded Signup.
+Graph JS SDK: `v25.0`. No se envía `featureType` ni `sessionInfoVersion` (v4).
 
 Evento `message` con `type === "WA_EMBEDDED_SIGNUP"`: se capturan `phone_number_id`, `waba_id`, `business_id`.
 

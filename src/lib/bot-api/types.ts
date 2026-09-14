@@ -653,6 +653,7 @@ export type WhatsappConnection = {
 
 export type EmbeddedSignupCompleteBody = {
   code: string;
+  pin: string;
   tenant_id: string;
   waba_id?: string;
   phone_number_id?: string;

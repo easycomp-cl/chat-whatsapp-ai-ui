@@ -64,11 +64,28 @@ export async function completeWhatsappEmbeddedSignupAction(
   const profile = await requireBusinessAdmin();
   const tenantId = profile.business_id!;
   const code = input.code?.trim();
+  const pin = input.pin?.trim();
 
   if (!code) {
     return {
       ok: false,
       error: "Meta no devolvió el código de autorización. Vuelve a abrir la ventana de Meta para conectar.",
+      connection: null,
+    };
+  }
+
+  if (!pin) {
+    return {
+      ok: false,
+      error: "El PIN de verificación en dos pasos es requerido.",
+      connection: null,
+    };
+  }
+
+  if (!/^\d{6}$/.test(pin)) {
+    return {
+      ok: false,
+      error: "El PIN debe ser exactamente 6 dígitos.",
       connection: null,
     };
   }
@@ -80,6 +97,7 @@ export async function completeWhatsappEmbeddedSignupAction(
 
   const body: EmbeddedSignupCompleteBody = {
     code,
+    pin,
     tenant_id: tenantId,
   };
   if (wabaId) body.waba_id = wabaId;

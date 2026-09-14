@@ -28,6 +28,7 @@ import {
 } from "../session-store";
 import { toWhatsappConnectionView } from "../map-connection";
 import { useFacebookEmbeddedSignup } from "../use-facebook-embedded-signup";
+import { PinVerificationDialog } from "./pin-verification-dialog";
 import type { CompleteEmbeddedSignupInput, WhatsappConnectUiStatus, WhatsappConnectionView } from "../types";
 
 function isRedactedServerError(message: string) {
@@ -87,20 +88,35 @@ export function ConnectWhatsappPanel({
   );
   const [error, setError] = useState<string | null>(null);
   const [autoRan, setAutoRan] = useState(false);
+  const [pinDialogOpen, setPinDialogOpen] = useState(false);
+  const [pendingCapture, setPendingCapture] = useState<{
+    code?: string | null;
+    waba_id?: string | null;
+    phone_number_id?: string | null;
+    business_id?: string | null;
+    redirect_uri?: string | null;
+  } | null>(null);
 
   const busy = pending || status === "connecting" || status === "completing" || status === "sdk_loading";
 
   const persistCapture = useCallback(
-    (capture: {
-      code?: string | null;
-      waba_id?: string | null;
-      phone_number_id?: string | null;
-      business_id?: string | null;
-      redirect_uri?: string | null;
-    }) => {
+    (
+      capture: {
+        code?: string | null;
+        waba_id?: string | null;
+        phone_number_id?: string | null;
+        business_id?: string | null;
+        redirect_uri?: string | null;
+      },
+      pin: string
+    ) => {
       const code = capture.code?.trim();
       if (!code) {
         throw new Error(mapEmbeddedSignupError({ kind: "missing_code" }));
+      }
+
+      if (!pin?.trim() || !/^\d{6}$/.test(pin.trim())) {
+        throw new Error("El PIN debe ser exactamente 6 dígitos.");
       }
 
       const wabaId = optionalId(capture.waba_id);
@@ -114,10 +130,12 @@ export function ConnectWhatsappPanel({
 
       setStatus("completing");
       setError(null);
+      setPinDialogOpen(false);
+      setPendingCapture(null);
 
       startTransition(async () => {
         try {
-          const input: CompleteEmbeddedSignupInput = { code };
+          const input: CompleteEmbeddedSignupInput = { code, pin: pin.trim() };
           if (wabaId) input.waba_id = wabaId;
           if (phoneNumberId) input.phone_number_id = phoneNumberId;
           if (businessId) input.business_id = businessId;
@@ -222,13 +240,15 @@ export function ConnectWhatsappPanel({
         : undefined);
 
     setAutoRan(true);
-    persistCapture({
+    const capture = {
       code: urlCode,
       waba_id: snap?.wabaId ?? view?.wabaId,
       phone_number_id: snap?.phoneNumberId ?? view?.phoneNumberId,
       business_id: snap?.metaBusinessId ?? view?.metaBusinessId,
       redirect_uri: redirectUri,
-    });
+    };
+    setPendingCapture(capture);
+    setPinDialogOpen(true);
     if (searchParams.toString()) {
       router.replace(pathname);
     }
@@ -240,12 +260,15 @@ export function ConnectWhatsappPanel({
     launch()
       .then((capture) => {
         try {
-          persistCapture({
+          const captureData = {
             code: capture.code,
             waba_id: capture.waba_id,
             phone_number_id: capture.phone_number_id,
             business_id: capture.business_id,
-          });
+          };
+          setPendingCapture(captureData);
+          setStatus("idle");
+          setPinDialogOpen(true);
         } catch (err: unknown) {
           const message = clientActionErrorMessage(err);
           setStatus("error");
@@ -258,6 +281,26 @@ export function ConnectWhatsappPanel({
         setStatus(cancelled ? "cancelled" : "error");
         setError(message);
       });
+  }
+
+  function handlePinConfirm(pin: string) {
+    if (!pendingCapture) return;
+    try {
+      persistCapture(pendingCapture, pin);
+    } catch (err: unknown) {
+      const message = clientActionErrorMessage(err);
+      setStatus("error");
+      setError(message);
+      setPinDialogOpen(false);
+      setPendingCapture(null);
+    }
+  }
+
+  function handlePinCancel() {
+    setPinDialogOpen(false);
+    setPendingCapture(null);
+    setStatus("cancelled");
+    setError("Conexión cancelada. No se ingresó el PIN de verificación.");
   }
 
   const statusBadge = useMemo(() => {
@@ -288,6 +331,13 @@ export function ConnectWhatsappPanel({
         onReady={() => {
           initSdk();
         }}
+      />
+
+      <PinVerificationDialog
+        open={pinDialogOpen}
+        onConfirm={handlePinConfirm}
+        onCancel={handlePinCancel}
+        busy={busy}
       />
 
       <Card className="w-full">

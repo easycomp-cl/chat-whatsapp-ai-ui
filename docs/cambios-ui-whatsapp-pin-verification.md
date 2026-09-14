@@ -1,7 +1,7 @@
 # Verificación PIN WhatsApp — Embedded Signup
 
 **Fecha**: 2026-09-14  
-**PR**: (se completará tras crear el PR)
+**PR**: https://github.com/easycomp-cl/chat-whatsapp-ai-ui/pull/5
 
 ## Resumen
 

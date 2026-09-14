@@ -10,7 +10,13 @@ export const DEFAULT_META_GRAPH_VERSION = "v25.0";
 export const SESSION_INFO_VERSION = "3";
 
 export const EMBEDDED_SIGNUP_TIMEOUT_MS = 3 * 60 * 1000;
-export const SESSION_INFO_WAIT_MS = 2500;
+export const SESSION_INFO_WAIT_MS = 8000;
+
+const ALLOWED_OAUTH_PATHS = [
+  FACEBOOK_OAUTH_CALLBACK_PATH,
+  WHATSAPP_CALLBACK_PATH,
+  WHATSAPP_ONBOARDING_PATH,
+] as const;
 
 const DEFAULT_META_APP_ID = "1642810900259407";
 const DEFAULT_META_CONFIG_ID = "1919146745399628";
@@ -28,6 +34,34 @@ export function getFacebookOAuthRedirectUri(origin = getPublicAppOrigin()): stri
 
 export function getWhatsappCallbackRedirectUri(origin = getPublicAppOrigin()): string {
   return `${origin}${WHATSAPP_CALLBACK_PATH}`;
+}
+
+export function getEmbeddedSignupPageRedirectUri(): string {
+  if (typeof window === "undefined") return getWhatsappCallbackRedirectUri();
+  return `${window.location.origin}${window.location.pathname}`;
+}
+
+export function sanitizeEmbeddedSignupRedirectUri(
+  input?: string | null
+): string | undefined {
+  if (!input?.trim()) return undefined;
+  try {
+    const url = new URL(input.trim());
+    const envOrigin = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "").trim();
+    const allowedHosts = new Set<string>([new URL(PRODUCTION_APP_ORIGIN).host]);
+    if (envOrigin) allowedHosts.add(new URL(envOrigin).host);
+    const isLocal =
+      url.hostname === "localhost" ||
+      url.hostname === "127.0.0.1" ||
+      url.hostname === "::1";
+    if (!isLocal && !allowedHosts.has(url.host)) return undefined;
+    if (!(ALLOWED_OAUTH_PATHS as readonly string[]).includes(url.pathname)) {
+      return undefined;
+    }
+    return `${url.origin}${url.pathname}`;
+  } catch {
+    return undefined;
+  }
 }
 
 export function getMetaAppId(): string {

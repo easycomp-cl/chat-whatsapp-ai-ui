@@ -40,6 +40,7 @@ export async function updateSession(request: NextRequest) {
   if (!user && !isAuthCallback && isProtected) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
+    url.search = "";
     url.searchParams.set("redirect", path);
     return NextResponse.redirect(url);
   }
@@ -47,6 +48,7 @@ export async function updateSession(request: NextRequest) {
   if (user && isAuthRoute) {
     const url = request.nextUrl.clone();
     url.pathname = "/app/dashboard";
+    url.search = "";
     return NextResponse.redirect(url);
   }
 

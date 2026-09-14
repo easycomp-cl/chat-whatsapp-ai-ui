@@ -37,14 +37,12 @@ export type WhatsappConnectUiStatus =
   | "connecting"
   | "completing"
   | "connected"
-  | "authorized_pending_backend"
   | "cancelled"
   | "error";
 
 export type WhatsappConnectionView = {
   connected: boolean;
   persisted: boolean;
-  backendPending: boolean;
   status: WhatsappConnectUiStatus;
   phoneNumber?: string | null;
   phoneNumberId?: string | null;
@@ -55,7 +53,16 @@ export type WhatsappConnectionView = {
 
 export type CompleteEmbeddedSignupInput = {
   code: string;
-  waba_id?: string | null;
-  phone_number_id?: string | null;
-  business_id?: string | null;
+  waba_id?: string;
+  phone_number_id?: string;
+  business_id?: string;
+  redirect_uri?: string;
+};
+
+export type FacebookOauthPayload = {
+  code?: string | null;
+  error?: string | null;
+  error_reason?: string | null;
+  error_description?: string | null;
+  redirect_uri?: string | null;
 };

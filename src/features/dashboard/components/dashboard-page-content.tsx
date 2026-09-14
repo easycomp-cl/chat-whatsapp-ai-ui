@@ -5,7 +5,7 @@ import { BotStatusCard } from "@/features/dashboard/components/bot-status-card";
 import { MetricCard } from "@/features/dashboard/components/metric-card";
 import { ActivityChart } from "@/features/dashboard/components/activity-chart";
 import { TopQuestionsTable } from "@/features/dashboard/components/top-questions-table";
-import { getWhatsappConnectionSafeAction } from "@/lib/actions/whatsapp-onboarding-actions";
+import { loadWhatsappConnectionSafe } from "@/lib/whatsapp/connection";
 import { WhatsappConnectionCard } from "@/features/whatsapp-onboarding/components/whatsapp-connection-card";
 import { canToggleBot } from "@/lib/rbac";
 import type { TopQuestion } from "@/types/database.types";
@@ -75,7 +75,7 @@ export async function DashboardPageContent() {
   const [business, { summary, questions, daily }, whatsapp] = await Promise.all([
     getBusinessById(businessId),
     getMetricsSafe(businessId),
-    getWhatsappConnectionSafeAction(),
+    loadWhatsappConnectionSafe(),
   ]);
 
   const chartData = daily.map((d) => ({
@@ -88,7 +88,11 @@ export async function DashboardPageContent() {
   return (
     <>
       {canToggleBot(profile.role) && !whatsapp?.connected && (
-        <WhatsappConnectionCard connected={false} />
+        <WhatsappConnectionCard
+          connected={false}
+          phoneNumber={whatsapp?.phone_number}
+          phoneNumberId={whatsapp?.phone_number_id}
+        />
       )}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <BotStatusCard

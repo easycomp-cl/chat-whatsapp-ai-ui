@@ -53,7 +53,7 @@ Auth: `X-API-Key` (igual que el resto del bot API).
 POST /whatsapp/embedded-signup/complete
 ```
 
-Body (la UI envía exactamente esto):
+Body popup FB.login (caso principal). **No** incluir `redirect_uri`. `waba_id` / `phone_number_id` son string; si faltan, se omiten (nunca `null`):
 
 ```json
 {
@@ -61,18 +61,18 @@ Body (la UI envía exactamente esto):
   "waba_id": "123",
   "phone_number_id": "456",
   "business_id": "789",
-  "tenant_id": "<uuid del negocio en easyCOMP>",
-  "redirect_uri": "https://chatbotmanager.easycomp.cl/onboarding/whatsapp/callback"
+  "tenant_id": "<uuid del negocio en easyCOMP>"
 }
 ```
 
-Campos `waba_id` / `phone_number_id` / `business_id` pueden venir `null` si el `postMessage` no llegó; el backend debe descubrirlos con `debug_token` + Graph.
+`redirect_uri` **solo** si el `code` vino de `?code=` en `/onboarding/whatsapp/callback` o `/api/auth/callback/facebook`.
 
 Respuesta 200 esperada:
 
 ```json
 {
   "connected": true,
+  "display_phone_number": "+56912345678",
   "phone_number": "+56912345678",
   "phone_number_id": "456",
   "waba_id": "123",
@@ -83,7 +83,8 @@ Respuesta 200 esperada:
 
 ```
 GET /businesses/:businessId/whatsapp/connection
-→ { connected, waba_id, phone_number, phone_number_id, business_id, status }
+→ 200 { connected: true, display_phone_number, waba_id, phone_number_id, business_id, status }
+→ 200 { connected: false } o 404 → UI “Sin conectar”
 ```
 
 Alias aceptable (si prefieren anidar en el negocio):
@@ -105,8 +106,8 @@ Hoy la UI **no** usa ese alias: implementen `POST /whatsapp/embedded-signup/comp
 ### UI (este repo — ya implementado)
 
 - `/onboarding/whatsapp` — botón **Conectar con Meta**.
-- Tras Embedded Signup: `POST /whatsapp/embedded-signup/complete`.
-- Si el endpoint aún no existe, la UI muestra IDs y estado “autorizado en Meta”.
+- Tras Embedded Signup: espera `WA_EMBEDDED_SIGNUP` y `POST /whatsapp/embedded-signup/complete`.
+- Si el complete falla, la UI muestra el `message` del backend y pide reabrir el popup (no hay estado intermedio “autorizado en Meta”).
 - Detalle de rutas y OAuth URIs: [../../cambios-ui-whatsapp-embedded-signup.md](../../cambios-ui-whatsapp-embedded-signup.md).
 
 ---

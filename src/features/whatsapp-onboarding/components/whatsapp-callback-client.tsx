@@ -1,42 +1,37 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect } from "react";
 import { ConnectWhatsappPanel } from "./connect-whatsapp-panel";
-import { readWhatsappSignupSnapshot } from "../session-store";
 import { clearFacebookOauthCookieAction } from "@/lib/actions/whatsapp-onboarding-actions";
-import type { WhatsappConnectionView } from "../types";
+import type { FacebookOauthPayload, WhatsappConnectionView } from "../types";
 
 type WhatsappCallbackClientProps = {
-  code: string | null;
-  error: string | null;
-  errorReason: string | null;
-  errorDescription: string | null;
+  oauth: FacebookOauthPayload | null;
   serverConnection: WhatsappConnectionView | null;
 };
 
 export function WhatsappCallbackClient({
-  code,
-  error,
-  errorReason,
-  errorDescription,
+  oauth,
   serverConnection,
 }: WhatsappCallbackClientProps) {
-  const snapshot = useMemo(() => readWhatsappSignupSnapshot(), []);
-  const initialConnection = serverConnection ?? snapshot;
-
   useEffect(() => {
-    void clearFacebookOauthCookieAction();
+    void clearFacebookOauthCookieAction().catch(() => undefined);
   }, []);
 
   return (
     <ConnectWhatsappPanel
-      initialConnection={initialConnection}
-      autoComplete={{
-        code,
-        error,
-        errorReason,
-        errorDescription,
-      }}
+      initialConnection={serverConnection}
+      autoComplete={
+        oauth?.code || oauth?.error
+          ? {
+              code: oauth.code ?? null,
+              error: oauth.error ?? null,
+              errorReason: oauth.error_reason ?? null,
+              errorDescription: oauth.error_description ?? null,
+              redirectUri: oauth.redirect_uri ?? null,
+            }
+          : undefined
+      }
     />
   );
 }

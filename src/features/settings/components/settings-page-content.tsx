@@ -1,7 +1,7 @@
 import { requireBusinessAdmin } from "@/lib/auth/session";
 import { getBusinessById } from "@/lib/business/get-business";
 import { botApi } from "@/lib/bot-api/client";
-import { getWhatsappConnectionAction } from "@/lib/actions/whatsapp-onboarding-actions";
+import { loadWhatsappConnection } from "@/lib/whatsapp/connection";
 import { SettingsForm } from "@/features/settings/components/settings-form";
 import { WhatsappConnectionCard } from "@/features/whatsapp-onboarding/components/whatsapp-connection-card";
 import type { BotPersonality, KnowledgeSettings } from "@/lib/bot-api/types";
@@ -20,7 +20,7 @@ export async function SettingsPageContent() {
       })
       .catch(() => null),
     botApi.getBotPersonality(businessId).catch(() => null),
-    getWhatsappConnectionAction(),
+    loadWhatsappConnection(businessId).catch(() => null),
   ]);
 
   if (!business) return <p>No se encontró el negocio</p>;

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   EMBEDDED_SIGNUP_TIMEOUT_MS,
   META_EMBEDDED_SIGNUP_EVENT,
+  SESSION_INFO_VERSION,
   SESSION_INFO_WAIT_MS,
   getMetaSdkConfig,
 } from "@/lib/meta/embedded-signup";
@@ -19,17 +20,63 @@ function isFacebookOrigin(origin: string) {
   );
 }
 
-function parseSessionMessage(data: unknown): EmbeddedSignupMessage | null {
-  if (!data) return null;
-  if (typeof data === "object") {
-    return data as EmbeddedSignupMessage;
-  }
-  if (typeof data !== "string") return null;
+function asRecord(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  return value as Record<string, unknown>;
+}
+
+function parseJsonValue(value: unknown): unknown {
+  if (typeof value !== "string") return value;
+  const trimmed = value.trim();
+  if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) return value;
   try {
-    return JSON.parse(data) as EmbeddedSignupMessage;
+    return JSON.parse(trimmed) as unknown;
   } catch {
-    return null;
+    return value;
   }
+}
+
+function pickId(value: unknown): string | undefined {
+  if (typeof value === "string" && value.trim()) return value.trim();
+  if (typeof value === "number" && Number.isFinite(value)) return String(value);
+  return undefined;
+}
+
+function sessionDataFromUnknown(value: unknown): EmbeddedSignupMessage["data"] {
+  const parsed = parseJsonValue(value);
+  const record = asRecord(parsed);
+  if (!record) return undefined;
+  const nested = asRecord(parseJsonValue(record.data));
+  const source = nested ?? record;
+  const wabaIds = Array.isArray(source.waba_ids)
+    ? source.waba_ids.map(pickId).filter((id): id is string => Boolean(id))
+    : undefined;
+  return {
+    phone_number_id: pickId(source.phone_number_id),
+    waba_id: pickId(source.waba_id) ?? wabaIds?.[0],
+    business_id: pickId(source.business_id),
+    waba_ids: wabaIds,
+    current_step: pickId(source.current_step),
+    error_message: pickId(source.error_message),
+    error_id: pickId(source.error_id),
+  };
+}
+
+function parseSessionMessage(data: unknown): EmbeddedSignupMessage | null {
+  const parsed = parseJsonValue(data);
+  const record = asRecord(parsed);
+  if (!record) return null;
+  const type = pickId(record.type);
+  const event = pickId(record.event);
+  if (type !== META_EMBEDDED_SIGNUP_EVENT && !event && !record.data) return null;
+  return {
+    type,
+    event,
+    version: typeof record.version === "number" || typeof record.version === "string"
+      ? record.version
+      : undefined,
+    data: sessionDataFromUnknown(record.data ?? record),
+  };
 }
 
 function wait(ms: number) {
@@ -49,7 +96,7 @@ export function useFacebookEmbeddedSignup() {
   const initializedRef = useRef(false);
 
   const applySessionMessage = useCallback((message: EmbeddedSignupMessage) => {
-    if (message.type !== META_EMBEDDED_SIGNUP_EVENT) return;
+    if (message.type && message.type !== META_EMBEDDED_SIGNUP_EVENT) return;
     const next: EmbeddedSignupCapture = {
       ...sessionRef.current,
       event: message.event ?? sessionRef.current.event,
@@ -157,12 +204,29 @@ export function useFacebookEmbeddedSignup() {
             const code = response.authResponse?.code;
             if (code) {
               sessionRef.current = { ...sessionRef.current, code };
+              const hasSessionIds = () =>
+                Boolean(sessionRef.current.waba_id && sessionRef.current.phone_number_id);
               const settle = () => finish({ ...sessionRef.current, code });
-              if (!sessionRef.current.waba_id && !sessionRef.current.phone_number_id) {
-                void wait(SESSION_INFO_WAIT_MS).then(settle);
+              if (hasSessionIds()) {
+                settle();
                 return;
               }
-              settle();
+              const started = Date.now();
+              const poll = () => {
+                if (hasSessionIds()) {
+                  settle();
+                  return;
+                }
+                if (Date.now() - started >= SESSION_INFO_WAIT_MS) {
+                  finish(
+                    sessionRef.current,
+                    new Error(mapEmbeddedSignupError({ kind: "missing_session" }))
+                  );
+                  return;
+                }
+                void wait(150).then(poll);
+              };
+              poll();
               return;
             }
 
@@ -193,6 +257,7 @@ export function useFacebookEmbeddedSignup() {
             override_default_response_type: true,
             extras: {
               setup: {},
+              sessionInfoVersion: SESSION_INFO_VERSION,
             },
           }
         );

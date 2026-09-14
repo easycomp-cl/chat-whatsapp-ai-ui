@@ -10,7 +10,8 @@ export const config = {
     /*
      * Excluye rutas públicas legales, estáticos, favicon, robots y sitemap.
      * Las páginas /politica-de-privacidad y /eliminacion-de-datos no pasan
-     * por validación de sesión.
+     * por validación de sesión. `/` sí pasa por middleware y redirige a
+     * login o dashboard según haya sesión.
      */
     "/((?!_next/static|_next/image|favicon.ico|robots\\.txt|sitemap\\.xml|politica-de-privacidad|eliminacion-de-datos|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],

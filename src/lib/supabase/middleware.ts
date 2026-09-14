@@ -26,6 +26,7 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const path = request.nextUrl.pathname;
+  const isRoot = path === "/";
   const isAuthRoute =
     path.startsWith("/login") || path.startsWith("/forgot-password");
   const isAuthCallback =
@@ -36,6 +37,13 @@ export async function updateSession(request: NextRequest) {
     path.startsWith("/admin") ||
     path.startsWith("/onboarding");
   const isProtected = isAppRoute;
+
+  if (isRoot) {
+    const url = request.nextUrl.clone();
+    url.pathname = user ? "/app/dashboard" : "/login";
+    url.search = "";
+    return NextResponse.redirect(url);
+  }
 
   if (!user && !isAuthCallback && isProtected) {
     const url = request.nextUrl.clone();

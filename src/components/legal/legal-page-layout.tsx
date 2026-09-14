@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { Logo } from "@/components/brand/logo";
+import { MARKETING_SITE_URL } from "@/lib/brand/constants";
 import { LastUpdatedBadge } from "./last-updated-badge";
 
 type LegalPageLayoutProps = {
@@ -34,7 +35,7 @@ export function LegalPageLayout({
               </Link>
             ))}
             <Link
-              href="/"
+              href={MARKETING_SITE_URL}
               className="text-[var(--chat-primary)] underline-offset-2 hover:underline"
             >
               Volver al sitio

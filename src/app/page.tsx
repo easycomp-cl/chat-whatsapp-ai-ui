@@ -1,18 +1,7 @@
-import { LandingPage } from "@/components/landing/LandingPage";
-import { buildLandingJsonLd, buildLandingMetadata } from "@/lib/landing/metadata";
+import { redirect } from "next/navigation";
+import { getSessionUser } from "@/lib/auth/session";
 
-export const metadata = buildLandingMetadata();
-
-export default function HomePage() {
-  const jsonLd = buildLandingJsonLd();
-
-  return (
-    <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-      />
-      <LandingPage />
-    </>
-  );
+export default async function HomePage() {
+  const user = await getSessionUser();
+  redirect(user ? "/app/dashboard" : "/login");
 }

@@ -12,7 +12,7 @@ export function mapEmbeddedSignupError(input: {
     | "login"
     | "missing_code"
     | "config"
-    | "backend_pending"
+    | "missing_session"
     | "unknown";
   rawError?: string | null;
 }): string {
@@ -44,8 +44,8 @@ export function mapEmbeddedSignupError(input: {
   if (input.kind === "missing_code") {
     return "Meta no devolvió el código de autorización. Completa el flujo hasta el final o vuelve a conectar.";
   }
-  if (input.kind === "backend_pending") {
-    return "WhatsApp quedó autorizado en Meta, pero el servidor aún no guarda la conexión. El equipo de backend debe implementar el endpoint de persistencia.";
+  if (input.kind === "missing_session") {
+    return "Meta no envió el waba_id y el phone_number_id. Cierra la ventana e inténtalo otra vez.";
   }
 
   const error = (input.facebookError ?? "").toLowerCase();

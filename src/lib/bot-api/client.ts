@@ -146,7 +146,16 @@ async function runBotFetch<T>(url: string, init: RequestInit): Promise<T> {
   }
 
   if (res.status === 204) return undefined as T;
-  return res.json() as Promise<T>;
+  const text = await res.text();
+  if (!text.trim()) return {} as T;
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    throw new BotApiError(
+      `El backend respondió ${res.status} con un cuerpo que no es JSON.`,
+      res.status
+    );
+  }
 }
 
 async function botFetch<T>(path: string, options: BotApiOptions = {}): Promise<T> {
@@ -871,8 +880,18 @@ export const botApi = {
       body,
     }),
 
-  getWhatsappConnection: (businessId: string) =>
-    botFetch<WhatsappConnection>(`/businesses/${businessId}/whatsapp/connection`),
+  getWhatsappConnection: async (businessId: string) => {
+    try {
+      return await botFetch<WhatsappConnection>(
+        `/businesses/${businessId}/whatsapp/connection`
+      );
+    } catch (error) {
+      if (error instanceof BotApiError && error.status === 404) {
+        return { connected: false, status: "disconnected" as const };
+      }
+      throw error;
+    }
+  },
 };
 
 export function getCachedFaqs(businessId: string) {

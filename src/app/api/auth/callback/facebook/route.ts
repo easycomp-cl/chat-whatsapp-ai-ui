@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
-import { FACEBOOK_OAUTH_COOKIE, WHATSAPP_CALLBACK_PATH } from "@/lib/meta/embedded-signup";
+import {
+  FACEBOOK_OAUTH_CALLBACK_PATH,
+  FACEBOOK_OAUTH_COOKIE,
+  WHATSAPP_CALLBACK_PATH,
+} from "@/lib/meta/embedded-signup";
 
 const COOKIE_MAX_AGE = 10 * 60;
 
@@ -13,10 +17,11 @@ export async function GET(request: Request) {
     error: url.searchParams.get("error"),
     error_reason: url.searchParams.get("error_reason"),
     error_description: url.searchParams.get("error_description"),
+    redirect_uri: `${url.origin}${FACEBOOK_OAUTH_CALLBACK_PATH}`,
   };
 
   for (const [key, value] of Object.entries(payload)) {
-    if (value) destination.searchParams.set(key, value);
+    if (value && key !== "redirect_uri") destination.searchParams.set(key, value);
   }
 
   const response = NextResponse.redirect(destination, 302);

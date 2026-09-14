@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import { Smartphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -32,7 +34,10 @@ export function WhatsappConnectionCard({
               Canal de Meta para enviar y recibir mensajes del bot.
             </CardDescription>
           </div>
-          <Badge variant={connected ? "default" : "outline"} className={connected ? "bg-emerald-600 text-white" : undefined}>
+          <Badge
+            variant={connected ? "default" : "outline"}
+            className={connected ? "bg-emerald-600 text-white" : undefined}
+          >
             {connected ? "Conectado" : "Sin conectar"}
           </Badge>
         </div>

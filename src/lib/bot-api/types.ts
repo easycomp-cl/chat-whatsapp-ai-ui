@@ -648,15 +648,16 @@ export type WhatsappConnection = {
   waba_id?: string | null;
   business_id?: string | null;
   display_phone_number?: string | null;
+  message?: string | null;
 };
 
 export type EmbeddedSignupCompleteBody = {
   code: string;
-  waba_id?: string | null;
-  phone_number_id?: string | null;
-  business_id?: string | null;
   tenant_id: string;
-  redirect_uri: string;
+  waba_id?: string;
+  phone_number_id?: string;
+  business_id?: string;
+  redirect_uri?: string;
 };
 
 export type EmbeddedSignupCompleteResponse = WhatsappConnection & {

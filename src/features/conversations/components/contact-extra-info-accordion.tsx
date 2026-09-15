@@ -17,7 +17,7 @@ function InfoRow({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div className="grid grid-cols-[6.75rem_minmax(0,1fr)] items-start gap-x-2">
       <dt className="text-left text-xs leading-5 text-[#202022]/50">{label}</dt>
-      <dd className="text-right text-xs font-medium leading-5 text-[#202022] tabular-nums">
+      <dd className="min-w-0 text-right text-xs font-medium leading-5 wrap-break-word text-[#202022] tabular-nums">
         {value}
       </dd>
     </div>

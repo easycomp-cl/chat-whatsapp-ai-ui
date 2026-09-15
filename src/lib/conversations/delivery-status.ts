@@ -11,7 +11,7 @@ export type WhatsappDeliveryStatus =
   | "read"
   | "failed";
 
-const PENDING_GRACE_MS = 20_000;
+export const PENDING_GRACE_MS = 20_000;
 export const WHATSAPP_MESSAGE_EDIT_WINDOW_MS = 15 * 60 * 1000;
 
 const STATUS_RANK: Record<WhatsappDeliveryStatus, number> = {
@@ -64,6 +64,13 @@ export function resolveWhatsappDeliveryStatus(
 
   const raw = message.whatsapp_delivery_status;
   const fromDb = raw ? normalizeRawDeliveryStatus(raw) : null;
+  const ageMs = Date.now() - new Date(message.created_at).getTime();
+  const pendingIsStale = Number.isFinite(ageMs) && ageMs >= PENDING_GRACE_MS;
+
+  if (fromDb === "pending") {
+    return pendingIsStale ? "failed" : "pending";
+  }
+
   if (fromDb) {
     return fromDb;
   }
@@ -72,8 +79,7 @@ export function resolveWhatsappDeliveryStatus(
     return "sent";
   }
 
-  const ageMs = Date.now() - new Date(message.created_at).getTime();
-  if (ageMs < PENDING_GRACE_MS) {
+  if (!pendingIsStale) {
     return "pending";
   }
 

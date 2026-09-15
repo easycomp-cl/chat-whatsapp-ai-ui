@@ -1,7 +1,12 @@
 "use server";
 
+import { after } from "next/server";
 import { revalidatePath, revalidateTag } from "next/cache";
-import { botApi, BotApiError, BOT_API_UNAVAILABLE_MESSAGE, faqsCacheTag } from "@/lib/bot-api/client";
+import { botApi, BotApiError, BOT_API_UNAVAILABLE_MESSAGE, faqsCacheTag, getBotApiErrorMessage } from "@/lib/bot-api/client";
+import {
+  serializeActionJson,
+  type SendMessageActionResult,
+} from "@/lib/actions/action-result";
 import {
   requireAppAccess,
   requireBusinessAdmin,
@@ -22,6 +27,7 @@ import type {
   NoteInput,
   ReplyInput,
   InteractiveReplyInput,
+  TemplateReplyInput,
   EditMessageInput,
   ShopifyConnectInput,
   DeliveryRegionInput,
@@ -171,7 +177,7 @@ export async function createDeliveryRegionAction(data: DeliveryRegionInput) {
     }
     throw new Error(BOT_API_UNAVAILABLE_MESSAGE);
   }
-  revalidatePath("/app/despachos");
+  revalidatePath("/app/deliveries");
 }
 
 export async function updateDeliveryRegionAction(
@@ -185,19 +191,19 @@ export async function updateDeliveryRegionAction(
     ...(data.default_price !== undefined ? { default_price: data.default_price } : {}),
     ...(data.active !== undefined ? { active: data.active } : {}),
   });
-  revalidatePath("/app/despachos");
+  revalidatePath("/app/deliveries");
 }
 
 export async function deleteDeliveryRegionAction(id: string) {
   const profile = await requireBusinessAdmin();
   await botApi.deleteDeliveryRegion(profile.business_id!, id);
-  revalidatePath("/app/despachos");
+  revalidatePath("/app/deliveries");
 }
 
 export async function seedDeliveryCommunesAction(regionId: string) {
   const profile = await requireBusinessAdmin();
   const result = await botApi.seedDeliveryCommunes(profile.business_id!, regionId);
-  revalidatePath("/app/despachos");
+  revalidatePath("/app/deliveries");
   return result;
 }
 
@@ -218,13 +224,13 @@ export async function updateDeliveryCommuneAction(
       ...(data.active !== undefined ? { active: data.active } : {}),
     }
   );
-  revalidatePath("/app/despachos");
+  revalidatePath("/app/deliveries");
 }
 
 export async function rebuildDeliveryIndexAction() {
   const profile = await requireBusinessAdmin();
   await botApi.rebuildDeliveryIndex(profile.business_id!);
-  revalidatePath("/app/despachos");
+  revalidatePath("/app/deliveries");
   revalidatePath("/app/knowledge");
 }
 
@@ -393,10 +399,28 @@ export async function saveSettingsAction(data: SettingsInput) {
   revalidatePath("/app/dashboard");
 }
 
+const NO_WHATSAPP_CHANNEL_MESSAGE =
+  "Este negocio no tiene un canal de WhatsApp activo. Actívalo en configuración o contacta al administrador.";
+
+function sendConversationFailureMessage(error: unknown, fallback: string): string {
+  const message = getBotApiErrorMessage(error).trim();
+  if (message === "No active WhatsApp channel for this business") {
+    return NO_WHATSAPP_CHANNEL_MESSAGE;
+  }
+  return message || fallback;
+}
+
+function revalidateConversationPaths(conversationId: string) {
+  after(() => {
+    revalidatePath("/app/conversations");
+    revalidatePath(`/app/conversations/${conversationId}`);
+  });
+}
+
 export async function sendConversationReplyAction(
   conversationId: string,
   data: ReplyInput
-) {
+): Promise<SendMessageActionResult> {
   const profile = await requireAppAccess();
   let agentPhone: string | undefined;
 
@@ -419,27 +443,20 @@ export async function sendConversationReplyAction(
         : {}),
     });
 
-    revalidatePath("/app/conversations");
-    revalidatePath(`/app/conversations/${conversationId}`);
-
-    return created as Record<string, unknown> | null;
+    revalidateConversationPaths(conversationId);
+    return { ok: true, message: serializeActionJson(created) };
   } catch (error) {
-    if (error instanceof BotApiError) {
-      if (error.message === "No active WhatsApp channel for this business") {
-        throw new Error(
-          "Este negocio no tiene un canal de WhatsApp activo. Actívalo en configuración o contacta al administrador."
-        );
-      }
-      throw new Error(error.message);
-    }
-    throw error;
+    return {
+      ok: false,
+      error: sendConversationFailureMessage(error, "No se pudo enviar el mensaje"),
+    };
   }
 }
 
 export async function sendConversationMediaAction(
   conversationId: string,
   formData: FormData
-) {
+): Promise<SendMessageActionResult> {
   const profile = await requireAppAccess();
   let agentPhone: string | undefined;
 
@@ -459,28 +476,20 @@ export async function sendConversationMediaAction(
 
   try {
     const created = await botApi.sendConversationMediaMessage(conversationId, formData);
-
-    revalidatePath("/app/conversations");
-    revalidatePath(`/app/conversations/${conversationId}`);
-
-    return created;
+    revalidateConversationPaths(conversationId);
+    return { ok: true, message: serializeActionJson(created) };
   } catch (error) {
-    if (error instanceof BotApiError) {
-      if (error.message === "No active WhatsApp channel for this business") {
-        throw new Error(
-          "Este negocio no tiene un canal de WhatsApp activo. Actívalo en configuración o contacta al administrador."
-        );
-      }
-      throw new Error(error.message);
-    }
-    throw error;
+    return {
+      ok: false,
+      error: sendConversationFailureMessage(error, "No se pudo enviar el archivo"),
+    };
   }
 }
 
 export async function sendConversationInteractiveAction(
   conversationId: string,
   data: InteractiveReplyInput
-) {
+): Promise<SendMessageActionResult> {
   const profile = await requireAppAccess();
   let agentPhone: string | undefined;
 
@@ -503,25 +512,112 @@ export async function sendConversationInteractiveAction(
         : {}),
     });
 
-    revalidatePath("/app/conversations");
-    revalidatePath(`/app/conversations/${conversationId}`);
-
-    return created as Record<string, unknown> | null;
+    revalidateConversationPaths(conversationId);
+    return { ok: true, message: serializeActionJson(created) };
   } catch (error) {
-    if (error instanceof BotApiError) {
-      if (error.message === "No active WhatsApp channel for this business") {
-        throw new Error(
-          "Este negocio no tiene un canal de WhatsApp activo. Actívalo en configuración o contacta al administrador."
-        );
-      }
-      if (error.status === 404) {
-        throw new Error(
-          "El backend aún no expone el envío de mensajes interactivos desde el dashboard. Ver docs/pending/to-backend/backend-whatsapp-interactive-outbound-human.md"
-        );
-      }
-      throw new Error(error.message);
+    if (error instanceof BotApiError && error.status === 404) {
+      return {
+        ok: false,
+        error:
+          "El backend aún no expone el envío de mensajes interactivos desde el dashboard.",
+      };
     }
-    throw error;
+    return {
+      ok: false,
+      error: sendConversationFailureMessage(error, "No se pudo enviar el mensaje interactivo"),
+    };
+  }
+}
+
+const TEMPLATE_SEND_ERROR_LABEL: Record<string, string> = {
+  template_not_approved: "Esta plantilla aún no está aprobada por Meta.",
+  not_connected: "WhatsApp no está conectado. Conéctalo en Configuración.",
+  parameter_mismatch: "Completa todas las variables de la plantilla.",
+  whatsapp_send_failed: "WhatsApp rechazó el envío de la plantilla.",
+  token_expired: "El token de WhatsApp expiró. Vuelve a conectar el canal.",
+};
+
+function templateSendFailureMessage(error: unknown): string {
+  const raw = sendConversationFailureMessage(error, "No se pudo enviar la plantilla");
+  const code = raw.split(/[\s:]/)[0]?.trim();
+  if (code && TEMPLATE_SEND_ERROR_LABEL[code]) return TEMPLATE_SEND_ERROR_LABEL[code];
+  return TEMPLATE_SEND_ERROR_LABEL[raw] ?? raw;
+}
+
+export async function listWhatsappTemplatesAction(status?: "APPROVED") {
+  const profile = await requireAppAccess();
+  const businessId = profile.business_id;
+  if (!businessId) {
+    return { ok: false as const, error: "No hay un negocio asociado a tu usuario.", templates: [] };
+  }
+  try {
+    const listed = await botApi.listWhatsappTemplates(businessId, status);
+    return {
+      ok: true as const,
+      templates: listed.templates ?? [],
+      pack: listed.pack ?? null,
+      connected: listed.connected ?? null,
+    };
+  } catch (error) {
+    if (error instanceof BotApiError && error.status === 404) {
+      return {
+        ok: false as const,
+        error: "El backend aún no expone el listado de plantillas de WhatsApp.",
+        templates: [],
+      };
+    }
+    return {
+      ok: false as const,
+      error: getBotApiErrorMessage(error) || BOT_API_UNAVAILABLE_MESSAGE,
+      templates: [],
+    };
+  }
+}
+
+export async function sendConversationTemplateAction(
+  conversationId: string,
+  data: TemplateReplyInput
+): Promise<SendMessageActionResult> {
+  const profile = await requireAppAccess();
+  let agentPhone: string | undefined;
+
+  if (profile.agent_id) {
+    const supabase = await createClient();
+    const { data: agent } = await supabase
+      .from("business_agents")
+      .select("phone")
+      .eq("id", profile.agent_id)
+      .single();
+    agentPhone = agent?.phone ?? undefined;
+  }
+
+  try {
+    const created = await botApi.sendConversationTemplateMessage(conversationId, {
+      template_name: data.template_name,
+      language_code: data.language_code ?? "es",
+      body_parameters: data.body_parameters ?? [],
+      ...(data.button_parameters?.length
+        ? { button_parameters: data.button_parameters }
+        : {}),
+      ...(agentPhone ? { agent_phone: agentPhone } : {}),
+      ...(data.reply_to_message_id
+        ? { reply_to_message_id: data.reply_to_message_id }
+        : {}),
+    });
+
+    revalidateConversationPaths(conversationId);
+    return { ok: true, message: serializeActionJson(created) };
+  } catch (error) {
+    if (error instanceof BotApiError && error.status === 404) {
+      return {
+        ok: false,
+        error: "El backend aún no expone el envío de plantillas de WhatsApp.",
+      };
+    }
+    return {
+      ok: false,
+      error: templateSendFailureMessage(error),
+    };
   }
 }
 
@@ -538,19 +634,21 @@ export async function getMessageMediaUrlAction(messageId: string, expiresIn = 36
   }
 }
 
-export async function resendMessageAction(messageId: string, conversationId: string) {
+export async function resendMessageAction(
+  messageId: string,
+  conversationId: string
+): Promise<SendMessageActionResult> {
   await requireAppAccess();
 
   try {
     const updated = await botApi.resendMessage(messageId);
-    revalidatePath("/app/conversations");
-    revalidatePath(`/app/conversations/${conversationId}`);
-    return updated;
+    revalidateConversationPaths(conversationId);
+    return { ok: true, message: serializeActionJson(updated) };
   } catch (error) {
-    if (error instanceof BotApiError) {
-      throw new Error(error.message || "No se pudo reenviar el mensaje por WhatsApp");
-    }
-    throw error;
+    return {
+      ok: false,
+      error: sendConversationFailureMessage(error, "No se pudo reenviar el mensaje por WhatsApp"),
+    };
   }
 }
 
@@ -762,16 +860,24 @@ export async function signOutAction() {
   await supabase.auth.signOut();
 }
 
-export async function getSetupStatusAction(businessId: string) {
-  await requireBusinessAdmin();
+export async function loadSetupStatusAction(businessId: string) {
+  const profile = await requireBusinessAdmin();
+  if (profile.business_id !== businessId) return { ok: false as const };
+
   try {
-    return await botApi.getSetupStatus(businessId);
-  } catch (error) {
-    if (error instanceof BotApiError) {
-      throw new Error(error.message);
-    }
+    const status = await botApi.getSetupStatus(businessId);
+    return { ok: true as const, status };
+  } catch {
+    return { ok: false as const };
+  }
+}
+
+export async function getSetupStatusAction(businessId: string) {
+  const result = await loadSetupStatusAction(businessId);
+  if (!result.ok) {
     throw new Error(BOT_API_UNAVAILABLE_MESSAGE);
   }
+  return result.status;
 }
 
 export async function patchOnboardingAction(
@@ -780,12 +886,13 @@ export async function patchOnboardingAction(
 ) {
   await requireBusinessAdmin();
   try {
-    return await botApi.patchOnboarding(businessId, body);
+    const status = await botApi.patchOnboarding(businessId, body);
+    return { ok: true as const, status };
   } catch (error) {
-    if (error instanceof BotApiError) {
-      throw new Error(error.message);
-    }
-    throw new Error(BOT_API_UNAVAILABLE_MESSAGE);
+    return {
+      ok: false as const,
+      error: getBotApiErrorMessage(error) || BOT_API_UNAVAILABLE_MESSAGE,
+    };
   }
 }
 
@@ -796,13 +903,68 @@ export async function completeOnboardingAction(
   await requireBusinessAdmin();
   try {
     const result = await botApi.completeOnboarding(businessId, body);
-    revalidatePath("/app/dashboard");
-    revalidatePath("/app/settings");
-    return result;
+    after(() => {
+      revalidatePath("/app/dashboard");
+      revalidatePath("/app/settings");
+    });
+    return { ok: true as const, result };
   } catch (error) {
-    if (error instanceof BotApiError) {
-      throw new Error(error.message);
+    return {
+      ok: false as const,
+      error: getBotApiErrorMessage(error) || BOT_API_UNAVAILABLE_MESSAGE,
+    };
+  }
+}
+
+export async function sendAdminPhoneVerificationAction(businessId: string, phone: string) {
+  await requireBusinessAdmin();
+  try {
+    const result = await botApi.sendAdminPhoneVerification(businessId, phone);
+    return { ok: true as const, result };
+  } catch (error) {
+    return {
+      ok: false as const,
+      error: getBotApiErrorMessage(error) || BOT_API_UNAVAILABLE_MESSAGE,
+    };
+  }
+}
+
+export async function confirmAdminPhoneVerificationAction(
+  businessId: string,
+  phone: string,
+  code: string
+) {
+  await requireBusinessAdmin();
+  try {
+    const result = await botApi.confirmAdminPhoneVerification(businessId, phone, code);
+    return { ok: true as const, result };
+  } catch (error) {
+    return {
+      ok: false as const,
+      error: getBotApiErrorMessage(error) || BOT_API_UNAVAILABLE_MESSAGE,
+    };
+  }
+}
+
+export async function provisionWhatsappStandardTemplatesAction() {
+  const profile = await requireBusinessAdmin();
+  const businessId = profile.business_id!;
+  try {
+    const result = await botApi.provisionWhatsappStandardTemplates(businessId);
+    after(() => {
+      revalidatePath("/app/templates");
+    });
+    return { ok: true as const, result };
+  } catch (error) {
+    if (error instanceof BotApiError && (error.status === 404 || error.status === 501)) {
+      return {
+        ok: false as const,
+        error: "Aún no se pueden crear las plantillas. Reintenta en unos minutos.",
+      };
     }
-    throw new Error(BOT_API_UNAVAILABLE_MESSAGE);
+    return {
+      ok: false as const,
+      error: getBotApiErrorMessage(error) || BOT_API_UNAVAILABLE_MESSAGE,
+    };
   }
 }

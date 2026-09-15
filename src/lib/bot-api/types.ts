@@ -663,3 +663,54 @@ export type EmbeddedSignupCompleteBody = {
 export type EmbeddedSignupCompleteResponse = WhatsappConnection & {
   persisted?: boolean;
 };
+
+export type WhatsappTemplateStatus =
+  | "PENDING"
+  | "APPROVED"
+  | "REJECTED"
+  | "NOT_CREATED"
+  | "PAUSED"
+  | "DISABLED";
+
+export type WhatsappTemplateCategory = "UTILITY" | "AUTHENTICATION" | "MARKETING";
+
+export type WhatsappTemplateParameterField = {
+  component: "body" | "header" | "button" | string;
+  index: number;
+  label: string;
+  example?: string | null;
+};
+
+export type WhatsappTemplate = {
+  name: string;
+  language?: string;
+  category?: WhatsappTemplateCategory | string;
+  status: WhatsappTemplateStatus | string;
+  quality?: string | null;
+  bodyPreview?: string | null;
+  body_preview?: string | null;
+  variable_count?: number;
+  parameter_fields?: WhatsappTemplateParameterField[];
+  in_pack?: boolean;
+  product_use?: string | null;
+  meta_template_id?: string | null;
+  last_error?: string | null;
+  updated_at?: string | null;
+  rejectionReason?: string | null;
+  rejection_reason?: string | null;
+};
+
+export type WhatsappTemplatesResponse = {
+  templates: WhatsappTemplate[];
+  pack?: string;
+  connected?: boolean;
+};
+
+export type WhatsappTemplatesProvisionResponse = {
+  pack?: string;
+  created?: string[];
+  skipped?: string[];
+  pending?: string[];
+  failed?: string[];
+  ok?: boolean;
+};

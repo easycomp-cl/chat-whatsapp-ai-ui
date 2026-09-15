@@ -19,6 +19,7 @@ import {
   ContactRound,
   Workflow,
   UserCircle,
+  LayoutTemplate,
 } from "lucide-react";
 import {
   Sidebar,
@@ -36,8 +37,9 @@ import {
 import type { UserRole } from "@/types/database.types";
 import { roleMatchesNav } from "@/lib/roles/labels";
 import { AppHeader } from "@/components/layout/app-header";
-import { usePendingMessages } from "@/features/conversations/context/pending-messages-context";
+import { PendingMessagesProvider, usePendingMessages } from "@/features/conversations/context/pending-messages-context";
 import { OnboardingDevTrigger } from "@/features/onboarding/components/onboarding-dev-trigger";
+import { OnboardingRequiredGuard } from "@/features/onboarding/components/onboarding-required-guard";
 import { Bell } from "lucide-react";
 
 import { TEAM_MODULE, CLIENTS_MODULE } from "@/lib/roles/labels";
@@ -45,20 +47,21 @@ import { TEAM_MODULE, CLIENTS_MODULE } from "@/lib/roles/labels";
 const collaboratorRoles = ["BUSINESS_ADMIN", "COLLABORATOR", "AGENT"] as UserRole[];
 
 const navItems = [
-  { href: "/app/perfil", label: "Mi Perfil", icon: UserCircle, roles: collaboratorRoles },
+  { href: "/app/profile", label: "Mi Perfil", icon: UserCircle, roles: collaboratorRoles },
   { href: "/app/dashboard", label: "Dashboard", icon: LayoutDashboard, roles: collaboratorRoles },
   { href: "/app/conversations", label: "Conversaciones", icon: MessageSquare, roles: collaboratorRoles },
-  { href: "/app/flujos", label: "Flujos", icon: Workflow, roles: ["BUSINESS_ADMIN"] as UserRole[] },
+  { href: "/app/templates", label: "Mis plantillas", icon: LayoutTemplate, roles: ["BUSINESS_ADMIN"] as UserRole[] },
+  { href: "/app/flows", label: "Flujos", icon: Workflow, roles: ["BUSINESS_ADMIN"] as UserRole[] },
   { href: "/app/faqs", label: "Preguntas frecuentes", icon: HelpCircle, roles: ["BUSINESS_ADMIN"] as UserRole[] },
-  { href: "/app/importar-chat", label: "Importar chat", icon: MessageCirclePlus, roles: ["BUSINESS_ADMIN"] as UserRole[] },
+  { href: "/app/import-chat", label: "Importar chat", icon: MessageCirclePlus, roles: ["BUSINESS_ADMIN"] as UserRole[] },
   { href: "/app/knowledge", label: "Base de conocimiento", icon: BookOpen, roles: ["BUSINESS_ADMIN"] as UserRole[] },
   { href: "/app/catalog", label: "Catálogo", icon: ShoppingBag, roles: ["BUSINESS_ADMIN"] as UserRole[] },
-  { href: "/app/despachos", label: "Despachos", icon: Truck, roles: ["BUSINESS_ADMIN"] as UserRole[] },
+  { href: "/app/deliveries", label: "Despachos", icon: Truck, roles: ["BUSINESS_ADMIN"] as UserRole[] },
   { href: "/app/users", label: TEAM_MODULE.navLabel, icon: Users, roles: ["BUSINESS_ADMIN"] as UserRole[] },
-  { href: "/app/clientes", label: CLIENTS_MODULE.navLabel, icon: ContactRound, roles: collaboratorRoles },
+  { href: "/app/customers", label: CLIENTS_MODULE.navLabel, icon: ContactRound, roles: collaboratorRoles },
   { href: "/app/usage", label: "Uso del plan", icon: BarChart3, roles: ["BUSINESS_ADMIN"] as UserRole[] },
   { href: "/app/settings", label: "Configuración", icon: Settings, roles: ["BUSINESS_ADMIN"] as UserRole[] },
-  { href: "/app/preferencias", label: "Notificaciones", icon: Bell, roles: ["COLLABORATOR", "AGENT"] as UserRole[] },
+  { href: "/app/preferences", label: "Notificaciones", icon: Bell, roles: ["COLLABORATOR", "AGENT"] as UserRole[] },
 ];
 
 type AppShellProps = {
@@ -136,6 +139,7 @@ export function AppShell({
   const items = navItems.filter((item) => roleMatchesNav(userRole, item.roles));
 
   return (
+    <PendingMessagesProvider businessId={businessId}>
     <SidebarProvider>
       <Sidebar className="[&_[data-slot=sidebar-inner]]:shadow-xl">
         <SidebarHeader className="border-b border-sidebar-border px-3 py-4">
@@ -170,7 +174,7 @@ export function AppShell({
           <OnboardingDevTrigger businessId={businessId} businessName={businessName} />
         </SidebarContent>
       </Sidebar>
-      <SidebarInset className="bg-[var(--chat-surface)]">
+      <SidebarInset className="min-w-0 overflow-x-hidden bg-[var(--chat-surface)]">
         <AppHeader
           businessName={businessName}
           botEnabled={botEnabled}
@@ -178,6 +182,10 @@ export function AppShell({
         />
         <main className="flex-1 p-6">{children}</main>
       </SidebarInset>
+      {userRole === "BUSINESS_ADMIN" && (
+        <OnboardingRequiredGuard businessId={businessId} businessName={businessName} />
+      )}
     </SidebarProvider>
+    </PendingMessagesProvider>
   );
 }

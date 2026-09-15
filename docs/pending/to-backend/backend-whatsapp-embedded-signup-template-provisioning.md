@@ -9,7 +9,9 @@
 ## Resumen
 
 1. **Embedded Signup:** el admin del negocio autoriza a easycomp-chat-bot-manager; guardamos `waba_id`, `phone_number_id`, tokens.
-2. **Provisión de plantillas:** tras conectar (o al completar onboarding), el backend crea un pack UTILITY en la WABA del negocio vía Graph API y persiste estado hasta aprobación Meta.
+2. **Provisión de plantillas:** al conectar WABA, job automático crea el **pack estándar** (avisos, recontacto fuera de 24 h, OTP del responsable). Meta las deja en `PENDING` hasta aprobarlas.
+
+Pack y copy: [backend-whatsapp-standard-template-pack.md](./backend-whatsapp-standard-template-pack.md).
 
 **Envío** de plantillas ya aprobadas: ver [backend-whatsapp-message-templates.md](./backend-whatsapp-message-templates.md).
 
@@ -143,11 +145,9 @@ Respuesta: `{ "id": "...", "status": "PENDING", "category": "UTILITY" }`
 
 ### Pack inicial (constante en backend)
 
-Definir array `DEFAULT_UTILITY_TEMPLATES` con los 3 templates del [plan maestro](../whatsapp-meta-plantillas-plan-maestro.md):
+Definir `STANDARD_TEMPLATE_PACK` (no solo 3 UTILITY). Ver [backend-whatsapp-standard-template-pack.md](./backend-whatsapp-standard-template-pack.md).
 
-- `seguimiento_asesor_es`
-- `pedido_actualizacion_es`
-- `recordatorio_cita_es`
+Incluye: `verificar_responsable_es`, `aviso_handoff_es`, `seguimiento_asesor_es`, `pedido_actualizacion_es`, `recordatorio_cita_es`, `reabrir_conversacion_es`.
 
 ### API sugerida
 
@@ -191,7 +191,7 @@ Payload típico incluye `message_template_id`, `event` (`APPROVED` | `REJECTED`)
 
 - Solo `BUSINESS_ADMIN` (o rol equivalente) puede conectar WABA y provisionar plantillas.
 - No crear duplicado si `name` + `language` ya existe en WABA (consultar Meta antes o capturar error).
-- Rate limit Meta: máx. **100 plantillas / hora / WABA** — el pack de 3 es seguro.
+- Rate limit Meta: máx. **100 plantillas / hora / WABA** — el pack estándar (6) es seguro.
 - Categoría UTILITY: validar texto en backend antes de POST (sin palabras promo flaggeadas).
 
 ---
@@ -210,9 +210,9 @@ Payload típico incluye `message_template_id`, `event` (`APPROVED` | `REJECTED`)
 ## Prueba E2E
 
 1. Negocio nuevo completa Embedded Signup.
-2. `POST .../templates/provision-defaults` → 3× `PENDING`.
+2. `POST .../templates/provision-defaults` (o job al signup) → pack estándar en `PENDING`.
 3. Esperar webhook o poll → `APPROVED`.
-4. `GET .../templates?status=APPROVED` → 3 plantillas.
+4. `GET .../templates?status=APPROVED` → plantillas del pack.
 5. Enviar una con `POST .../conversations/:id/messages/template` (spec hermana).
 
 ---

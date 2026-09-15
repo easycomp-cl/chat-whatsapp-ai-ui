@@ -43,7 +43,7 @@ Content-Type: application/json
 ## Variable de entorno (UI)
 
 ```env
-NEXT_PUBLIC_DEMO_REQUEST_API_URL=https://api.conversai.easycomp.cl/demo-requests
+NEXT_PUBLIC_DEMO_REQUEST_API_URL=https://api-chatbotmanager.easycomp.cl/demo-requests
 ```
 
 Cuando esté disponible, `submitDemoRequest()` en `src/lib/landing/demo-request.ts` enviará el POST automáticamente.

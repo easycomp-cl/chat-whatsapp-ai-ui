@@ -154,7 +154,7 @@ Tabla `CustomerProfile` 1:1 — más normalizada pero más joins; solo vale la p
 
 1. Select **Región** — solo regiones activas del negocio en Despachos.
 2. Select **Comuna** — comunas activas de la región elegida (cascada).
-3. Si el negocio no tiene regiones en Despachos: mensaje + enlace a `/app/despachos` (“Configura zonas de despacho primero”).
+3. Si el negocio no tiene regiones en Despachos: mensaje + enlace a `/app/deliveries` (“Configura zonas de despacho primero”).
 4. Línea de calle/depto/notas sigue siendo texto libre.
 
 **Persistencia:** guardar `deliveryN_region` y `deliveryN_commune` como **nombre** (string) alineado al catálogo Despachos; opcional v1.1 guardar `commune_id` para precios de envío futuros.
@@ -356,7 +356,7 @@ Todas las decisiones de producto para v1 están cerradas (§3.6–§3.8). Pendie
 
 ### Referencia: integración Despachos
 
-El módulo **Despachos** (`/app/despachos`) ya define por negocio qué **regiones y comunas** atiende. El formulario de dirección del contacto reutiliza ese catálogo vía `listDeliveryRegions(businessId)` — no texto libre en comuna/región.
+El módulo **Despachos** (`/app/deliveries`) ya define por negocio qué **regiones y comunas** atiende. El formulario de dirección del contacto reutiliza ese catálogo vía `listDeliveryRegions(businessId)` — no texto libre en comuna/región.
 
 ---
 

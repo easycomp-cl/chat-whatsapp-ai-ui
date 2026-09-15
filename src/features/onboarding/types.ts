@@ -32,6 +32,7 @@ export type OnboardingHumanContact = {
   admin_name: string;
   admin_phone: string;
   notify_on_handoff: boolean;
+  admin_phone_verified_at?: string | null;
 };
 
 export type OnboardingBotIdentity = {

@@ -10,6 +10,7 @@ import {
   isDocumentContentType,
   isImageContentType,
   isInteractiveContentType,
+  isTemplateContentType,
   parseMessageMedia,
 } from "@/lib/conversations/message-media";
 
@@ -129,6 +130,15 @@ export function getReplyPreviewText(message: Message): string {
     }
     const text = stripWhatsAppFormatting(message.content_text?.trim() ?? "");
     return text ? `📋 ${text}` : "📋 Opciones interactivas";
+  }
+
+  if (isTemplateContentType(message.content_type)) {
+    const text = stripWhatsAppFormatting(message.content_text?.trim() ?? "");
+    if (text) {
+      const preview = text.length > 120 ? `${text.slice(0, 120)}…` : text;
+      return `📄 ${preview}`;
+    }
+    return "📄 Plantilla";
   }
 
   if (isAudioContentType(message.content_type)) {

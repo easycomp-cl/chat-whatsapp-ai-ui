@@ -48,7 +48,7 @@ export function FlowRunBanner({ run, onCancelled }: FlowRunBannerProps) {
           size="sm"
           variant="ghost"
           className="h-8 text-xs"
-          render={<Link href={`/app/flujos/revisiones`} />}
+          render={<Link href={`/app/flows/reviews`} />}
         >
           Revisiones
         </Button>

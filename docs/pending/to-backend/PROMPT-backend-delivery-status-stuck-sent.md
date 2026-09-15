@@ -52,7 +52,7 @@ Doc vigente para UI: `docs/to-front/whatsapp-delivery-status-ui.md`
    ```
 
 3. **Worker ECS**
-   - ¿El servicio/worker BullMQ está corriendo en el mismo entorno que api.conversai.easycomp.cl?
+   - ¿El servicio/worker BullMQ está corriendo en el mismo entorno que api-chatbotmanager.easycomp.cl?
    - ¿Los jobs `status:{wamid}:{status}:{timestamp}` se encolan y completan sin error?
 
 4. **Webhook Meta**

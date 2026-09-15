@@ -40,7 +40,10 @@ function clampContactWidth(
   listWidth: number
 ) {
   const maxByContainer = containerWidth - listWidth - INBOX_CHAT_MIN_WIDTH - 16;
-  const max = Math.min(INBOX_CONTACT_MAX_WIDTH, Math.max(INBOX_CONTACT_MIN_WIDTH, maxByContainer));
+  if (maxByContainer < INBOX_CONTACT_MIN_WIDTH) {
+    return Math.max(0, maxByContainer);
+  }
+  const max = Math.min(INBOX_CONTACT_MAX_WIDTH, maxByContainer);
   return Math.min(max, Math.max(INBOX_CONTACT_MIN_WIDTH, width));
 }
 
@@ -69,6 +72,12 @@ export function InboxColumnLayout({
   const contactColumnRendered = contactPanelAvailable && contactColumnMounted;
   const contactColumnTakingSpace = contactColumnOpen;
   const isContactColumnClosing = contactColumnMounted && !contactColumnAnimating;
+  const layoutRef = useRef({
+    listWidth,
+    contactWidth,
+    contactColumnTakingSpace,
+  });
+  layoutRef.current = { listWidth, contactWidth, contactColumnTakingSpace };
   const showContactOverlayTrigger = contactPanelExists && !isXl;
   const isListCompact =
     isDesktop && listWidth < INBOX_LIST_COMPACT_THRESHOLD;
@@ -90,6 +99,30 @@ export function InboxColumnLayout({
       contactCollapsed,
     });
   }, [hydrated, listWidth, contactWidth, contactCollapsed]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    const el = containerRef.current;
+    if (!el) return;
+
+    const fitColumns = () => {
+      const containerWidth = el.clientWidth;
+      const {
+        listWidth: list,
+        contactWidth: contact,
+        contactColumnTakingSpace: visible,
+      } = layoutRef.current;
+      const nextList = clampListWidth(list, containerWidth, contact, visible);
+      const nextContact = clampContactWidth(contact, containerWidth, nextList);
+      if (nextList !== list) setListWidth(nextList);
+      if (nextContact !== contact) setContactWidth(nextContact);
+    };
+
+    fitColumns();
+    const observer = new ResizeObserver(fitColumns);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [hydrated, contactColumnTakingSpace]);
 
   useEffect(() => {
     if (isXl && contactOverlayOpen) {
@@ -263,13 +296,13 @@ export function InboxColumnLayout({
             )}
             <div
               className={cn(
-                "h-full min-h-0 overflow-hidden bg-[#f9fafc]",
+                "h-full min-h-0 min-w-0 overflow-hidden bg-[#f9fafc]",
                 isContactColumnClosing
                   ? "absolute top-0 right-0 z-20 animate-inbox-contact-slide-out shadow-[-8px_0_32px_rgba(32,32,34,0.12)]"
                   : "relative shrink-0",
                 contactColumnAnimating && !isContactColumnClosing && "animate-inbox-contact-slide-in"
               )}
-              style={{ width: contactWidth }}
+              style={{ width: contactWidth, maxWidth: "100%" }}
             >
               {contactPanel}
             </div>

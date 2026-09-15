@@ -113,7 +113,7 @@ export async function setCustomerFrequentAction(
     });
     revalidatePath("/app/conversations");
     revalidatePath(`/app/conversations/${conversationId}`);
-    revalidatePath("/app/clientes");
+    revalidatePath("/app/customers");
     return { ok: true as const, persisted: true as const, customer };
   } catch (error) {
     if (error instanceof BotApiError && (error.status === 404 || error.status === 501)) {

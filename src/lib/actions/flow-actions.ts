@@ -81,7 +81,7 @@ export async function createFlowAction(data: CreateFlowInput) {
       created_by_admin_id: adminId,
       template: data.template,
     });
-    revalidatePath("/app/flujos");
+    revalidatePath("/app/flows");
     return flow;
   } catch (error) {
     if (error instanceof BotApiError) throw new Error(error.message);
@@ -95,8 +95,8 @@ export async function archiveFlowAction(flowId: string) {
   const adminId = await resolveFlowAdminId(profile);
   try {
     await botApi.deleteFlow(profile.business_id!, flowId, adminId);
-    revalidatePath("/app/flujos");
-    revalidatePath(`/app/flujos/${flowId}`);
+    revalidatePath("/app/flows");
+    revalidatePath(`/app/flows/${flowId}`);
   } catch (error) {
     if (error instanceof BotApiError) throw new Error(error.message);
     if (error instanceof Error) throw error;
@@ -112,7 +112,7 @@ export async function createFlowVersionFromSourceAction(flowId: string, sourceVe
       created_by_admin_id: adminId,
       source_version_id: sourceVersionId,
     });
-    revalidatePath(`/app/flujos/${flowId}`);
+    revalidatePath(`/app/flows/${flowId}`);
     return version;
   } catch (error) {
     if (error instanceof BotApiError) throw new Error(error.message);
@@ -128,8 +128,8 @@ export async function publishFlowVersionAction(flowId: string, versionId: string
     await botApi.publishFlowVersion(profile.business_id!, flowId, versionId, {
       published_by_admin_id: adminId,
     });
-    revalidatePath("/app/flujos");
-    revalidatePath(`/app/flujos/${flowId}`);
+    revalidatePath("/app/flows");
+    revalidatePath(`/app/flows/${flowId}`);
   } catch (error) {
     if (error instanceof BotApiError) throw new Error(error.message);
     throw new Error(BOT_API_UNAVAILABLE_MESSAGE);
@@ -148,7 +148,7 @@ export async function updateFlowVersionAction(
       graph_json: graph,
       updated_by_admin_id: adminId,
     });
-    revalidatePath(`/app/flujos/${flowId}`);
+    revalidatePath(`/app/flows/${flowId}`);
     return version;
   } catch (error) {
     if (error instanceof BotApiError) throw new Error(error.message);
@@ -186,7 +186,7 @@ export async function upsertFlowWebhookIntegrationAction(
       events: data.events,
       rotate_secret: data.rotate_secret,
     });
-    revalidatePath(`/app/flujos`);
+    revalidatePath(`/app/flows`);
     return result;
   } catch (error) {
     if (error instanceof BotApiError) throw new Error(error.message);
@@ -201,7 +201,7 @@ export async function retryFlowWebhookDeliveryAction(deliveryId: string) {
       profile.business_id!,
       deliveryId
     );
-    revalidatePath("/app/flujos");
+    revalidatePath("/app/flows");
     return delivery;
   } catch (error) {
     if (error instanceof BotApiError) throw new Error(error.message);
@@ -221,7 +221,7 @@ export async function resolveFlowReviewAction(
       notes: data.notes,
       reviewer_admin_id: adminId,
     });
-    revalidatePath("/app/flujos/revisiones");
+    revalidatePath("/app/flows/reviews");
     revalidatePath("/app/conversations");
     return result;
   } catch (error) {
@@ -254,7 +254,7 @@ export async function cancelFlowRunAction(runId: string) {
   try {
     const result = await botApi.cancelFlowRun(profile.business_id!, runId);
     revalidatePath("/app/conversations");
-    revalidatePath("/app/flujos");
+    revalidatePath("/app/flows");
     return result;
   } catch (error) {
     if (error instanceof BotApiError) throw new Error(error.message);

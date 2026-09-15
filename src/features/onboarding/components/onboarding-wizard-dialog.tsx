@@ -22,7 +22,7 @@ import { StepOfferings } from "./steps/step-offerings";
 import { StepOperations } from "./steps/step-operations";
 import { StepHumanContact } from "./steps/step-human-contact";
 import { StepBotIdentity } from "./steps/step-bot-identity";
-import type { OnboardingDraft, SetupStatus } from "../types";
+import type { OnboardingDraft } from "../types";
 import { WIZARD_STEPS } from "../types";
 import {
   buildStepPatch,
@@ -31,7 +31,6 @@ import {
   validateStep,
 } from "../utils";
 import { validateScheduleString } from "../schedule-utils";
-import { TWC_SAMPLE_OFFERINGS } from "../twc-sample-data";
 import { SUPPORT_EMAIL } from "@/lib/brand/constants";
 import { WHATSAPP_ONBOARDING_PATH } from "@/lib/meta/embedded-signup";
 
@@ -63,13 +62,15 @@ type OnboardingWizardDialogProps = {
   businessName?: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Si es true, no se puede cerrar hasta completar el wizard. */
+  required?: boolean;
 };
 
 export function OnboardingWizardDialog({
   businessId,
-  businessName,
   open,
   onOpenChange,
+  required = false,
 }: OnboardingWizardDialogProps) {
   const router = useRouter();
   const [step, setStep] = useState(1);
@@ -86,72 +87,28 @@ export function OnboardingWizardDialog({
   const loadStatus = useCallback(async () => {
     setLoading(true);
     setError(null);
+    setDraft(createEmptyDraft());
+    setCompletedSteps(new Set());
+    setProgressPercent(0);
     try {
-      const status = await getSetupStatusAction(businessId);
-      applyStatus(status);
+      await getSetupStatusAction(businessId);
       setApiAvailable(true);
     } catch {
       setApiAvailable(false);
-      setDraft(withBusinessNameFallback(createEmptyDraft()));
-      setProgressPercent(0);
-      setCompletedSteps(new Set());
     } finally {
       setLoading(false);
     }
   }, [businessId]);
 
-  function withBusinessNameFallback(draft: OnboardingDraft): OnboardingDraft {
-    if (draft.identity?.business_name?.trim() || !businessName?.trim()) {
-      return draft;
-    }
-    return {
-      ...draft,
-      identity: { ...draft.identity, business_name: businessName.trim() },
-    };
-  }
-
-  function applyStatus(status: SetupStatus) {
-    let merged = mergeDraft(createEmptyDraft(), status.draft ?? {});
-    merged = withBusinessNameFallback(merged);
-
-    if (process.env.NODE_ENV === "development") {
-      const offerings = merged.offerings ?? [];
-      const hasContent = offerings.some((o) => o.name.trim());
-      if (!hasContent) {
-        merged.offerings = TWC_SAMPLE_OFFERINGS.map((o) => ({ ...o }));
-      }
-    }
-
-    setDraft(merged);
-    setProgressPercent(status.progress_percent);
-
-    const done = new Set<number>();
-    const checklistMap: Record<number, keyof SetupStatus["checklist"]> = {
-      1: "identity",
-      2: "offerings",
-      3: "operations",
-      4: "human_contact",
-      5: "bot_identity",
-    };
-    for (const [stepNum, key] of Object.entries(checklistMap)) {
-      if (status.checklist[key]?.done) done.add(Number(stepNum));
-    }
-    setCompletedSteps(done);
-
-    if (status.completed_at) {
-      setStep(5);
-    } else {
-      const firstIncomplete = WIZARD_STEPS.find((s) => !done.has(s.id));
-      setStep(firstIncomplete?.id ?? 1);
-    }
-  }
-
   useEffect(() => {
-    if (open) {
-      setStep(1);
-      setDirection("forward");
-      void loadStatus();
-    }
+    if (!open) return;
+    setStep(1);
+    setDirection("forward");
+    setDraft(createEmptyDraft());
+    setCompletedSteps(new Set());
+    setProgressPercent(0);
+    setError(null);
+    void loadStatus();
   }, [open, loadStatus]);
 
   function updateDraft(patch: Partial<OnboardingDraft>) {
@@ -202,13 +159,13 @@ export function OnboardingWizardDialog({
 
     startTransition(async () => {
       try {
-        if (apiAvailable) {
-          const status = await patchOnboardingAction(businessId, patch);
-          applyStatus(status);
-        } else {
-          setCompletedSteps((prev) => new Set([...prev, step]));
-          setProgressPercent(Math.round(((step) / WIZARD_STEPS.length) * 100));
+        const patched = await patchOnboardingAction(businessId, patch);
+        if (!patched.ok) {
+          throw new Error(patched.error);
         }
+        setApiAvailable(true);
+        setCompletedSteps((prev) => new Set([...prev, step]));
+        setProgressPercent(patched.status.progress_percent);
 
         if (step < 5) {
           setDirection("forward");
@@ -218,64 +175,50 @@ export function OnboardingWizardDialog({
           await handleComplete();
         }
       } catch (err) {
+        setApiAvailable(false);
         const message = err instanceof Error ? err.message : "Error al guardar";
-        if (process.env.NODE_ENV === "development") {
-          toast.warning("API no disponible — avanzando en modo local", {
-            description: message,
-          });
-          setApiAvailable(false);
-          setCompletedSteps((prev) => new Set([...prev, step]));
-          if (step < 5) {
-            setDirection("forward");
-            setStep((s) => s + 1);
-          } else {
-            toast.success("¡Configuración completada en modo local!");
-            onOpenChange(false);
-          }
-        } else {
-          setError(message);
-        }
+        setError(message);
       }
     });
   }
 
   async function handleComplete() {
     try {
-      if (apiAvailable) {
-        await completeOnboardingAction(businessId, {
-          enable_bot: true,
-          handoff_on_low_confidence: true,
-        });
-        toast.success("¡Tu asistente está listo!", {
-          description: "Ahora conecta WhatsApp Business con Meta.",
-        });
-      } else {
-        toast.success("¡Configuración completada en modo local!", {
-          description: "Conecta el backend para activar el asistente.",
-        });
+      const completed = await completeOnboardingAction(businessId, {
+        enable_bot: true,
+        handoff_on_low_confidence: true,
+      });
+      if (!completed.ok) {
+        throw new Error(completed.error);
       }
+      toast.success("¡Tu asistente está listo!", {
+        description: "Ahora conecta WhatsApp Business con Meta.",
+      });
       onOpenChange(false);
       router.push(WHATSAPP_ONBOARDING_PATH);
     } catch (err) {
+      setApiAvailable(false);
       const message = err instanceof Error ? err.message : "Error al activar";
-      if (process.env.NODE_ENV === "development") {
-        toast.warning("No se pudo completar en el backend", { description: message });
-        onOpenChange(false);
-        router.push(WHATSAPP_ONBOARDING_PATH);
-      } else {
-        setError(message);
-      }
+      setError(message);
     }
   }
 
+  const preventDismiss = required && apiAvailable;
   const stepMeta = STEP_TITLES[step];
   const isLastStep = step === 5;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog
+      open={open}
+      disablePointerDismissal={preventDismiss}
+      onOpenChange={(next) => {
+        if (!next && preventDismiss) return;
+        onOpenChange(next);
+      }}
+    >
       <DialogContent
         className="flex max-h-[min(90vh,720px)] max-w-[min(960px,calc(100%-2rem))] flex-col gap-0 overflow-hidden p-0 sm:max-w-[min(960px,calc(100%-2rem))]"
-        showCloseButton
+        showCloseButton={!preventDismiss}
       >
         <DialogTitle className="sr-only">Configuración inicial del negocio</DialogTitle>
         <DialogDescription className="sr-only">
@@ -343,7 +286,11 @@ export function OnboardingWizardDialog({
                   {step === 2 && <StepOfferings draft={draft} onChange={updateDraft} />}
                   {step === 3 && <StepOperations draft={draft} onChange={updateDraft} scheduleError={scheduleError} />}
                   {step === 4 && (
-                    <StepHumanContact draft={draft} onChange={updateDraft} />
+                    <StepHumanContact
+                      businessId={businessId}
+                      draft={draft}
+                      onChange={updateDraft}
+                    />
                   )}
                   {step === 5 && (
                     <StepBotIdentity draft={draft} onChange={updateDraft} />
@@ -354,13 +301,6 @@ export function OnboardingWizardDialog({
               {error && (
                 <p className="mt-4 animate-in fade-in-0 text-sm text-destructive">
                   {error}
-                </p>
-              )}
-
-              {!apiAvailable && process.env.NODE_ENV === "development" && (
-                <p className="mt-4 rounded-lg border border-[#ff7a55]/30 bg-[#ff7a55]/5 px-3 py-2 text-xs text-[#ff7a55]">
-                  Modo desarrollo: el backend no respondió. Los datos se guardan solo en
-                  memoria.
                 </p>
               )}
             </div>

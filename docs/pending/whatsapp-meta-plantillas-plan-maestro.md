@@ -216,7 +216,7 @@ Usar como definición del “pack inicial” en backend:
 | [whatsapp-service-window-and-templates.md](./whatsapp-service-window-and-templates.md) | Ventana 24 h + UI actual |
 | [whatsapp-cta-templates-roadmap.md](./whatsapp-cta-templates-roadmap.md) | Roadmap CTA y plantillas |
 | [to-backend/backend-whatsapp-message-templates.md](./to-backend/backend-whatsapp-message-templates.md) | API listar + enviar |
-| [to-backend/backend-whatsapp-embedded-signup-template-provisioning.md](./to-backend/backend-whatsapp-embedded-signup-template-provisioning.md) | Conectar Meta + crear plantillas |
+| [to-backend/backend-whatsapp-standard-template-pack.md](./to-backend/backend-whatsapp-standard-template-pack.md) | Pack auto al conectar WABA |
 | [onboarding-setup-wizard-ui.md](./onboarding-setup-wizard-ui.md) | Wizard; CTA “Conectar WhatsApp” pendiente |
 
 ## Referencias Meta

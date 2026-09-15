@@ -2,7 +2,9 @@
 
 ## Comportamiento visible
 
-- Indicador compacto junto a **Vista previa WhatsApp**: icono ventana + cuenta regresiva `HH:MM:SS` con tooltip explicativo.
+- Indicador compacto junto a **Vista previa WhatsApp**: icono ventana + cuenta regresiva `HH:MM:SS` = tiempo **restante** de las 24 h (no es la hora del reloj).
+- Tooltip: «Quedan HH:MM:SS de las 24 h…». Mientras no esté en `00:00:00` se puede enviar texto libre.
+- No se muestra «ventana de 24 h cerrada» si el contador todavía tiene tiempo. Si Meta/backend rechaza el envío con un error de ventana, el toast aclara que en el dashboard la ventana sigue abierta.
 
 ## Archivos
 

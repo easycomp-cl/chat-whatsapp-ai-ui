@@ -138,7 +138,7 @@ function HistoryRow({ job }: { job: ImportJob }) {
       <TableCell className="text-right">
         <div className="flex justify-end gap-1">
           <Link
-            href={`/app/importar-chat/${job.id}`}
+            href={`/app/import-chat/${job.id}`}
             className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
           >
             {job.status === "completed" ? "Revisar" : "Ver"}

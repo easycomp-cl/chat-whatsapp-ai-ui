@@ -43,7 +43,7 @@ export function MessageEditableText({
   }
 
   return (
-    <p className="leading-relaxed whitespace-pre-wrap">
+    <p className="leading-relaxed whitespace-pre-wrap wrap-anywhere">
       <WhatsAppFormattedText text={message.content_text} />
     </p>
   );

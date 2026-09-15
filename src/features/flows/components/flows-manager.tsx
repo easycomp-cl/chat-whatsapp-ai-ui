@@ -57,7 +57,7 @@ function CreateFlowDialog({
         onOpenChange(false);
         setName("");
         setDescription("");
-        router.push(`/app/flujos/${flow.id}`);
+        router.push(`/app/flows/${flow.id}`);
         router.refresh();
       } catch (error) {
         toast.error(error instanceof Error ? error.message : "Error al crear flujo");
@@ -144,7 +144,7 @@ export function FlowsManager({
             <Plus className="size-4" />
             Nuevo flujo
           </Button>
-          <Button variant="outline" render={<Link href="/app/flujos/revisiones" />}>
+          <Button variant="outline" render={<Link href="/app/flows/reviews" />}>
             <ClipboardList className="size-4" />
             Revisiones
           </Button>
@@ -180,7 +180,7 @@ export function FlowsManager({
                 <TableRow key={flow.id}>
                   <TableCell>
                     <Link
-                      href={`/app/flujos/${flow.id}`}
+                      href={`/app/flows/${flow.id}`}
                       className="font-medium hover:text-[#7678ed]"
                     >
                       {flow.name}
@@ -207,7 +207,7 @@ export function FlowsManager({
                       <Button
                         size="sm"
                         variant="outline"
-                        render={<Link href={`/app/flujos/${flow.id}`} />}
+                        render={<Link href={`/app/flows/${flow.id}`} />}
                       >
                         Abrir
                       </Button>

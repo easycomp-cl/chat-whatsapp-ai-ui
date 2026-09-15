@@ -11,7 +11,7 @@
 - En el panel derecho de una conversación, las notas aparecen en orden cronológico ascendente (la primera creada arriba, la última abajo).
 
 ### Menú Flujos
-- Ruta: `/app/flujos`
+- Ruta: `/app/flows`
 - Ubicación en sidebar: debajo de **Conversaciones**
 - Página placeholder con mensaje “Próximamente…”
 
@@ -20,7 +20,7 @@
 - `src/app/app/conversations/[id]/page.tsx` — query `order("created_at", { ascending: true })`
 - `src/features/conversations/components/contact-notes-section.tsx` — orden defensivo en cliente
 - `src/components/layout/app-shell.tsx` — ítem de navegación
-- `src/app/app/flujos/page.tsx` — página inicial
+- `src/app/app/flows/page.tsx` — página inicial
 
 ## Prueba manual
 

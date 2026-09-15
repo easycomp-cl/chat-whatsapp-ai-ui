@@ -11,6 +11,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { userFacingActionError, isWhatsappSessionWindowError } from "@/lib/actions/action-result";
 import {
   sendConversationInteractiveAction,
   sendConversationMediaAction,
@@ -26,6 +27,7 @@ import {
 import { cn } from "@/lib/utils";
 import { ComposeAttachMenu } from "@/features/conversations/components/compose-attach-menu";
 import { InteractiveComposeBubble } from "@/features/conversations/components/interactive-compose-bubble";
+import { SendWhatsappTemplateDialog } from "@/features/conversations/components/send-whatsapp-template-dialog";
 import { WhatsappServiceWindowIndicator } from "@/features/conversations/components/whatsapp-service-window-indicator";
 import { MessageComposePreview } from "@/features/conversations/components/message-compose-preview";
 import {
@@ -45,7 +47,11 @@ import {
   type InteractiveComposeDraft,
 } from "@/lib/conversations/interactive-compose";
 import { buildOptimisticInteractiveMessage } from "@/lib/conversations/interactive-message";
-import type { WhatsappServiceWindowState } from "@/lib/conversations/whatsapp-service-window";
+import {
+  formatServiceWindowCountdown,
+  sessionWindowClosedMessage,
+  type WhatsappServiceWindowState,
+} from "@/lib/conversations/whatsapp-service-window";
 import type { OutboundSenderContext } from "@/lib/conversations/outbound-sender";
 import type { Message } from "@/types/database.types";
 
@@ -55,6 +61,9 @@ export type ReplyFormSentPayload = {
   serverMessage?: Record<string, unknown> | null;
   /** Vista previa local (p. ej. interactivo WA) — no refrescar contra servidor. */
   previewOnly?: boolean;
+  failed?: boolean;
+  error?: string;
+  optimisticId?: string;
 };
 
 type ReplyFormProps = {
@@ -64,6 +73,7 @@ type ReplyFormProps = {
   replyingTo?: Message | null;
   serviceWindow?: WhatsappServiceWindowState;
   handoffReason?: string | null;
+  humanModeRequired?: boolean;
   onCancelReply?: () => void;
   onSent?: (payload: ReplyFormSentPayload) => void;
 };
@@ -75,6 +85,7 @@ export function ReplyForm({
   replyingTo,
   serviceWindow,
   handoffReason,
+  humanModeRequired = false,
   onCancelReply,
   onSent,
 }: ReplyFormProps) {
@@ -86,12 +97,33 @@ export function ReplyForm({
   const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null);
   const [interactiveDraft, setInteractiveDraft] = useState<InteractiveComposeDraft | null>(null);
   const [interactiveShowValidation, setInteractiveShowValidation] = useState(false);
+  const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const composeInputRef = useRef<HTMLTextAreaElement>(null);
   const { ready, enterToSend, setEnterToSend } = useChatComposePreferences();
   const voiceRecorder = useVoiceRecorder();
   const canSendSessionMessage = serviceWindow?.canSendSessionMessage ?? true;
+  const sessionClosed = !canSendSessionMessage;
+  const humanModeMessage =
+    "Activa el modo humano para enviar un mensaje al cliente. Con el bot activo no se pueden enviar respuestas desde aquí.";
+  const composeLocked = humanModeRequired || sessionClosed;
+
+  function windowClosedToast() {
+    return sessionWindowClosedMessage(serviceWindow?.status);
+  }
+
+  function sendFailureToast(error: string) {
+    if (canSendSessionMessage && isWhatsappSessionWindowError(error)) {
+      const remaining = serviceWindow
+        ? formatServiceWindowCountdown(serviceWindow.remainingMs)
+        : null;
+      return remaining
+        ? `WhatsApp rechazó el envío, pero esta conversación todavía tiene ${remaining} de ventana abierta. Reintenta desde el globo.`
+        : "WhatsApp rechazó el envío, pero la ventana de esta conversación sigue abierta. Reintenta desde el globo.";
+    }
+    return error;
+  }
 
   const trimmedText = text.trim();
   const hasInteractiveDraft = Boolean(interactiveDraft);
@@ -117,6 +149,7 @@ export function ReplyForm({
     voiceRecorder.reset();
     setInteractiveDraft(null);
     setInteractiveShowValidation(false);
+    setTemplateDialogOpen(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- reset al cambiar cita
   }, [replyingTo?.id]);
 
@@ -144,8 +177,12 @@ export function ReplyForm({
   }
 
   function handleFileSelected(file: File) {
+    if (humanModeRequired) {
+      toast.error(humanModeMessage);
+      return;
+    }
     if (!canSendSessionMessage) {
-      toast.error("La ventana de 24 h está cerrada. No puedes enviar archivos sin plantilla aprobada.");
+      toast.error(windowClosedToast());
       return;
     }
     if (filePreviewUrl) URL.revokeObjectURL(filePreviewUrl);
@@ -157,10 +194,12 @@ export function ReplyForm({
   }
 
   function handleInteractiveComposeOpen(variant: "button" | "list") {
+    if (humanModeRequired) {
+      toast.error(humanModeMessage);
+      return;
+    }
     if (!canSendSessionMessage) {
-      toast.error(
-        "La ventana de 24 h está cerrada. Usa una plantilla aprobada o espera a que el cliente escriba."
-      );
+      toast.error(windowClosedToast());
       return;
     }
     clearAttachment();
@@ -169,6 +208,20 @@ export function ReplyForm({
     setShowPreview(false);
     setInteractiveShowValidation(false);
     setInteractiveDraft(createInteractiveComposeDraft(variant));
+  }
+
+  function handleWhatsappTemplateOpen() {
+    if (humanModeRequired) {
+      toast.error(humanModeMessage);
+      return;
+    }
+    clearAttachment();
+    voiceRecorder.reset();
+    setText("");
+    setShowPreview(false);
+    setInteractiveDraft(null);
+    setInteractiveShowValidation(false);
+    setTemplateDialogOpen(true);
   }
 
   function handleCancelInteractive() {
@@ -202,25 +255,29 @@ export function ReplyForm({
     });
 
     onSent?.({ optimistic });
+    setInteractiveDraft(null);
+    onCancelReply?.();
 
     startTransition(async () => {
       try {
-        const created = await sendConversationInteractiveAction(conversationId, {
+        const result = await sendConversationInteractiveAction(conversationId, {
           interactive,
           ...(replyingTo ? { reply_to_message_id: replyingTo.id } : {}),
         });
+        if (!result.ok) {
+          const error = sendFailureToast(result.error);
+          toast.error(error);
+          onSent?.({ failed: true, optimisticId: optimistic.id, error });
+          return;
+        }
         toast.success("Mensaje interactivo enviado por WhatsApp");
         setInteractiveShowValidation(false);
-        setInteractiveDraft(null);
-        onCancelReply?.();
-        onSent?.({ serverMessage: created });
+        onSent?.({ serverMessage: result.message });
         router.refresh();
       } catch (error) {
-        const message =
-          error instanceof Error && error.message
-            ? error.message
-            : "No se pudo enviar el mensaje interactivo";
-        toast.error(message);
+        const message = userFacingActionError(error, "No se pudo enviar el mensaje interactivo");
+        toast.error(sendFailureToast(message));
+        onSent?.({ failed: true, optimisticId: optimistic.id, error: message });
       }
     });
   }
@@ -242,21 +299,26 @@ export function ReplyForm({
     });
 
     onSent?.({ text: caption, optimistic });
+    clearAttachment();
+    voiceRecorder.reset();
+    setText("");
+    onCancelReply?.();
 
     const formData = new FormData();
     formData.append("file", file);
     if (caption && !isAudioMimeType(file.type)) formData.append("caption", caption);
     if (replyingTo) formData.append("reply_to_message_id", replyingTo.id);
 
-    const created = await sendConversationMediaAction(conversationId, formData);
+    const result = await sendConversationMediaAction(conversationId, formData);
+    if (!result.ok) {
+      const error = sendFailureToast(result.error);
+      onSent?.({ failed: true, optimisticId: optimistic.id, text: caption, error });
+      throw new Error(error);
+    }
     toast.success(
       isAudioMimeType(file.type) ? "Audio enviado por WhatsApp" : "Archivo enviado por WhatsApp"
     );
-    clearAttachment();
-    voiceRecorder.reset();
-    setText("");
-    onCancelReply?.();
-    onSent?.({ serverMessage: created });
+    onSent?.({ serverMessage: result.message });
     router.refresh();
   }
 
@@ -275,10 +337,13 @@ export function ReplyForm({
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
+    if (humanModeRequired) {
+      toast.error(humanModeMessage);
+      return;
+    }
+
     if (!canSendSessionMessage) {
-      toast.error(
-        "La ventana de 24 h está cerrada. Los mensajes libres no llegan al cliente; usa una plantilla UTILITY aprobada."
-      );
+      toast.error(windowClosedToast());
       return;
     }
 
@@ -293,16 +358,15 @@ export function ReplyForm({
       const file = new File([voiceRecorder.blob], voiceRecorder.filename, {
         type: voiceRecorder.mimeType,
       });
-      const previewUrl = voiceRecorder.url ?? URL.createObjectURL(voiceRecorder.blob);
+      const previewUrl = URL.createObjectURL(file);
 
       startTransition(async () => {
         try {
           await sendMediaFile(file, "", previewUrl);
         } catch (error) {
-          const message =
-            error instanceof Error && error.message
-              ? error.message
-              : "No se pudo enviar el audio";
+          const message = sendFailureToast(
+            userFacingActionError(error, "No se pudo enviar el audio")
+          );
           toast.error(message);
         }
       });
@@ -316,10 +380,9 @@ export function ReplyForm({
         try {
           await sendMediaFile(attachedFile, trimmed, previewUrl);
         } catch (error) {
-          const message =
-            error instanceof Error && error.message
-              ? error.message
-              : "No se pudo enviar el archivo";
+          const message = sendFailureToast(
+            userFacingActionError(error, "No se pudo enviar el archivo")
+          );
           toast.error(message);
         }
       });
@@ -331,26 +394,32 @@ export function ReplyForm({
     }
 
     onSent?.({ text: trimmed });
+    setText("");
+    onCancelReply?.();
 
     startTransition(async () => {
       try {
-        const created = await sendConversationReplyAction(conversationId, {
+        const result = await sendConversationReplyAction(conversationId, {
           text: trimmed,
           ...(replyingTo ? { reply_to_message_id: replyingTo.id } : {}),
         });
+        if (!result.ok) {
+          const error = sendFailureToast(result.error);
+          toast.error(error);
+          onSent?.({ failed: true, text: trimmed, error });
+          return;
+        }
         toast.success(
           replyingTo ? "Respuesta citada enviada por WhatsApp" : "Mensaje enviado por WhatsApp"
         );
-        setText("");
-        onCancelReply?.();
-        onSent?.({ text: trimmed, serverMessage: created });
+        onSent?.({ text: trimmed, serverMessage: result.message });
         router.refresh();
       } catch (error) {
-        const message =
-          error instanceof Error && error.message
-            ? error.message
-            : "No se pudo enviar el mensaje";
+        const message = sendFailureToast(
+          userFacingActionError(error, "No se pudo enviar el mensaje")
+        );
         toast.error(message);
+        onSent?.({ failed: true, text: trimmed, error: message });
       }
     });
   }
@@ -361,6 +430,10 @@ export function ReplyForm({
       return;
     }
     if (primaryAction === "mic") {
+      if (humanModeRequired) {
+        toast.error(humanModeMessage);
+        return;
+      }
       if (!voiceRecorder.canRecord) {
         toast.error("Tu navegador no soporta grabar notas de voz.");
         return;
@@ -373,7 +446,7 @@ export function ReplyForm({
 
   function handleTextareaKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
     if (isRecording) return;
-    if (!enterToSend || pending) return;
+    if (humanModeRequired || !enterToSend || pending) return;
     if (event.key !== "Enter" || event.shiftKey) return;
     if (event.nativeEvent.isComposing) return;
 
@@ -397,6 +470,12 @@ export function ReplyForm({
 
   return (
     <form ref={formRef} onSubmit={handleSubmit}>
+      {humanModeRequired && (
+        <p className="mb-3 rounded-lg border border-[#7678ed]/25 bg-[#7678ed]/8 px-3 py-2 text-sm text-[#3f3d8f]">
+          Activa el <strong className="font-semibold">modo humano</strong> para enviar un
+          mensaje al cliente. Con el bot activo no se pueden enviar respuestas desde aquí.
+        </p>
+      )}
       {replyingTo && (
         <div className="mb-2 flex items-start justify-between gap-2 rounded-lg border-l-[3px] border-[#00a884] bg-white px-3 py-2 shadow-sm ring-1 ring-[#d1d7db]/60">
           <div className="min-w-0">
@@ -599,11 +678,13 @@ export function ReplyForm({
               onSelectionChange={setTextSelection}
               resetKey={replyingTo?.id ?? "plain"}
               placeholder={
-                canSendSessionMessage
-                  ? placeholder
-                  : "Ventana cerrada — solo plantillas aprobadas de WhatsApp"
+                humanModeRequired
+                  ? "Activa el modo humano para escribir al cliente"
+                  : canSendSessionMessage
+                    ? placeholder
+                    : "Ventana cerrada — solo plantillas aprobadas de WhatsApp"
               }
-              disabled={pending || isRecording || Boolean(hasVoiceNote) || !canSendSessionMessage}
+              disabled={pending || isRecording || Boolean(hasVoiceNote) || composeLocked}
               onKeyDown={handleTextareaKeyDown}
             />
           </div>
@@ -613,7 +694,7 @@ export function ReplyForm({
           onClick={primaryAction === "send" ? undefined : handlePrimaryAction}
           disabled={
             pending ||
-            !canSendSessionMessage ||
+            composeLocked ||
             (primaryAction === "mic" && !voiceRecorder.canRecord) ||
             (hasInteractiveDraft && !interactiveCanSend)
           }
@@ -661,9 +742,11 @@ export function ReplyForm({
       >
         {!hasInteractiveDraft && (
           <ComposeAttachMenu
-            disabled={pending || isRecording || Boolean(hasVoiceNote) || !canSendSessionMessage}
+            disabled={pending || isRecording || Boolean(hasVoiceNote) || humanModeRequired}
+            sessionClosed={sessionClosed}
             onFileSelected={handleFileSelected}
             onInteractivePreview={handleInteractiveComposeOpen}
+            onWhatsappTemplate={handleWhatsappTemplateOpen}
           />
         )}
 
@@ -706,6 +789,32 @@ export function ReplyForm({
           </div>
         </div>
       </div>
+      <SendWhatsappTemplateDialog
+        open={templateDialogOpen}
+        onOpenChange={setTemplateDialogOpen}
+        conversationId={conversationId}
+        businessId={businessId}
+        replyToMessageId={replyingTo?.id}
+        outboundSender={outboundSender}
+        onSent={(payload) => {
+          if (payload.optimistic) {
+            onSent?.({ optimistic: payload.optimistic });
+            onCancelReply?.();
+          }
+          if (payload.failed) {
+            onSent?.({
+              failed: true,
+              optimisticId: payload.optimisticId,
+              error: payload.error,
+            });
+            return;
+          }
+          if (payload.serverMessage) {
+            onSent?.({ serverMessage: payload.serverMessage });
+            router.refresh();
+          }
+        }}
+      />
     </form>
   );
 }

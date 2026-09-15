@@ -12,7 +12,7 @@ const routes = [
   "/app/conversations",
   "/app/faqs",
   "/app/knowledge",
-  "/app/despachos",
+  "/app/deliveries",
 ];
 
 function percentile(arr, p) {

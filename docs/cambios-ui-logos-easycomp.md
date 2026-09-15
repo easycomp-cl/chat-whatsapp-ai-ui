@@ -14,7 +14,7 @@ Se reemplazaron los isotipos antiguos (burbuja violeta / texto ConversAI) por lo
 | `public/easycomp-chat-bot-manager-lockup-transparent.png` | Lockup apilado (ícono + easyCOMP + chat bot manager) | Login, recuperar contraseña, footer landing, páginas legales |
 | `public/favicon.png` | Mark 192×192 | Favicon del navegador |
 
-Se eliminó `public/conversai-logo.png`.
+Se eliminó el logo anterior del producto.
 
 ## Componente
 
@@ -26,4 +26,4 @@ Se eliminó `public/conversai-logo.png`.
 2. `/login` y `/forgot-password`: lockup completo.
 3. App y admin: isotipo en el sidebar (dark).
 4. Favicon de la pestaña del navegador.
-5. Confirmar que no queda ningún logo ni correo `conversai` visible en la UI.
+5. Confirmar que no queda ningún logo ni correo de la marca anterior visible en la UI.

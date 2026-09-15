@@ -43,6 +43,7 @@ import {
   isImageContentType,
   isInteractiveContentType,
   isMediaMessage,
+  isTemplateContentType,
   mayHaveRemoteMedia,
 } from "@/lib/conversations/message-media";
 import {
@@ -67,6 +68,7 @@ type ChatMessageBubbleProps = {
   canReply?: boolean;
   onReply?: (message: Message) => void;
   onResent?: () => void;
+  onRetryFailed?: (message: Message) => void;
   onEdited?: () => void;
   showCustomerMessageAudit?: boolean;
   outboundSender?: OutboundSenderContext;
@@ -137,7 +139,7 @@ function MessageBody({
             customerSelection={customerSelection}
           />
         ) : (
-          <p className="leading-relaxed whitespace-pre-wrap">
+          <p className="leading-relaxed whitespace-pre-wrap wrap-anywhere">
             <WhatsAppFormattedText text={getMessageDisplayText(message, showCustomerMessageAudit)} />
           </p>
         )}
@@ -183,7 +185,7 @@ function MessageBody({
               <p className="text-[10px] font-medium uppercase tracking-wide text-[#667781]">
                 Transcripción
               </p>
-              <p className="text-sm leading-relaxed whitespace-pre-wrap text-[#54656f]">
+              <p className="text-sm leading-relaxed whitespace-pre-wrap wrap-anywhere text-[#54656f]">
                 <WhatsAppFormattedText text={audioTranscript} />
               </p>
             </div>
@@ -191,7 +193,7 @@ function MessageBody({
             <p className="mt-1 text-xs text-[#667781]">Transcribiendo…</p>
           ))}
         {caption && (
-          <p className="mt-1.5 leading-relaxed whitespace-pre-wrap">
+          <p className="mt-1.5 leading-relaxed whitespace-pre-wrap wrap-anywhere">
             <WhatsAppFormattedText text={caption} />
           </p>
         )}
@@ -201,6 +203,19 @@ function MessageBody({
             showAudit={showCustomerMessageAudit}
           />
         )}
+      </>
+    );
+  }
+
+  if (isTemplateContentType(message.content_type)) {
+    return (
+      <>
+        <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-[#667781]">
+          Plantilla
+        </p>
+        <p className="leading-relaxed whitespace-pre-wrap wrap-anywhere">
+          <WhatsAppFormattedText text={displayText} />
+        </p>
       </>
     );
   }
@@ -221,7 +236,7 @@ function MessageBody({
     <>
       <p
         className={cn(
-          "leading-relaxed whitespace-pre-wrap",
+          "leading-relaxed whitespace-pre-wrap wrap-anywhere",
           isInteractiveSelection && "font-medium text-[#00a884]",
           showCustomerMessageAudit &&
             isCustomerRevokedMessage(message) &&
@@ -253,6 +268,7 @@ export function ChatMessageBubble({
   canReply = false,
   onReply,
   onResent,
+  onRetryFailed,
   onEdited,
   showCustomerMessageAudit = false,
   outboundSender,
@@ -282,7 +298,7 @@ export function ChatMessageBubble({
   if (isSystemMessage(message)) {
     return (
       <div className="flex justify-center py-2">
-        <div className="max-w-md rounded-lg border border-amber-200/80 bg-[#fff3cd] px-4 py-2 text-center text-xs text-[#54656f] shadow-sm">
+        <div className="max-w-md min-w-0 overflow-hidden rounded-lg border border-amber-200/80 bg-[#fff3cd] px-4 py-2 text-center text-xs wrap-anywhere text-[#54656f] shadow-sm">
           <WhatsAppFormattedText text={message.content_text} />
           <div className="mt-1 text-[10px] text-[#667781]">
             {formatFullTime(message.created_at)}
@@ -319,7 +335,7 @@ export function ChatMessageBubble({
   return (
     <div
       className={cn(
-        "group flex gap-2",
+        "group flex min-w-0 gap-2",
         inbound ? "justify-start" : "justify-end"
       )}
     >
@@ -334,7 +350,7 @@ export function ChatMessageBubble({
           />
         </div>
       )}
-      <div className={cn("max-w-[75%]", !inbound && "order-first")}>
+      <div className={cn("min-w-0 max-w-[min(75%,100%)]", !inbound && "order-first")}>
         {inbound && (
           <p className="mb-0.5 text-[11px] font-medium text-[#00a884]">{customerDisplayName}</p>
         )}
@@ -351,7 +367,7 @@ export function ChatMessageBubble({
         <div className={cn("relative", showReactions && "pb-2")}>
           <div
             className={cn(
-              "relative rounded-lg text-sm shadow-sm",
+              "relative min-w-0 max-w-full overflow-hidden rounded-lg text-sm shadow-sm",
               isInteractiveOutbound ? "overflow-hidden px-0 py-0" : "px-3 py-1.5",
               inbound
                 ? cn(
@@ -435,6 +451,7 @@ export function ChatMessageBubble({
                   message={message}
                   conversationId={conversationId}
                   onResent={onResent}
+                  onRetryLocal={onRetryFailed}
                 />
               )}
             </div>

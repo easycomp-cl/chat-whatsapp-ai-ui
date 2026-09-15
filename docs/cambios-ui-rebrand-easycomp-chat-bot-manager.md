@@ -19,8 +19,8 @@ Refactor técnico y rebrand completo del nombre de producto **ConversAI** a **ea
 
 | Antes | Después |
 |-------|---------|
-| `public/conversai-mark.png` | `public/easycomp-chat-bot-manager-mark.png` |
-| `public/conversai-lockup-transparent.png` | `public/easycomp-chat-bot-manager-lockup-transparent.png` |
+| marca anterior | `public/easycomp-chat-bot-manager-mark.png` |
+| lockup anterior | `public/easycomp-chat-bot-manager-lockup-transparent.png` |
 | `ConversAI3DScene.tsx` | `EasycompChatBotManager3DScene.tsx` |
 | `ConversAIHero3D.tsx` | `EasycompChatBotManagerHero3D.tsx` |
 | `ConversAIHeroCanvas.tsx` | `EasycompChatBotManagerHeroCanvas.tsx` |
@@ -30,10 +30,10 @@ Refactor técnico y rebrand completo del nombre de producto **ConversAI** a **ea
 
 ## Sin cambiar (infraestructura real)
 
-- `api.conversai.easycomp.cl` (hostname del backend; no es branding de UI)
+- `api-chatbotmanager.easycomp.cl` (hostname del backend)
 - `BOT_API_BASE_URL` en `.env.example`
 
-El correo visible de soporte pasó de `soporte@conversai.cl` a `igonzalez@easycomp.cl` (`SUPPORT_EMAIL`).
+El correo visible de soporte es `igonzalez@easycomp.cl` (`SUPPORT_EMAIL`).
 
 ## Variable de entorno Spline
 

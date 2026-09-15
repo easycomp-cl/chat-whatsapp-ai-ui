@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { FileSpreadsheet, FileText, Image, LayoutGrid, List, Plus } from "lucide-react";
+import { FileSpreadsheet, FileText, Image, LayoutGrid, LayoutTemplate, List, Plus } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,8 +20,10 @@ import { toast } from "sonner";
 
 type ComposeAttachMenuProps = {
   disabled?: boolean;
+  sessionClosed?: boolean;
   onFileSelected: (file: File) => void;
   onInteractivePreview?: (variant: "button" | "list") => void;
+  onWhatsappTemplate?: () => void;
 };
 
 type FileAttachOption = {
@@ -106,6 +108,14 @@ const PREVIEW_ATTACH_OPTIONS: PreviewAttachOption[] = [
   },
 ];
 
+const TEMPLATE_ATTACH_OPTION = {
+  id: "whatsapp-template",
+  label: "Plantilla WA",
+  icon: LayoutTemplate,
+  iconClassName: "text-violet-200",
+  circleClassName: "bg-[#7678ed]",
+} as const;
+
 function AttachOptionButton({
   option,
   disabled,
@@ -138,12 +148,15 @@ function AttachOptionButton({
 
 export function ComposeAttachMenu({
   disabled,
+  sessionClosed,
   onFileSelected,
   onInteractivePreview,
+  onWhatsappTemplate,
 }: ComposeAttachMenuProps) {
   const [open, setOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const pendingCategoryRef = useRef<ComposeAttachCategory | null>(null);
+  const sessionOnlyDisabled = Boolean(disabled || sessionClosed);
 
   function openPicker(category: ComposeAttachCategory, accept: string) {
     const input = inputRef.current;
@@ -177,13 +190,19 @@ export function ComposeAttachMenu({
     onInteractivePreview(variant);
   }
 
+  function handleWhatsappTemplate() {
+    if (!onWhatsappTemplate) return;
+    setOpen(false);
+    onWhatsappTemplate();
+  }
+
   return (
     <>
       <input
         ref={inputRef}
         type="file"
         className="hidden"
-        disabled={disabled}
+        disabled={sessionOnlyDisabled}
         onChange={handleFileChange}
       />
       <DropdownMenu open={open} onOpenChange={setOpen}>
@@ -215,11 +234,39 @@ export function ComposeAttachMenu({
               <AttachOptionButton
                 key={option.id}
                 option={option}
-                disabled={disabled}
+                disabled={sessionOnlyDisabled}
                 onClick={() => openPicker(option.id, option.accept)}
               />
             ))}
           </div>
+
+          {onWhatsappTemplate && (
+            <>
+              <p className="mt-4 mb-2 text-[10px] font-semibold tracking-wide text-[#8696a0] uppercase">
+                Plantilla WhatsApp
+              </p>
+              <p className="mb-3 text-[10px] leading-snug text-[#667781]">
+                {sessionClosed
+                  ? "La ventana de 24 h está cerrada. Solo una plantilla aprobada llega al cliente."
+                  : "Útil para recontactar o avisar con un texto ya aprobado por Meta."}
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <AttachOptionButton
+                  option={{
+                    kind: "preview",
+                    id: "interactive-buttons",
+                    label: TEMPLATE_ATTACH_OPTION.label,
+                    variant: "button",
+                    icon: TEMPLATE_ATTACH_OPTION.icon,
+                    iconClassName: TEMPLATE_ATTACH_OPTION.iconClassName,
+                    circleClassName: TEMPLATE_ATTACH_OPTION.circleClassName,
+                  }}
+                  disabled={disabled}
+                  onClick={handleWhatsappTemplate}
+                />
+              </div>
+            </>
+          )}
 
           {onInteractivePreview && (
             <>
@@ -234,7 +281,7 @@ export function ComposeAttachMenu({
                   <AttachOptionButton
                     key={option.id}
                     option={option}
-                    disabled={disabled}
+                    disabled={sessionOnlyDisabled}
                     onClick={() => handleInteractivePreview(option.variant)}
                   />
                 ))}

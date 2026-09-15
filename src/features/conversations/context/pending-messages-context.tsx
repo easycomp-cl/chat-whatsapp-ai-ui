@@ -17,6 +17,7 @@ import {
   getLatestSeenTimestamp,
   isUnreadActivity,
   hasUnreadCustomerActivity,
+  laterTimestamp,
   mergeConversationActivity,
 } from "@/lib/conversations/pending-activity";
 import { playNotificationSound } from "@/lib/notifications/play-notification-sound";
@@ -34,6 +35,14 @@ type PendingMessagesContextValue = {
 
 const PendingMessagesContext = createContext<PendingMessagesContextValue | null>(null);
 
+function samePendingSet(a: Set<string>, b: Set<string>) {
+  if (a.size !== b.size) return false;
+  for (const id of a) {
+    if (!b.has(id)) return false;
+  }
+  return true;
+}
+
 export function PendingMessagesProvider({
   businessId,
   children,
@@ -45,25 +54,32 @@ export function PendingMessagesProvider({
   const [lastReadAt, setLastReadAt] = useState<Record<string, string>>({});
   const [pendingIds, setPendingIds] = useState<Set<string>>(new Set());
   const [isHydrated, setIsHydrated] = useState(false);
+  const [hasSyncedPending, setHasSyncedPending] = useState(false);
   const lastReadRef = useRef(lastReadAt);
   lastReadRef.current = lastReadAt;
-  const prevPendingCountRef = useRef<number | null>(null);
-
-  useEffect(() => {
-    setLastReadAt(loadLastReadMap());
-    setIsHydrated(true);
-  }, []);
+  const prevPendingIdsRef = useRef<Set<string> | null>(null);
+  const activeConversationIdRef = useRef<string | null>(null);
 
   const activeConversationId = useMemo(() => {
     const match = pathname.match(/\/app\/conversations\/([^/?]+)/);
     const id = match?.[1];
     return id && id !== "conversations" ? id : null;
   }, [pathname]);
+  activeConversationIdRef.current = activeConversationId;
+
+  useEffect(() => {
+    setLastReadAt(loadLastReadMap());
+    setIsHydrated(true);
+  }, []);
 
   const markConversationRead = useCallback((conversationId: string, messages: Message[]) => {
     const latest = getLatestSeenTimestamp(messages);
+    const current = lastReadRef.current[conversationId];
+    const nextAt = current ? laterTimestamp(current, latest) : latest;
+    lastReadRef.current = { ...lastReadRef.current, [conversationId]: nextAt };
     setLastReadAt((prev) => {
-      const next = { ...prev, [conversationId]: latest };
+      if (prev[conversationId] === nextAt) return prev;
+      const next = { ...prev, [conversationId]: nextAt };
       saveLastReadMap(next);
       return next;
     });
@@ -76,6 +92,9 @@ export function PendingMessagesProvider({
   }, []);
 
   const setPending = useCallback((conversationId: string, pending: boolean) => {
+    if (conversationId === activeConversationIdRef.current) {
+      pending = false;
+    }
     setPendingIds((prev) => {
       const has = prev.has(conversationId);
       if (pending && has) return prev;
@@ -89,23 +108,38 @@ export function PendingMessagesProvider({
 
   const syncConversationMessages = useCallback(
     (conversationId: string, messages: Message[]) => {
+      if (conversationId === activeConversationIdRef.current) {
+        markConversationRead(conversationId, messages);
+        return;
+      }
       const lastRead = lastReadRef.current[conversationId];
       setPending(conversationId, hasUnreadCustomerActivity(messages, lastRead));
     },
-    [setPending]
+    [markConversationRead, setPending]
   );
 
   useEffect(() => {
-    if (!isHydrated) return;
-    const prev = prevPendingCountRef.current;
-    if (prev !== null && pendingIds.size > prev) {
+    if (!isHydrated || !hasSyncedPending) return;
+    const prev = prevPendingIdsRef.current;
+    if (prev == null) {
+      prevPendingIdsRef.current = new Set(pendingIds);
+      return;
+    }
+    let addedUnread = false;
+    for (const id of pendingIds) {
+      if (!prev.has(id)) {
+        addedUnread = true;
+        break;
+      }
+    }
+    if (addedUnread) {
       playNotificationSound();
     }
-    prevPendingCountRef.current = pendingIds.size;
-  }, [isHydrated, pendingIds.size]);
+    prevPendingIdsRef.current = new Set(pendingIds);
+  }, [isHydrated, hasSyncedPending, pendingIds]);
 
   useEffect(() => {
-    if (!businessId) return;
+    if (!businessId || !isHydrated) return;
 
     const supabase = createClient();
 
@@ -139,24 +173,41 @@ export function PendingMessagesProvider({
         mergeConversationActivity(activityByConversation, row.conversationId, row.createdAt);
       }
 
+      const lastRead = { ...lastReadRef.current };
       const nextPending = new Set<string>();
-      const lastRead = lastReadRef.current;
+      const openId = activeConversationIdRef.current;
+      let lastReadChanged = false;
 
       for (const [convId, activityAt] of activityByConversation) {
-        if (convId === activeConversationId) continue;
+        if (convId === openId) continue;
+        if (!lastRead[convId]) {
+          lastRead[convId] = activityAt;
+          lastReadChanged = true;
+          continue;
+        }
         if (isUnreadActivity(activityAt, lastRead[convId])) {
           nextPending.add(convId);
         }
       }
 
-      setPendingIds(nextPending);
+      if (lastReadChanged) {
+        lastReadRef.current = lastRead;
+        setLastReadAt(lastRead);
+        saveLastReadMap(lastRead);
+      }
+
+      setPendingIds((prev) => (samePendingSet(prev, nextPending) ? prev : nextPending));
+      setHasSyncedPending(true);
     }
 
     function markPendingFromActivity(conversationId: string, activityAt: string) {
-      if (conversationId === activeConversationId) return;
+      if (conversationId === activeConversationIdRef.current) return;
       const lastRead = lastReadRef.current[conversationId];
       if (isUnreadActivity(activityAt, lastRead)) {
-        setPendingIds((prev) => new Set(prev).add(conversationId));
+        setPendingIds((prev) => {
+          if (prev.has(conversationId)) return prev;
+          return new Set(prev).add(conversationId);
+        });
       }
     }
 
@@ -213,7 +264,7 @@ export function PendingMessagesProvider({
       clearInterval(interval);
       void supabase.removeChannel(channel);
     };
-  }, [businessId, activeConversationId]);
+  }, [businessId, isHydrated]);
 
   const hasPending = useCallback(
     (conversationId: string) => isHydrated && pendingIds.has(conversationId),

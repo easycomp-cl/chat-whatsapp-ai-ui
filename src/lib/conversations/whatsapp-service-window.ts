@@ -88,6 +88,13 @@ export function formatServiceWindowCountdown(remainingMs: number): string {
   return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
+export function sessionWindowClosedMessage(status?: WhatsappServiceWindowStatus) {
+  if (status === "unknown") {
+    return "Este cliente aún no ha escrito por WhatsApp. Usa una plantilla aprobada para iniciar la conversación.";
+  }
+  return "La ventana de respuesta ya se cerró: pasaron más de 24 h desde el último mensaje del cliente. Usa una plantilla UTILITY o espera a que escriba.";
+}
+
 export function formatServiceWindowRemaining(remainingMs: number): string {
   if (remainingMs <= 0) return "0 min";
 

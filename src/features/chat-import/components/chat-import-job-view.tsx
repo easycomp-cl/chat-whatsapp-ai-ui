@@ -97,7 +97,7 @@ export function ChatImportJobView({
     return (
       <div className="mx-auto max-w-2xl space-y-6">
         <Link
-          href="/app/importar-chat"
+          href="/app/import-chat"
           className={cn(buttonVariants({ variant: "ghost" }))}
         >
           <ArrowLeft className="size-4" />
@@ -148,7 +148,7 @@ export function ChatImportJobView({
     return (
       <div className="mx-auto max-w-2xl space-y-6">
         <Link
-          href="/app/importar-chat"
+          href="/app/import-chat"
           className={cn(buttonVariants({ variant: "ghost" }))}
         >
           <ArrowLeft className="size-4" />
@@ -170,7 +170,7 @@ export function ChatImportJobView({
               </div>
             )}
             <Link
-              href="/app/importar-chat"
+              href="/app/import-chat"
               className={cn(buttonVariants())}
             >
               Subir otro archivo
@@ -186,7 +186,7 @@ export function ChatImportJobView({
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <Link
-            href="/app/importar-chat"
+            href="/app/import-chat"
             className={cn(buttonVariants({ variant: "ghost" }))}
           >
             <ArrowLeft className="size-4" />

@@ -44,6 +44,8 @@ import type {
   EmbeddedSignupCompleteBody,
   EmbeddedSignupCompleteResponse,
   WhatsappConnection,
+  WhatsappTemplatesResponse,
+  WhatsappTemplatesProvisionResponse,
 } from "./types";
 
 type BotApiOptions = {
@@ -64,7 +66,15 @@ function getBaseUrl() {
   const url =
     process.env.BOT_API_BASE_URL || process.env.NEXT_PUBLIC_BOT_API_BASE_URL;
   if (!url) throw new Error("BOT_API_BASE_URL is not configured");
-  return url.replace(/\/$/, "");
+  const normalized = url.replace(/\/$/, "");
+  try {
+    if (new URL(normalized).hostname === "api.conversai.easycomp.cl") {
+      return "https://api-chatbotmanager.easycomp.cl";
+    }
+  } catch {
+    /* keep configured url */
+  }
+  return normalized;
 }
 
 function getApiKey() {
@@ -121,24 +131,20 @@ async function parseError(res: Response): Promise<string> {
 }
 
 export const BOT_API_UNAVAILABLE_MESSAGE =
-  "No se pudo conectar con el backend del bot. Verifica BOT_API_BASE_URL y que el servicio esté disponible.";
-
-function connectionErrorMessage(baseUrl: string): string {
-  return `${BOT_API_UNAVAILABLE_MESSAGE} (${baseUrl})`;
-}
+  "No se pudo conectar con el servidor. Intenta de nuevo en unos minutos.";
 
 export function getBotApiErrorMessage(error: unknown): string {
-  if (error instanceof BotApiError) return error.message;
+  if (error instanceof BotApiError && error.message.trim()) return error.message;
+  if (error instanceof Error && error.message.trim()) return error.message;
   return BOT_API_UNAVAILABLE_MESSAGE;
 }
 
 async function runBotFetch<T>(url: string, init: RequestInit): Promise<T> {
-  const baseUrl = getBaseUrl();
   let res: Response;
   try {
     res = await fetch(url, init);
   } catch {
-    throw new BotApiError(connectionErrorMessage(baseUrl), 503);
+    throw new BotApiError(BOT_API_UNAVAILABLE_MESSAGE, 503);
   }
 
   if (!res.ok) {
@@ -408,6 +414,22 @@ export const botApi = {
       `/conversations/${conversationId}/messages/media`,
       formData
     ),
+
+  sendConversationTemplateMessage: (
+    conversationId: string,
+    body: {
+      template_name: string;
+      language_code?: string;
+      body_parameters?: string[];
+      button_parameters?: string[];
+      agent_phone?: string;
+      reply_to_message_id?: string;
+    }
+  ) =>
+    botFetch<Record<string, unknown>>(`/conversations/${conversationId}/messages/template`, {
+      method: "POST",
+      body,
+    }),
 
   getMessageMediaUrl: (messageId: string, expiresIn = 3600) =>
     botFetch<MessageMediaUrlResponse>(`/messages/${messageId}/media-url`, {
@@ -874,11 +896,34 @@ export const botApi = {
       body,
     }),
 
+  sendAdminPhoneVerification: (businessId: string, phone: string) =>
+    botFetch<{ ok: boolean; expires_in_sec: number; phone: string }>(
+      `/businesses/${businessId}/admin-phone/verification`,
+      { method: "POST", body: { phone } }
+    ),
+
+  confirmAdminPhoneVerification: (businessId: string, phone: string, code: string) =>
+    botFetch<{ ok: boolean; verified_at: string }>(
+      `/businesses/${businessId}/admin-phone/verification/confirm`,
+      { method: "POST", body: { phone, code } }
+    ),
+
   completeWhatsappEmbeddedSignup: (body: EmbeddedSignupCompleteBody) =>
     botFetch<EmbeddedSignupCompleteResponse>("/whatsapp/embedded-signup/complete", {
       method: "POST",
       body,
     }),
+
+  listWhatsappTemplates: (businessId: string, status?: string) =>
+    botFetch<WhatsappTemplatesResponse>(`/businesses/${businessId}/whatsapp/templates`, {
+      searchParams: status ? { status } : undefined,
+    }),
+
+  provisionWhatsappStandardTemplates: (businessId: string) =>
+    botFetch<WhatsappTemplatesProvisionResponse>(
+      `/businesses/${businessId}/whatsapp/templates/provision-defaults`,
+      { method: "POST" }
+    ),
 
   getWhatsappConnection: async (businessId: string) => {
     try {

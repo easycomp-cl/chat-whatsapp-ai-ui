@@ -53,6 +53,7 @@ No requiere cambios en backend ni migraciones.
 
 - La columna del chat usa `h-full min-h-0` en toda la cadena flex para que el footer (formulario de envío) no quede fuera del área visible.
 - El footer del chat tiene `shrink-0` para no colapsar cuando el espacio es limitado.
+- En resize de ventana, lista y panel de contacto se recalcan para no recortar el panel derecho.
 
 ## Pasos de prueba
 

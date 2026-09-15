@@ -200,7 +200,7 @@ async function botFetchRaw(path: string): Promise<Response> {
       cache: "no-store",
     });
   } catch {
-    throw new BotApiError(connectionErrorMessage(getBaseUrl()), 503);
+    throw new BotApiError(BOT_API_UNAVAILABLE_MESSAGE, 503);
   }
 
   if (!res.ok) {

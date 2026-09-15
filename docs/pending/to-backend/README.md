@@ -25,7 +25,9 @@ Ver también [../whatsapp-cta-templates-roadmap.md](../whatsapp-cta-templates-ro
 | P1 | [backend-whatsapp-embedded-signup-template-provisioning.md](./backend-whatsapp-embedded-signup-template-provisioning.md) | **UI lista.** Falta `POST /whatsapp/embedded-signup/complete` + persistir WABA/token | Alto |
 | — | [backend-whatsapp-interactive-outbound-human.md](./backend-whatsapp-interactive-outbound-human.md) | `POST .../messages/interactive` asesor humano | Medio |
 | P2–P3 | [backend-whatsapp-message-templates.md](./backend-whatsapp-message-templates.md) | Listar + enviar plantillas Meta | Medio–alto |
-| P5–P6 | [backend-whatsapp-embedded-signup-template-provisioning.md](./backend-whatsapp-embedded-signup-template-provisioning.md) | Crear pack UTILITY desde app | Alto |
+| P5–P6 | [backend-whatsapp-embedded-signup-template-provisioning.md](./backend-whatsapp-embedded-signup-template-provisioning.md) | Crear pack al conectar WABA | Alto |
+| — | [backend-whatsapp-standard-template-pack.md](./backend-whatsapp-standard-template-pack.md) | Copy del pack (24 h cerrada, avisos, OTP) | — |
+| — | [backend-admin-phone-verification.md](./backend-admin-phone-verification.md) | OTP AUTHENTICATION + aviso handoff | Medio |
 | P7 | [backend-whatsapp-cta-outbound.md](./backend-whatsapp-cta-outbound.md) | CTA URL / llamar en ventana 24 h | Medio |
 
 ---
@@ -54,7 +56,7 @@ Ver también [../whatsapp-cta-templates-roadmap.md](../whatsapp-cta-templates-ro
 ## Verificación rápida prod (2026-07-28)
 
 ```bash
-BASE="https://api.conversai.easycomp.cl"
+BASE="https://api-chatbotmanager.easycomp.cl"
 # Inbox — hoy 404, debe pasar a 200 tras deploy
 curl -s -o /dev/null -w "%{http_code}\n" -H "X-API-Key: $KEY" \
   "$BASE/businesses/$BIZ/conversations/inbox?limit=5"

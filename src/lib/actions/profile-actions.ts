@@ -94,6 +94,6 @@ export async function updateMyProfileAction(input: {
     data: { full_name: fullName ?? undefined },
   });
 
-  revalidatePath("/app/perfil");
+  revalidatePath("/app/profile");
   revalidatePath("/app", "layout");
 }

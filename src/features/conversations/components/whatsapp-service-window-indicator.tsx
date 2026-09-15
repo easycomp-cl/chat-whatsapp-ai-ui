@@ -25,7 +25,7 @@ function getTooltipContent(state: WhatsappServiceWindowState, handoffReason?: st
       state.status === "closing"
         ? " Queda menos de 1 hora."
         : "";
-    return `Ventana de respuesta de WhatsApp: tiempo restante para enviar mensajes libres (texto, fotos, audio, botones) desde el último mensaje del cliente.${urgency} Al llegar a 00:00:00 solo podrás usar plantillas aprobadas por Meta.`;
+    return `Quedan ${formatServiceWindowCountdown(state.remainingMs)} de las 24 h de WhatsApp, contadas desde el último mensaje del cliente.${urgency} Mientras el contador no llegue a 00:00:00 puedes enviar texto, fotos, audio y botones. Al llegar a cero solo podrás usar plantillas aprobadas por Meta.`;
   }
 
   if (state.status === "closed") {

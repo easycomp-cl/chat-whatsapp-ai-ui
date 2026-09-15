@@ -57,7 +57,7 @@ export function WhatsAppFormattedText({
   const nodes = useMemo(() => parseWhatsAppFormatting(text), [text]);
 
   return (
-    <span className={cn(className)}>
+    <span className={cn("min-w-0 wrap-anywhere", className)}>
       <RenderNodes nodes={nodes} />
     </span>
   );

@@ -8,9 +8,9 @@ Implementación del módulo de flujos conversacionales consumiendo el backend ya
 
 | Ruta | Descripción |
 |------|-------------|
-| `/app/flujos` | Listado, crear desde plantilla, archivar |
-| `/app/flujos/[flowId]` | Detalle: **editor visual**, versiones, publicar, simulador, webhook, entregas |
-| `/app/flujos/revisiones` | Cola de revisiones `PENDING` con preview y resolve |
+| `/app/flows` | Listado, crear desde plantilla, archivar |
+| `/app/flows/[flowId]` | Detalle: **editor visual**, versiones, publicar, simulador, webhook, entregas |
+| `/app/flows/reviews` | Cola de revisiones `PENDING` con preview y resolve |
 
 ## Inbox (sin ruta nueva)
 
@@ -55,10 +55,10 @@ Implementación del módulo de flujos conversacionales consumiendo el backend ya
 
 ## Prueba manual
 
-1. **Admin flujos:** `/app/flujos` → crear `wood_quote` → **Editor** → editar nodo → guardar borrador → publicar versión → simular mensaje cliente (con/sin IA).
+1. **Admin flujos:** `/app/flows` → crear `wood_quote` → **Editor** → editar nodo → guardar borrador → publicar versión → simular mensaje cliente (con/sin IA).
 2. **Inbox:** conversación con flujo activo → ver banner y badge; switch HUMAN bloqueado.
 3. **Globo agente:** avanzar hasta `AWAITING_AGENT_INPUT` → completar campos → enviar → mensaje BOT en hilo.
-4. **Revisiones:** `/app/flujos/revisiones` → preview imagen → aprobar/rechazar.
+4. **Revisiones:** `/app/flows/reviews` → preview imagen → aprobar/rechazar.
 5. **Webhook:** tab Webhook en detalle → guardar URL → tab Entregas tras completar flujo con `emit_event`.
 
 ## Archivos principales

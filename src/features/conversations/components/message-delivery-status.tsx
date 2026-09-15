@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import {
   AlertCircle,
   Check,
@@ -15,16 +15,19 @@ import { cn } from "@/lib/utils";
 import {
   canResendWhatsappMessage,
   getWhatsappDeliveryStatusLabel,
+  PENDING_GRACE_MS,
   resolveWhatsappDeliveryStatus,
   type WhatsappDeliveryStatus,
 } from "@/lib/conversations/delivery-status";
 import { resendMessageAction } from "@/lib/actions/app-actions";
+import { userFacingActionError } from "@/lib/actions/action-result";
 import type { Message } from "@/types/database.types";
 
 type MessageDeliveryStatusProps = {
   message: Message;
   conversationId: string;
   onResent?: () => void;
+  onRetryLocal?: (message: Message) => void;
 };
 
 const TICK_MUTED = "text-[#8696a0]";
@@ -50,25 +53,42 @@ export function MessageDeliveryStatus({
   message,
   conversationId,
   onResent,
+  onRetryLocal,
 }: MessageDeliveryStatusProps) {
   const [pending, startTransition] = useTransition();
+  const [, setTick] = useState(0);
   const status = resolveWhatsappDeliveryStatus(message);
   const showResend = canResendWhatsappMessage(message) && !pending;
+
+  useEffect(() => {
+    if (status !== "pending") return;
+    const ageMs = Date.now() - new Date(message.created_at).getTime();
+    const waitMs = Math.max(50, PENDING_GRACE_MS - ageMs + 50);
+    const timeout = window.setTimeout(() => setTick((tick) => tick + 1), waitMs);
+    return () => window.clearTimeout(timeout);
+  }, [message.created_at, message.id, status]);
 
   if (!status) {
     return null;
   }
 
   function handleResend() {
+    if (onRetryLocal) {
+      onRetryLocal(message);
+      return;
+    }
+
     startTransition(async () => {
       try {
-        await resendMessageAction(message.id, conversationId);
+        const result = await resendMessageAction(message.id, conversationId);
+        if (result && typeof result === "object" && "ok" in result && !result.ok) {
+          toast.error(result.error);
+          return;
+        }
         toast.success("Mensaje reenviado por WhatsApp");
         onResent?.();
       } catch (error) {
-        toast.error(
-          error instanceof Error ? error.message : "No se pudo reenviar el mensaje"
-        );
+        toast.error(userFacingActionError(error, "No se pudo reenviar el mensaje"));
       }
     });
   }

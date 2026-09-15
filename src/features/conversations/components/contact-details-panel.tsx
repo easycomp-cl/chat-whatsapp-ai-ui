@@ -61,7 +61,7 @@ export function ContactDetailsPanel({
   return (
     <aside
       className={cn(
-        "flex h-full w-full flex-col bg-[#f9fafc]",
+        "flex h-full w-full min-w-0 flex-col overflow-x-hidden bg-[#f9fafc]",
         !contactOverlayOpen && "border-l border-[#202022]/8"
       )}
     >
@@ -94,20 +94,28 @@ export function ContactDetailsPanel({
             size="lg"
           />
         </div>
-        <h3 className={cn("font-semibold text-[#202022]", isContactCompact && "text-sm")}>
+        <h3
+          className={cn(
+            "min-w-0 font-semibold wrap-break-word text-[#202022]",
+            isContactCompact && "text-sm"
+          )}
+          title={displayName}
+        >
           {displayName}
         </h3>
         {whatsappSubtitle && (
-          <p className="mt-0.5 text-xs text-[#202022]/45">WhatsApp: {whatsappSubtitle}</p>
+          <p className="mt-0.5 min-w-0 text-xs wrap-break-word text-[#202022]/45">
+            WhatsApp: {whatsappSubtitle}
+          </p>
         )}
         <a
           href={`https://wa.me/${customer?.phone_number?.replace(/\D/g, "")}`}
           target="_blank"
           rel="noreferrer"
-          className="mt-1 inline-flex items-center justify-center gap-1 text-sm text-[#25D366] transition-opacity hover:opacity-80"
+          className="mt-1 inline-flex max-w-full min-w-0 items-center justify-center gap-1 text-sm wrap-break-word text-[#25D366] transition-opacity hover:opacity-80"
         >
-          <MessageCircle className="size-3.5" />
-          {customer?.phone_number}
+          <MessageCircle className="size-3.5 shrink-0" />
+          <span className="min-w-0 break-all">{customer?.phone_number}</span>
         </a>
 
         <ContactExtraInfoAccordion
@@ -119,7 +127,7 @@ export function ContactDetailsPanel({
         />
       </div>
 
-      <div className={cn("space-y-4", isContactCompact ? "p-2.5" : "p-4")}>
+      <div className={cn("min-w-0 space-y-4", isContactCompact ? "p-2.5" : "p-4")}>
         {customer && (
           <CustomerFrequentToggle
             businessId={businessId}
@@ -171,7 +179,7 @@ export function ContactDetailsPanel({
             </p>
             {flowState.active_flow_run.status === "AWAITING_REVIEW" && (
               <a
-                href="/app/flujos/revisiones"
+                href="/app/flows/reviews"
                 className="mt-2 inline-block text-xs font-medium text-[#7678ed] hover:underline"
               >
                 Ir a revisiones pendientes

@@ -41,7 +41,7 @@ function FrequentPill({
       onClick={onClick}
       disabled={disabled}
       className={cn(
-        "inline-flex w-full items-center justify-center gap-2 rounded-full border px-4 py-2.5 text-sm font-medium shadow-[0_1px_2px_rgba(0,0,0,0.06)] transition-all",
+        "inline-flex w-full min-w-0 items-center justify-center gap-2 rounded-full border px-3 py-2.5 text-sm font-medium wrap-break-word whitespace-normal shadow-[0_1px_2px_rgba(0,0,0,0.06)] transition-all",
         frequent
           ? "border-[#e8dfd4] bg-[#faf7f2] text-[#4a4035]"
           : "border-[#eaeaec] bg-[#f5f5f7] text-[#6b6b70]",
@@ -60,7 +60,7 @@ function FrequentPill({
           frequent ? "fill-amber-500 text-amber-500" : "text-[#a3a3a8]"
         )}
       />
-      <span>{label}</span>
+      <span className="min-w-0 text-center text-pretty">{label}</span>
     </Component>
   );
 }

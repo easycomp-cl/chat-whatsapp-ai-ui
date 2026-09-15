@@ -6,6 +6,7 @@ import { usePendingMessages } from "@/features/conversations/context/pending-mes
 import { fetchConversationMessages } from "@/lib/conversations/fetch-conversation-messages";
 import { normalizeMessages } from "@/lib/conversations/message-display";
 import { mapApiMessageToMessage, mergeOutboundMessage, mergeServerWithLocal, isOptimisticMessage } from "@/lib/conversations/merge-messages";
+import { resendMessageAction, sendConversationReplyAction } from "@/lib/actions/app-actions";
 import {
   isDeliveryStatusRealtimePatch,
   patchMessageFromRealtimeRow,
@@ -115,7 +116,11 @@ export function useLiveConversation(
     });
 
     if (msgRes.error) {
-      console.error("[chat] Error cargando mensajes:", msgRes.error);
+      if (typeof window !== "undefined") {
+        console.warn("[chat] Error cargando mensajes:", msgRes.error);
+      } else {
+        console.error("[chat] Error cargando mensajes:", msgRes.error);
+      }
       return;
     }
 
@@ -287,7 +292,34 @@ export function useLiveConversation(
       optimistic?: Message;
       serverMessage?: Record<string, unknown> | null;
       previewOnly?: boolean;
+      failed?: boolean;
+      error?: string;
+      optimisticId?: string;
     }) => {
+      if (payload.failed) {
+        setMessages((prev) => {
+          let marked = false;
+          const next = [...prev].reverse().map((message) => {
+            if (marked) return message;
+            const matchesId = payload.optimisticId && message.id === payload.optimisticId;
+            const matchesText =
+              isOptimisticMessage(message) &&
+              payload.text &&
+              message.content_text.trim() === payload.text.trim();
+            if (!matchesId && !matchesText) return message;
+            marked = true;
+            return {
+              ...message,
+              whatsapp_delivery_status: "failed",
+              whatsapp_delivery_error_message: payload.error ?? "No se pudo enviar",
+            };
+          }).reverse();
+          prevCountRef.current = next.length;
+          return next;
+        });
+        return;
+      }
+
       if (payload.optimistic) {
         appendOptimisticMessage(payload.optimistic);
       } else if (payload.serverMessage) {
@@ -300,7 +332,7 @@ export function useLiveConversation(
         if (!alreadyOptimistic) appendOptimisticOutbound(payload.text);
       }
 
-      if (payload.previewOnly) {
+      if (payload.previewOnly || !payload.serverMessage) {
         return;
       }
 
@@ -312,12 +344,82 @@ export function useLiveConversation(
     [appendOptimisticMessage, appendOptimisticOutbound, refresh, upsertServerMessage]
   );
 
+  const retryFailedOutbound = useCallback(
+    async (message: Message) => {
+      setMessages((prev) =>
+        prev.map((item) =>
+          item.id === message.id
+            ? {
+                ...item,
+                whatsapp_delivery_status: "pending",
+                whatsapp_delivery_error_message: null,
+                created_at: new Date().toISOString(),
+              }
+            : item
+        )
+      );
+
+      try {
+        if (isOptimisticMessage(message)) {
+          const result = await sendConversationReplyAction(conversationId, {
+            text: message.content_text,
+            ...(message.reply_to_message_id
+              ? { reply_to_message_id: message.reply_to_message_id }
+              : {}),
+          });
+          if (!result.ok) {
+            await refreshAfterSend({
+              failed: true,
+              optimisticId: message.id,
+              text: message.content_text,
+              error: result.error,
+            });
+            return result;
+          }
+          if (result.message) {
+            upsertServerMessage(result.message);
+          }
+          await refresh();
+          return result;
+        }
+
+        const result = await resendMessageAction(message.id, conversationId);
+        if (!result.ok) {
+          await refreshAfterSend({
+            failed: true,
+            optimisticId: message.id,
+            text: message.content_text,
+            error: result.error,
+          });
+          return result;
+        }
+        if (result.message) {
+          upsertServerMessage(result.message);
+        }
+        await refresh();
+        return result;
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : "No se pudo reenviar el mensaje";
+        await refreshAfterSend({
+          failed: true,
+          optimisticId: message.id,
+          text: message.content_text,
+          error: errorMessage,
+        });
+        return { ok: false as const, error: errorMessage };
+      }
+    },
+    [conversationId, refresh, refreshAfterSend, upsertServerMessage]
+  );
+
   return {
     conversation,
     messages,
     scrollRef,
     refresh,
     refreshAfterSend,
+    retryFailedOutbound,
     clearChatView,
   };
 }

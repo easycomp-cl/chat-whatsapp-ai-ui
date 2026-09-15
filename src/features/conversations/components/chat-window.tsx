@@ -64,7 +64,7 @@ export function ChatWindow({
   showCustomerMessageAudit = false,
   botAgentName,
 }: ChatWindowProps) {
-  const { conversation, messages, scrollRef, refreshAfterSend, refresh, clearChatView } =
+  const { conversation, messages, scrollRef, refreshAfterSend, retryFailedOutbound, refresh, clearChatView } =
     useLiveConversation(initialConversation.id, initialConversation, initialMessages, outboundSender);
   const flowState = useConversationFlowState(initialConversation.id, initialFlowState);
   const flowModeLocked = flowState?.flow_mode_locked ?? false;
@@ -79,6 +79,11 @@ export function ChatWindow({
   const acknowledgeRead = useCallback(() => {
     markConversationRead(conversation.id, messagesRef.current);
   }, [conversation.id, markConversationRead]);
+
+  useEffect(() => {
+    acknowledgeRead();
+    return () => acknowledgeRead();
+  }, [acknowledgeRead, messages]);
 
   const { showScrollButton, scrollToBottom } = useChatScroll(
     conversation.id,
@@ -126,8 +131,7 @@ export function ChatWindow({
     [mounted, messages, conversation.id, lastReadAt]
   );
   const showPendingInHeader =
-    mounted &&
-    (awaitingResponse || hasPending(conversation.id) || hasUnreadReactions);
+    mounted && (hasPending(conversation.id) || hasUnreadReactions);
 
   const matchingMessageIds = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -401,7 +405,7 @@ export function ChatWindow({
       <div className="relative min-h-0 flex-1">
         <div
           ref={scrollRef}
-          className="h-full overflow-y-auto px-4 py-4"
+          className="h-full min-w-0 overflow-x-hidden overflow-y-auto px-4 py-4"
           style={{
             backgroundColor: "#efeae2",
             backgroundImage:
@@ -415,7 +419,7 @@ export function ChatWindow({
               </div>
             </div>
           )}
-          <div className="space-y-4">
+          <div className="min-w-0 space-y-4">
             {messages.length === 0 ? (
               <p className="text-center text-sm text-[#202022]/45">
                 No hay mensajes en esta conversación
@@ -430,7 +434,7 @@ export function ChatWindow({
                   key={msg.id}
                   data-message-id={msg.id}
                   className={cn(
-                    "rounded-lg transition-colors",
+                    "min-w-0 rounded-lg transition-colors",
                     isMatch && "bg-[#00a884]/8",
                     isActiveMatch && "ring-2 ring-[#00a884] ring-offset-2 ring-offset-[#efeae2]"
                   )}
@@ -450,6 +454,16 @@ export function ChatWindow({
                     outboundSender={outboundSender}
                     botAgentName={botAgentName}
                     onResent={() => void refresh()}
+                    onRetryFailed={(target) => {
+                      void retryFailedOutbound(target).then((result) => {
+                        if (!result) return;
+                        if (result.ok) {
+                          toast.success("Mensaje reenviado por WhatsApp");
+                          return;
+                        }
+                        toast.error(result.error);
+                      });
+                    }}
                     onEdited={() => void refresh()}
                     onReply={(target) => {
                       setReplyingTo(target);
@@ -495,14 +509,12 @@ export function ChatWindow({
         <div className="mb-3 flex gap-2">
           <button
             type="button"
-            onClick={() => canReply && setTab("reply")}
-            disabled={!canReply}
+            onClick={() => setTab("reply")}
             className={cn(
               "flex flex-1 items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold transition-all",
               tab === "reply"
                 ? "bg-[#00a884] text-white shadow-md shadow-[#00a884]/25"
-                : "border border-[#202022]/10 bg-[#f9fafc] text-[#202022]/55 hover:border-[#00a884]/30 hover:text-[#00a884]",
-              !canReply && "cursor-not-allowed opacity-45"
+                : "border border-[#202022]/10 bg-[#f9fafc] text-[#202022]/55 hover:border-[#00a884]/30 hover:text-[#00a884]"
             )}
           >
             <MessageSquare className="size-3.5" />
@@ -532,7 +544,6 @@ export function ChatWindow({
           )}
         >
           {tab === "reply" ? (
-            canReply ? (
               <ReplyForm
                 conversationId={conversation.id}
                 businessId={conversation.business_id}
@@ -540,18 +551,13 @@ export function ChatWindow({
                 replyingTo={replyingTo}
                 serviceWindow={serviceWindow}
                 handoffReason={conversation.handoff_reason}
+                humanModeRequired={!canReply}
                 onCancelReply={() => setReplyingTo(null)}
                 onSent={(payload) => {
                   setReplyingTo(null);
                   void refreshAfterSend(payload);
                 }}
               />
-            ) : (
-              <p className="text-sm text-[#667781]">
-                Activa el <strong className="font-medium text-[#00a884]">modo humano</strong> para
-                responder al cliente desde aquí.
-              </p>
-            )
           ) : (
             <AddNoteForm conversationId={conversation.id} />
           )}

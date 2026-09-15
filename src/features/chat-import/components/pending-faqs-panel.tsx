@@ -52,7 +52,7 @@ export function PendingFaqsPanel({
             </CardTitle>
             {jobId !== "sin-job" && (
               <Link
-                href={`/app/importar-chat/${jobId}`}
+                href={`/app/import-chat/${jobId}`}
                 className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
               >
                 Ver importación

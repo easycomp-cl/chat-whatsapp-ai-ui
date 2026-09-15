@@ -26,5 +26,5 @@ El Dashboard usa un único endpoint agregado del bot API en lugar de 3 requests.
 ## Cómo probar
 
 1. Abrir `/app/dashboard` — debe cargar más rápido (1 request bot API vs 3).
-2. Abrir `/app/importar-chat` — sin espera de OpenAI si no hay análisis de tono pendiente.
+2. Abrir `/app/import-chat` — sin espera de OpenAI si no hay análisis de tono pendiente.
 3. DevTools → Network: verificar `metrics/dashboard` en lugar de `summary` + `questions` + `usage`.

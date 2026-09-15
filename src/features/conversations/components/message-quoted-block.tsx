@@ -34,8 +34,8 @@ export function MessageQuotedBlock({
 
   return (
     <div
-      className={cn(
-        "mb-1.5 rounded-md border-l-[3px] px-2 py-1",
+        className={cn(
+          "mb-1.5 min-w-0 overflow-hidden rounded-md border-l-[3px] px-2 py-1",
         unavailable
           ? "border-[#8696a0] bg-[#f0f2f5]/80"
           : inbound
@@ -55,7 +55,7 @@ export function MessageQuotedBlock({
       )}
       <p
         className={cn(
-          "line-clamp-3 text-xs leading-snug",
+          "line-clamp-3 min-w-0 wrap-anywhere text-xs leading-snug",
           unavailable ? "italic text-[#8696a0]" : "text-[#667781]"
         )}
       >

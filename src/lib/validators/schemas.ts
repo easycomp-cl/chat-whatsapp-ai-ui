@@ -110,6 +110,14 @@ export const replySchema = z.object({
   reply_to_message_id: z.string().optional(),
 });
 
+export const templateReplySchema = z.object({
+  template_name: z.string().min(1),
+  language_code: z.string().min(1).default("es"),
+  body_parameters: z.array(z.string()).default([]),
+  button_parameters: z.array(z.string()).optional(),
+  reply_to_message_id: z.string().optional(),
+});
+
 export const editMessageSchema = z.object({
   text: z.string().min(1, "Escribe un mensaje"),
 });
@@ -177,6 +185,7 @@ export type SettingsInput = z.infer<typeof settingsSchema>;
 export type NoteInput = z.infer<typeof noteSchema>;
 export type ReplyInput = z.infer<typeof replySchema>;
 export type InteractiveReplyInput = z.infer<typeof interactiveReplySchema>;
+export type TemplateReplyInput = z.infer<typeof templateReplySchema>;
 export type EditMessageInput = z.infer<typeof editMessageSchema>;
 export type DeliveryRegionInput = z.infer<typeof deliveryRegionSchema>;
 export type DeliveryRegionPatchInput = z.infer<typeof deliveryRegionPatchSchema>;

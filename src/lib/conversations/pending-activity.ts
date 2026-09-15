@@ -58,6 +58,10 @@ export function hasUnreadCustomerReactions(
   );
 }
 
+export function laterTimestamp(a: string, b: string): string {
+  return new Date(a) >= new Date(b) ? a : b;
+}
+
 export function getLatestSeenTimestamp(messages: Message[]): string {
   const lastMessageAt = messages.at(-1)?.created_at;
   const reactionAt = latestCustomerReactionAt(messages);

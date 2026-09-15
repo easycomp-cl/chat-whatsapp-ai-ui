@@ -43,6 +43,7 @@ export function Logo({
       height={height}
       className={cn("object-contain", sizeClass, className)}
       priority={priority}
+      unoptimized
     />
   );
 }

@@ -11,6 +11,8 @@ Para auditoría, cada mensaje `OUTBOUND` con `sender_type = HUMAN` debe persisti
 
 Exponer en vista `public.messages` cuando existan columnas en `"Message"`.
 
+Hasta que existan, la UI **no** las pide en el `select` (PostgREST devolvía 400 en cada poll de `/app/conversations/[id]` y llenaba la consola).
+
 ## Cuándo setear (backend `chat-whatsapp-ai`)
 
 - `POST /conversations/:id/messages` — texto

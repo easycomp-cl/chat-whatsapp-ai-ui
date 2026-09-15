@@ -1,5 +1,5 @@
-import { ProfilePageContent } from "@/features/profile/components/profile-page-content";
+import { redirect } from "next/navigation";
 
-export default function PerfilPage() {
-  return <ProfilePageContent />;
+export default function PerfilRedirectPage() {
+  redirect("/app/profile");
 }

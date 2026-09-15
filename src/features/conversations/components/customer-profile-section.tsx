@@ -315,7 +315,7 @@ export function CustomerProfileSection({
               {activeRegions.length === 0 ? (
                 <p className="text-xs text-[#202022]/50">
                   Configura regiones en{" "}
-                  <Link href="/app/despachos" className="text-[#7678ed] underline">
+                  <Link href="/app/deliveries" className="text-[#7678ed] underline">
                     Despachos
                   </Link>{" "}
                   para elegir comuna.

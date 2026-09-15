@@ -49,7 +49,7 @@ export function StepIdentity({ draft, onChange }: StepIdentityProps) {
               identity: { ...identity, business_name: e.target.value },
             })
           }
-          placeholder="Ej. The Wood Club"
+          placeholder="Ej. Panadería Aurora"
           maxLength={120}
         />
       </div>

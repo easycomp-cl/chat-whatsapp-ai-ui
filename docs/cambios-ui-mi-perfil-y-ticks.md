@@ -2,7 +2,7 @@
 
 ## Mi Perfil
 
-- Nuevo ítem **Mi Perfil** al inicio del menú lateral (`/app/perfil`).
+- Nuevo ítem **Mi Perfil** al inicio del menú lateral (`/app/profile`).
 - Formulario: nombre, apellido, teléfono personal, correo (solo lectura), rol (solo lectura).
 - Guardado en Supabase `profiles` + sincroniza `full_name` en auth metadata.
 

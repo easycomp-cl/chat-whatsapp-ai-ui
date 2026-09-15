@@ -1,6 +1,6 @@
 import type { Message, MessageMedia } from "@/types/database.types";
 
-export type ContentType = "TEXT" | "IMAGE" | "DOCUMENT" | "AUDIO" | "INTERACTIVE";
+export type ContentType = "TEXT" | "IMAGE" | "DOCUMENT" | "AUDIO" | "INTERACTIVE" | "TEMPLATE";
 
 export const MEDIA_PLACEHOLDER_IMAGE = "[Imagen]";
 export const MEDIA_PLACEHOLDER_DOCUMENT = "[Documento]";
@@ -117,6 +117,10 @@ export function isAudioContentType(contentType: string | null | undefined) {
 
 export function isInteractiveContentType(contentType: string | null | undefined) {
   return normalizeContentType(contentType) === "INTERACTIVE";
+}
+
+export function isTemplateContentType(contentType: string | null | undefined) {
+  return normalizeContentType(contentType) === "TEMPLATE";
 }
 
 export function isMediaMessage(message: Message) {

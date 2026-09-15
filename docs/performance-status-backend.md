@@ -2,7 +2,7 @@
 
 **Fecha:** 11 jul 2026  
 **UI:** `chat-whatsapp-ai-ui` (Next.js 16, puerto 3001, dev local)  
-**Backend:** `https://api.conversai.easycomp.cl`  
+**Backend:** `https://api-chatbotmanager.easycomp.cl`  
 **Negocio de prueba:** `cmrgmk5vf0000gbngos6i7jnt` (EasyComp Piloto)  
 **Auth:** header `X-API-Key`
 
@@ -84,7 +84,7 @@ GET /businesses/:id/metrics/usage?from=...
 
 Las 3 llamadas van en **paralelo**; el tiempo de página ≈ la más lenta (**~1.9 s** solo en backend).
 
-### Importar chat (`/app/importar-chat`) — **CRÍTICO**
+### Importar chat (`/app/import-chat`) — **CRÍTICO**
 
 ```
 GET /businesses/:id/chat-imports?page=1&limit=10
@@ -110,7 +110,7 @@ GET /businesses/:id   (~1.4 s)
 
 + Supabase `businesses` (duplicado parcial con el endpoint del bot).
 
-### Despachos (`/app/despachos`) — **MEDIO**
+### Despachos (`/app/deliveries`) — **MEDIO**
 
 ```
 GET /businesses/:id/delivery/regions     (~837 ms)
@@ -213,7 +213,7 @@ Aun con eso, si el endpoint más lento tarda **1.9 s**, la página no puede baja
 # Reemplazar SECRET y BUSINESS_ID
 curl -w "\nTiempo: %{time_total}s\n" \
   -H "X-API-Key: SECRET" \
-  "https://api.conversai.easycomp.cl/businesses/BUSINESS_ID/metrics/summary?from=2026-07-01T00:00:00.000Z"
+  "https://api-chatbotmanager.easycomp.cl/businesses/BUSINESS_ID/metrics/summary?from=2026-07-01T00:00:00.000Z"
 ```
 
 Endpoints a benchmarkear en orden de prioridad:

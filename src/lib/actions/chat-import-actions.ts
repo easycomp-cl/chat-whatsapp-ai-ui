@@ -10,8 +10,8 @@ import type {
 import { requireBusinessAdmin } from "@/lib/auth/session";
 
 function revalidateChatImportPaths(jobId?: string) {
-  revalidatePath("/app/importar-chat");
-  if (jobId) revalidatePath(`/app/importar-chat/${jobId}`);
+  revalidatePath("/app/import-chat");
+  if (jobId) revalidatePath(`/app/import-chat/${jobId}`);
   revalidatePath("/app/faqs");
   revalidatePath("/app/settings");
 }

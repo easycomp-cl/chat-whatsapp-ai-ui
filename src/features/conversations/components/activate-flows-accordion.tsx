@@ -90,7 +90,7 @@ export function ActivateFlowsAccordion({
             <div className="space-y-2 text-sm text-[#202022]/45">
               <p>No hay flujos activos publicados.</p>
               <Link
-                href="/app/flujos"
+                href="/app/flows"
                 className="text-xs font-medium text-[#7678ed] hover:underline"
               >
                 Crear o publicar flujos

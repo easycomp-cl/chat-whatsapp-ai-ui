@@ -1,14 +1,14 @@
 # Informe para backend — despliegue pendiente en producción
 
 > **Fecha:** 2026-07-28  
-> **Estado:** ⏳ **Pendiente deploy prod** (código inbox en repo; 404 en `api.conversai.easycomp.cl`)  
+> **Estado:** ⏳ **Pendiente deploy prod** (código inbox en repo; 404 en `api-chatbotmanager.easycomp.cl`)  
 > **Carpeta:** `docs/pending/to-backend/`
 
 ---
 
 ## Resumen ejecutivo
 
-La UI **sí se conecta correctamente** a producción (`BOT_API_BASE_URL=https://api.conversai.easycomp.cl`). El error que aparece en consola **no es de conexión ni de credenciales**: el servidor de producción tiene una **versión anterior** del backend que **no incluye** el endpoint optimizado de inbox.
+La UI **sí se conecta correctamente** a producción (`BOT_API_BASE_URL=https://api-chatbotmanager.easycomp.cl`). El error que aparece en consola **no es de conexión ni de credenciales**: el servidor de producción tiene una **versión anterior** del backend que **no incluye** el endpoint optimizado de inbox.
 
 Mientras tanto, la UI **sigue funcionando** porque hace fallback a Supabase. El log es informativo, pero indica que falta desplegar código que ya existe en el repo `chat-whatsapp-ai`.
 
@@ -19,7 +19,8 @@ Mientras tanto, la UI **sigue funcionando** porque hace fallback a Supabase. El 
 | Editar mensaje humano (<15 min) | `PATCH /messages/:id` | ✅ Cerrado — **501** (Meta no soporta; UI sin editar) |
 | Reenviar mensaje fallido | `POST /messages/:id/resend` | ✅ desplegado (responde JSON) |
 | Enviar mensaje | `POST /conversations/:id/messages` | ✅ (ya en uso) |
-| Health básico | `GET /businesses/:id` | ✅ 200 |
+| Crear pack de plantillas (Mis plantillas) | `POST /businesses/:id/whatsapp/templates/provision-defaults` | ❌ **404 — código en repo, falta deploy (2026-09-15)** |
+| Listar plantillas WhatsApp | `GET /businesses/:id/whatsapp/templates` | ❌ **404 — mismo deploy** |
 
 ---
 
@@ -35,7 +36,7 @@ botApi.listConversationsInbox(businessId, { assigned_admin_id, limit: 100 })
 Eso llama a:
 
 ```http
-GET https://api.conversai.easycomp.cl/businesses/{businessId}/conversations/inbox?limit=100
+GET https://api-chatbotmanager.easycomp.cl/businesses/{businessId}/conversations/inbox?limit=100
 X-API-Key: {BOT_API_SECRET}
 ```
 
@@ -149,7 +150,7 @@ Sin esta migración, el deploy del código puede fallar o degradar performance d
 
 1. **Merge / tag** de `chat-whatsapp-ai` con los cambios de inbox + edit (si no están en la rama que despliegan).
 2. **Aplicar migración** `20260713010000_inbox_performance` en Supabase prod.
-3. **Build y deploy** imagen ECS / servicio en `api.conversai.easycomp.cl`.
+3. **Build y deploy** imagen ECS / servicio en `api-chatbotmanager.easycomp.cl`.
 4. **Verificar endpoints** (ver checklist abajo).
 5. **No cambiar** `BOT_API_BASE_URL` ni `BOT_API_SECRET` en Vercel (ya apuntan bien).
 6. Opcional: redeploy UI en Vercel (no obligatorio solo por inbox; el fallback ya funciona).
@@ -161,7 +162,7 @@ Sin esta migración, el deploy del código puede fallar o degradar performance d
 Ejecutar con `X-API-Key` válido y un `businessId` real:
 
 ```bash
-BASE="https://api.conversai.easycomp.cl"
+BASE="https://api-chatbotmanager.easycomp.cl"
 BIZ="<business_id>"
 KEY="<BOT_API_SECRET>"
 

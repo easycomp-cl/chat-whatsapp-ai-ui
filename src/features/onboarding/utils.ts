@@ -1,7 +1,6 @@
 import type { OnboardingDraft, OnboardingPatch, OnboardingOffering } from "./types";
 import { BUSINESS_DESCRIPTION_MAX, BUSINESS_DESCRIPTION_MIN } from "./types";
 import { validateScheduleString } from "./schedule-utils";
-import { TWC_SAMPLE_OFFERINGS } from "./twc-sample-data";
 
 export function createEmptyOffering(): OnboardingOffering {
   return {
@@ -20,28 +19,20 @@ export function resolveUseNamedAgent(draft: OnboardingDraft): boolean {
 }
 
 export function createEmptyDraft(): OnboardingDraft {
-  const offerings =
-    process.env.NODE_ENV === "development"
-      ? TWC_SAMPLE_OFFERINGS.map((o) => ({ ...o }))
-      : [createEmptyOffering()];
-
   return {
     identity: {
-      business_name: process.env.NODE_ENV === "development" ? "The Wood Club" : "",
+      business_name: "",
       business_type: "products",
       description: "",
     },
-    offerings,
+    offerings: [createEmptyOffering()],
     operations: { schedule: "", payment_methods: [] },
-    human_contact: { admin_name: "", admin_phone: "", notify_on_handoff: true },
+    human_contact: { admin_name: "", admin_phone: "", notify_on_handoff: true, admin_phone_verified_at: null },
     bot_identity: {
-      use_named_agent: process.env.NODE_ENV === "development",
-      bot_name: process.env.NODE_ENV === "development" ? "Woody" : "",
+      use_named_agent: false,
+      bot_name: "",
       bot_tone: "profesional y cercano",
-      greeting_message:
-        process.env.NODE_ENV === "development"
-          ? "Hola, soy Woody de The Wood Club. ¿En qué te ayudo?"
-          : "",
+      greeting_message: "",
     },
   };
 }
@@ -163,6 +154,7 @@ export function buildStepPatch(step: number, draft: OnboardingDraft): Onboarding
           admin_name: draft.human_contact!.admin_name!.trim(),
           admin_phone: draft.human_contact!.admin_phone!.trim(),
           notify_on_handoff: draft.human_contact!.notify_on_handoff ?? true,
+          admin_phone_verified_at: draft.human_contact?.admin_phone_verified_at ?? null,
         },
       };
     case 5: {

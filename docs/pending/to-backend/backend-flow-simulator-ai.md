@@ -1,7 +1,7 @@
 # Backend: simulador de flujos con IA (`use_ai`)
 
 **Repo:** `chat-whatsapp-ai`  
-**Bloquea en UI:** checkbox «Usar interpretación con IA» en `/app/flujos/[flowId]` → pestaña Simulador.
+**Bloquea en UI:** checkbox «Usar interpretación con IA» en `/app/flows/[flowId]` → pestaña Simulador.
 
 ## Resumen
 

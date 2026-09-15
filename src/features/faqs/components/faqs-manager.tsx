@@ -172,7 +172,7 @@ export function FaqsManager({ faqs }: { faqs: Faq[] }) {
           <Upload className="size-4" />
           Importar CSV/JSON
         </Button>
-        <Button variant="outline" render={<Link href="/app/importar-chat" />}>
+        <Button variant="outline" render={<Link href="/app/import-chat" />}>
           <MessageCirclePlus className="size-4" />
           Importar desde chat
         </Button>

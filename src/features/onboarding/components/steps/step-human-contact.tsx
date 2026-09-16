@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import {
-  confirmAdminPhoneVerificationAction,
+  loadSetupStatusAction,
   sendAdminPhoneVerificationAction,
 } from "@/lib/actions/app-actions";
 import type { OnboardingDraft } from "../../types";
@@ -28,14 +28,12 @@ export function StepHumanContact({ businessId, draft, onChange }: StepHumanConta
   const notify = contact.notify_on_handoff ?? true;
   const phone = contact.admin_phone ?? "";
   const verifiedAt = contact.admin_phone_verified_at ?? null;
-  const [code, setCode] = useState("");
-  const [codeSent, setCodeSent] = useState(false);
+  const [linkSent, setLinkSent] = useState(false);
   const [pendingSend, startSend] = useTransition();
-  const [pendingConfirm, startConfirm] = useTransition();
+  const [pendingCheck, startCheck] = useTransition();
 
   useEffect(() => {
-    setCode("");
-    setCodeSent(false);
+    setLinkSent(false);
   }, [phone]);
 
   function updateContact(patch: Partial<typeof contact>) {
@@ -53,30 +51,29 @@ export function StepHumanContact({ businessId, draft, onChange }: StepHumanConta
       if (!result.ok) {
         toast.error(result.error, {
           description:
-            "El código se envía con una plantilla de autenticación de WhatsApp. Hace falta conectar WhatsApp del negocio y que Meta apruebe la plantilla.",
+            "El aviso se envía con una plantilla de WhatsApp. Hace falta conectar WhatsApp del negocio y que Meta apruebe la plantilla.",
         });
         return;
       }
-      setCodeSent(true);
-      toast.success("Código enviado a tu WhatsApp personal.");
+      setLinkSent(true);
+      toast.success("Te enviamos un WhatsApp. Toca Confirmar en ese mensaje.");
     });
   }
 
-  function handleConfirmCode() {
-    const trimmed = phone.trim();
-    const otp = code.replace(/\s/g, "");
-    if (!/^\d{6}$/.test(otp)) {
-      toast.error("El código debe tener 6 dígitos.");
-      return;
-    }
-    startConfirm(async () => {
-      const result = await confirmAdminPhoneVerificationAction(businessId, trimmed, otp);
+  function handleAlreadyConfirmed() {
+    startCheck(async () => {
+      const result = await loadSetupStatusAction(businessId);
       if (!result.ok) {
-        toast.error(result.error);
+        toast.error("No se pudo consultar el estado. Intenta de nuevo.");
         return;
       }
-      updateContact({ admin_phone_verified_at: result.result.verified_at });
-      toast.success("Número verificado. Ya puede recibir avisos de derivación.");
+      const verifiedAtFromStatus = result.status.draft?.human_contact?.admin_phone_verified_at ?? null;
+      if (!verifiedAtFromStatus) {
+        toast.error("Todavía no está confirmado. Toca Confirmar en el WhatsApp y vuelve a intentar.");
+        return;
+      }
+      updateContact({ admin_phone_verified_at: verifiedAtFromStatus });
+      toast.success("Número confirmado. Ya puede recibir avisos de derivación.");
     });
   }
 
@@ -137,24 +134,25 @@ export function StepHumanContact({ businessId, draft, onChange }: StepHumanConta
           <div>
             <p className="text-sm font-medium">Validar número para avisos</p>
             <p className="mt-1 text-xs text-muted-foreground">
-              WhatsApp no deja mandar un mensaje libre a un celular que no te escribió. El código
-              de prueba y los avisos de derivación van con plantillas aprobadas por Meta.
+              WhatsApp no deja mandar un mensaje libre a un celular que no te escribió. Te
+              enviamos un aviso con un botón Confirmar.
             </p>
           </div>
 
           <div className="rounded-lg border bg-[#efeae2] p-3">
             <p className="text-[11px] font-semibold uppercase tracking-wide text-[#667781]">
-              Plantilla de validación (AUTHENTICATION)
+              Plantilla de confirmación
             </p>
             <p className="mt-2 text-sm text-[#111b21]">
-              Tu código de verificación es <span className="font-semibold">123456</span>. Válido 10
-              minutos. No lo compartas.
+              Hola María, fuiste agregado al equipo de EasyComp Repuestos. Confirma que este
+              número es correcto.
             </p>
+            <p className="mt-2 text-xs font-medium text-[#7678ed]">Confirmar</p>
           </div>
 
           {verifiedAt ? (
             <p className="text-sm font-medium text-emerald-700">
-              Número verificado. Los avisos de derivación pueden llegar a este WhatsApp.
+              Número confirmado. Los avisos de derivación pueden llegar a este WhatsApp.
             </p>
           ) : (
             <>
@@ -165,36 +163,27 @@ export function StepHumanContact({ businessId, draft, onChange }: StepHumanConta
                   onClick={handleSendCode}
                   disabled={pendingSend}
                 >
-                  {pendingSend ? "Enviando…" : "Enviar código por WhatsApp"}
+                  {pendingSend ? "Enviando…" : "Enviar confirmación por WhatsApp"}
                 </Button>
+                {linkSent ? (
+                  <Button
+                    type="button"
+                    onClick={handleAlreadyConfirmed}
+                    disabled={pendingCheck}
+                    className="bg-[#7678ed] text-white hover:bg-[#7678ed]/90"
+                  >
+                    {pendingCheck ? "Revisando…" : "Ya confirmé"}
+                  </Button>
+                ) : null}
               </div>
-              {codeSent && (
-                <div className="space-y-2">
-                  <Label htmlFor="admin-otp">Código de 6 dígitos</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      id="admin-otp"
-                      inputMode="numeric"
-                      autoComplete="one-time-code"
-                      maxLength={6}
-                      value={code}
-                      onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                      placeholder="000000"
-                    />
-                    <Button
-                      type="button"
-                      onClick={handleConfirmCode}
-                      disabled={pendingConfirm}
-                      className="bg-[#7678ed] text-white hover:bg-[#7678ed]/90"
-                    >
-                      {pendingConfirm ? "Confirmando…" : "Confirmar"}
-                    </Button>
-                  </div>
-                </div>
-              )}
+              {linkSent ? (
+                <p className="text-xs text-muted-foreground">
+                  Abre el WhatsApp de ese número, toca Confirmar y luego pulsa Ya confirmé.
+                </p>
+              ) : null}
               <p className="text-[11px] text-muted-foreground">
                 Puedes seguir al siguiente paso y validar después de conectar WhatsApp. Hasta que
-                el número esté verificado, no se enviarán avisos de derivación.
+                el número esté confirmado, no se enviarán avisos de derivación.
               </p>
             </>
           )}

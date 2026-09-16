@@ -52,13 +52,16 @@ export const TEMPLATE_INTERNAL_KIND_CLASS: Record<TemplateInternalKind, string> 
 export const STANDARD_WHATSAPP_TEMPLATES: StandardTemplateDefinition[] = [
   {
     name: "verificar_responsable_es",
-    category: "AUTHENTICATION",
+    category: "UTILITY",
     kind: "autenticacion",
     title: "Validar número del responsable",
-    description: "Código al WhatsApp personal para confirmar avisos.",
-    body: "Tu código de verificación es {{1}}. Válido 10 minutos. No lo compartas.",
-    examples: [{ label: "Código OTP", value: "482193" }],
-    footer: "No lo compartas con nadie",
+    description: "Confirma el WhatsApp personal de un admin o asistente.",
+    body: "Hola {{1}}, fuiste agregado al equipo de {{2}}. Confirma que este número es correcto.",
+    examples: [
+      { label: "Nombre", value: "María" },
+      { label: "Nombre del negocio", value: "Panadería Aurora" },
+    ],
+    buttonLabel: "Confirmar",
   },
   {
     name: "aviso_handoff_es",

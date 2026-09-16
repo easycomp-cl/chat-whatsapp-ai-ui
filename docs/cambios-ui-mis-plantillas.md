@@ -8,13 +8,13 @@ Con la ventana de 24 h cerrada, el composer abre **+ → Plantilla WA** y envía
 
 ## Comportamiento
 
-- El listado muestra cada plantilla como globo de WhatsApp (fondo de chat, burbuja verde, ticks). Los parámetros van rellenados con datos del negocio, la sesión, un cliente y un producto del catálogo; cada valor se ve como `{valor}` con el número de parámetro en superíndice (`¹`, `²`, `³`). Ya no hay diálogo de Preview.
-- Tag de Meta (Utilidad / Autenticación) y tag **interno** de uso: consulta, servicio, producto, pedido, notificación, pago, autenticación.
+- El listado muestra cada plantilla como globo de WhatsApp (fondo de chat, burbuja verde, ticks). El nombre interno (`aviso_handoff_es`) no se muestra; solo el título en español.
+- Tag de Meta (Utilidad / Autenticación) y tag interno (consulta, servicio, etc.) van al pie de la tarjeta. El chip de estado (Pendiente / Aprobada / Sin crear) sigue arriba a la derecha.
 - **Crear pack en Meta:** botón azul Meta (`#1877F2`) arriba a la derecha. `POST .../whatsapp/templates/provision-defaults`. Sin WhatsApp conectado queda deshabilitado.
-- Composer (modo humano): menú **Plantilla WA**. Modal con `parameter_fields`, preview de `body_preview` y envío `POST /conversations/:id/messages/template`.
-- No se ofrecen en el chat del cliente `verificar_responsable_es` ni `aviso_handoff_es` (van a otro número; otro endpoint).
+- Composer (modo humano): menú **Plantilla WA**. Abre un **catálogo** de plantillas `APPROVED`. Al hacer clic, se precarga en la caja de texto: variables compactas arriba, globo live abajo y **X** para cancelar. Cliente y negocio se rellenan con datos del chat; pedido/producto/cita quedan vacíos con aviso si no hay dato. El envío sigue siendo `POST /conversations/:id/messages/template`.
+- `verificar_responsable_es` es **UTILITY** con botón **Confirmar** (ya no OTP). Si está `NOT_CREATED`, el globo usa el copy del pack y no un `body_preview` viejo.
 - `aviso_handoff_es` muestra el botón **Abrir chat**. El backend debe enviar el UUID de la conversación como sufijo del URL (`/app/conversations/{id}`), no el link completo en el cuerpo.
-- Burbuja: `content_type === "TEMPLATE"` muestra `content_text` con etiqueta Plantilla.
+- Si Meta rechaza o Graph falla al crear, se muestra el error abajo de la tarjeta. `rejection_reason: NONE` (plantillas pendientes) no se muestra.
 
 ## Pack `standard_v1`
 

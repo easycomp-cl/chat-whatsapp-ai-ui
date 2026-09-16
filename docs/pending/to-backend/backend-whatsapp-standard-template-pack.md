@@ -41,11 +41,11 @@ También: `POST /businesses/:id/whatsapp/templates/provision-defaults` para rein
 
 ## Pack estándar (`STANDARD_TEMPLATE_PACK`)
 
-Idioma `es`. Textos **UTILITY** sin promo (sin “oferta”, “descuento”, “aprovecha”). AUTHENTICATION solo OTP.
+Idioma `es`. Textos **UTILITY** sin promo (sin “oferta”, “descuento”, “aprovecha”).
 
 | name | category | Uso en producto |
 |------|----------|-----------------|
-| `verificar_responsable_es` | AUTHENTICATION | OTP al WhatsApp **personal** del admin |
+| `verificar_responsable_es` | UTILITY | Confirmar WhatsApp personal del admin (botón Confirmar) |
 | `aviso_handoff_es` | UTILITY | Aviso al responsable: cliente necesita humano |
 | `seguimiento_asesor_es` | UTILITY | Recontacto al **cliente** con ventana 24 h cerrada |
 | `pedido_actualizacion_es` | UTILITY | Estado de pedido (ventana cerrada o abierta) |
@@ -54,9 +54,15 @@ Idioma `es`. Textos **UTILITY** sin promo (sin “oferta”, “descuento”, �
 | `link_pago_es` | UTILITY | Link de pago (cuerpo + botón URL) |
 | `muestra_producto_es` | UTILITY | Detalle del producto consultado |
 
-### 1. `verificar_responsable_es` (AUTHENTICATION)
+### 1. `verificar_responsable_es` (UTILITY)
 
-Seguir [Authentication templates](https://developers.facebook.com/docs/whatsapp/business-management-api/authentication-templates). El código va en el componente OTP de Meta (`{{1}}`). No usar este nombre para avisos de handoff.
+```
+Hola {{1}}, fuiste agregado al equipo de {{2}}. Confirma que este número es correcto.
+```
+
+Ejemplo: `María` · `EasyComp Repuestos`
+
+Botón URL `Confirmar` → `https://chatbotmanager.easycomp.cl/verify-phone/{{1}}` (sufijo = token). No es AUTHENTICATION/OTP.
 
 ### 2. `aviso_handoff_es`
 

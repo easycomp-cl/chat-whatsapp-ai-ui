@@ -8,22 +8,31 @@ import type { TemplateExample } from "../standard-pack";
 type WhatsappTemplateBubbleProps = {
   body: string;
   examples?: TemplateExample[];
+  /** Valores reales al componer; si hay texto, sustituye el placeholder. */
+  values?: string[];
+  highlightIndex?: number | null;
+  compose?: boolean;
   footer?: string | null;
   buttonLabel?: string | null;
   compact?: boolean;
+  className?: string;
 };
 
 export function WhatsappTemplateBubble({
   body,
   examples = [],
+  values,
+  highlightIndex = null,
+  compose = false,
   footer,
   buttonLabel,
   compact = false,
+  className,
 }: WhatsappTemplateBubbleProps) {
   const parts = splitTemplateBody(body);
 
   return (
-    <div className={cn("flex w-full justify-end", compact ? "p-3" : "p-4")}>
+    <div className={cn("flex w-full justify-end", compact ? "p-3" : "p-4", className)}>
       <div className="max-w-[92%]">
         <div
           className={cn(
@@ -35,6 +44,37 @@ export function WhatsappTemplateBubble({
             {parts.map((part, index) => {
               if (part.type === "text") {
                 return <span key={index}>{part.value}</span>;
+              }
+
+              const filled = values?.[part.index - 1]?.trim() ?? "";
+              const highlighted = highlightIndex === part.index;
+
+              if (compose) {
+                if (!filled) {
+                  return (
+                    <span
+                      key={index}
+                      className={cn(
+                        "mx-px inline-flex items-baseline rounded-md bg-[#7678ed]/18 px-1 py-px font-semibold text-[#4f4cc8] transition-shadow",
+                        highlighted && "ring-2 ring-[#7678ed]/70 ring-offset-1 ring-offset-[#d9fdd3]"
+                      )}
+                    >
+                      {`{{${part.index}}}`}
+                    </span>
+                  );
+                }
+
+                return (
+                  <span
+                    key={index}
+                    className={cn(
+                      "rounded-sm bg-[#b7e0ae]/80 px-0.5 font-medium text-[#0b5c4a] transition-shadow",
+                      highlighted && "ring-2 ring-[#7678ed]/60 ring-offset-1 ring-offset-[#d9fdd3]"
+                    )}
+                  >
+                    {filled}
+                  </span>
+                );
               }
 
               const example = examples[part.index - 1]?.value?.trim();

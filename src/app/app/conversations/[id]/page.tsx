@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { requireAppAccess } from "@/lib/auth/session";
+import { getBusinessById } from "@/lib/business/get-business";
 import { createClient } from "@/lib/supabase/server";
 import { loadConversationsInbox, toConversationRow, ensureConversationInList } from "@/lib/conversations/load-conversations";
 import { fetchConversationMessages } from "@/lib/conversations/fetch-conversation-messages";
@@ -41,6 +42,8 @@ export default async function ConversationDetailPage({
     .single();
 
   if (!conversation) notFound();
+
+  const business = await getBusinessById(profile.business_id!);
 
   const conv = conversation as Conversation;
 
@@ -180,6 +183,7 @@ export default async function ConversationDetailPage({
         messages={(messages ?? []) as Message[]}
         initialFlowState={initialFlowState}
         outboundSender={outboundSender}
+        businessName={business?.name ?? null}
         canClearChat={canClearConversationChat(profile.role)}
         showCustomerMessageAudit={canViewCustomerMessageAudit(profile.role)}
         botAgentName={botAgentName}

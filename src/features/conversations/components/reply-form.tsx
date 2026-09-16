@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition, type FormEvent, type KeyboardEvent } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition, type FormEvent, type KeyboardEvent } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { CircleHelp, Mic, Send, Square, X } from "lucide-react";
@@ -16,6 +16,7 @@ import {
   sendConversationInteractiveAction,
   sendConversationMediaAction,
   sendConversationReplyAction,
+  sendConversationTemplateAction,
 } from "@/lib/actions/app-actions";
 import { getReplyPreviewText } from "@/lib/conversations/message-display";
 import {
@@ -27,7 +28,8 @@ import {
 import { cn } from "@/lib/utils";
 import { ComposeAttachMenu } from "@/features/conversations/components/compose-attach-menu";
 import { InteractiveComposeBubble } from "@/features/conversations/components/interactive-compose-bubble";
-import { SendWhatsappTemplateDialog } from "@/features/conversations/components/send-whatsapp-template-dialog";
+import { TemplateComposePanel } from "@/features/conversations/components/template-compose-panel";
+import { WhatsappTemplateCatalogDialog } from "@/features/conversations/components/whatsapp-template-catalog-dialog";
 import { WhatsappServiceWindowIndicator } from "@/features/conversations/components/whatsapp-service-window-indicator";
 import { MessageComposePreview } from "@/features/conversations/components/message-compose-preview";
 import {
@@ -48,12 +50,22 @@ import {
 } from "@/lib/conversations/interactive-compose";
 import { buildOptimisticInteractiveMessage } from "@/lib/conversations/interactive-message";
 import {
+  buildOptimisticTemplateMessage,
+  buildTemplateComposeContext,
+  createTemplateComposeDraft,
+  templateDraftIsComplete,
+  templateDraftMissingMessage,
+  type TemplateComposeDraft,
+} from "@/features/conversations/lib/template-compose";
+import type { WhatsappTemplate } from "@/lib/bot-api/types";
+import { templateDisplayTitle } from "@/features/whatsapp-templates/utils";
+import {
   formatServiceWindowCountdown,
   sessionWindowClosedMessage,
   type WhatsappServiceWindowState,
 } from "@/lib/conversations/whatsapp-service-window";
 import type { OutboundSenderContext } from "@/lib/conversations/outbound-sender";
-import type { Message } from "@/types/database.types";
+import type { Customer, Message } from "@/types/database.types";
 
 export type ReplyFormSentPayload = {
   text?: string;
@@ -69,6 +81,8 @@ export type ReplyFormSentPayload = {
 type ReplyFormProps = {
   conversationId: string;
   businessId: string;
+  businessName?: string | null;
+  customer?: Customer | null;
   outboundSender?: OutboundSenderContext;
   replyingTo?: Message | null;
   serviceWindow?: WhatsappServiceWindowState;
@@ -81,6 +95,8 @@ type ReplyFormProps = {
 export function ReplyForm({
   conversationId,
   businessId,
+  businessName,
+  customer,
   outboundSender,
   replyingTo,
   serviceWindow,
@@ -98,6 +114,12 @@ export function ReplyForm({
   const [interactiveDraft, setInteractiveDraft] = useState<InteractiveComposeDraft | null>(null);
   const [interactiveShowValidation, setInteractiveShowValidation] = useState(false);
   const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
+  const [templateDraft, setTemplateDraft] = useState<TemplateComposeDraft | null>(null);
+  const [templateShowValidation, setTemplateShowValidation] = useState(false);
+  const [templateActiveSlot, setTemplateActiveSlot] = useState<{
+    component: "body" | "button";
+    index: number;
+  } | null>(null);
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const composeInputRef = useRef<HTMLTextAreaElement>(null);
@@ -108,6 +130,15 @@ export function ReplyForm({
   const humanModeMessage =
     "Activa el modo humano para enviar un mensaje al cliente. Con el bot activo no se pueden enviar respuestas desde aquí.";
   const composeLocked = humanModeRequired || sessionClosed;
+  const templateComposeContext = useMemo(
+    () =>
+      buildTemplateComposeContext({
+        customer,
+        businessName,
+        agentDisplayName: outboundSender?.displayName,
+      }),
+    [customer, businessName, outboundSender?.displayName]
+  );
 
   function windowClosedToast() {
     return sessionWindowClosedMessage(serviceWindow?.status);
@@ -127,19 +158,27 @@ export function ReplyForm({
 
   const trimmedText = text.trim();
   const hasInteractiveDraft = Boolean(interactiveDraft);
+  const hasTemplateDraft = Boolean(templateDraft);
+  const hasComposeDraft = hasInteractiveDraft || hasTemplateDraft;
   const interactiveCanSend = interactiveDraft
     ? Boolean(buildInteractiveFromDraft(interactiveDraft))
     : false;
+  const templateCanSend = templateDraft ? templateDraftIsComplete(templateDraft) : false;
   const hasVoiceNote = voiceRecorder.status === "recorded" && voiceRecorder.blob;
   const isRecording = voiceRecorder.status === "recording";
   const showSendButton = Boolean(
-    trimmedText || attachedFile || hasVoiceNote || (hasInteractiveDraft && interactiveCanSend)
+    trimmedText ||
+      attachedFile ||
+      hasVoiceNote ||
+      (hasInteractiveDraft && interactiveCanSend) ||
+      (hasTemplateDraft && templateCanSend)
   );
   const primaryAction: "send" | "mic" | "stop" = isRecording
     ? "stop"
-    : hasInteractiveDraft || showSendButton
+    : hasComposeDraft || showSendButton
       ? "send"
       : "mic";
+  const sessionBlocksFreeText = sessionClosed && !hasTemplateDraft;
 
   useEffect(() => {
     setText("");
@@ -150,12 +189,18 @@ export function ReplyForm({
     setInteractiveDraft(null);
     setInteractiveShowValidation(false);
     setTemplateDialogOpen(false);
+    setTemplateDraft(null);
+    setTemplateShowValidation(false);
+    setTemplateActiveSlot(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- reset al cambiar cita
   }, [replyingTo?.id]);
 
   useEffect(() => {
     setInteractiveDraft(null);
     setInteractiveShowValidation(false);
+    setTemplateDraft(null);
+    setTemplateShowValidation(false);
+    setTemplateActiveSlot(null);
   }, [conversationId]);
 
   useEffect(() => {
@@ -207,6 +252,9 @@ export function ReplyForm({
     setText("");
     setShowPreview(false);
     setInteractiveShowValidation(false);
+    setTemplateDraft(null);
+    setTemplateShowValidation(false);
+    setTemplateActiveSlot(null);
     setInteractiveDraft(createInteractiveComposeDraft(variant));
   }
 
@@ -224,9 +272,21 @@ export function ReplyForm({
     setTemplateDialogOpen(true);
   }
 
+  function handleSelectTemplate(template: WhatsappTemplate) {
+    setTemplateDraft(createTemplateComposeDraft(template, templateComposeContext));
+    setTemplateShowValidation(false);
+    setTemplateActiveSlot(null);
+  }
+
   function handleCancelInteractive() {
     setInteractiveShowValidation(false);
     setInteractiveDraft(null);
+  }
+
+  function handleCancelTemplate() {
+    setTemplateShowValidation(false);
+    setTemplateActiveSlot(null);
+    setTemplateDraft(null);
   }
 
   function handleInteractiveDraftChange(draft: InteractiveComposeDraft) {
@@ -277,6 +337,58 @@ export function ReplyForm({
       } catch (error) {
         const message = userFacingActionError(error, "No se pudo enviar el mensaje interactivo");
         toast.error(sendFailureToast(message));
+        onSent?.({ failed: true, optimisticId: optimistic.id, error: message });
+      }
+    });
+  }
+
+  function handleSendTemplate() {
+    if (!templateDraft) return;
+
+    const missing = templateDraftMissingMessage(templateDraft);
+    if (missing) {
+      setTemplateShowValidation(true);
+      toast.error(missing);
+      return;
+    }
+
+    setTemplateShowValidation(false);
+
+    const optimistic = buildOptimisticTemplateMessage({
+      conversationId,
+      businessId,
+      draft: templateDraft,
+      replyToMessageId: replyingTo?.id,
+      outboundSender,
+    });
+
+    onSent?.({ optimistic });
+    setTemplateDraft(null);
+    setTemplateActiveSlot(null);
+    onCancelReply?.();
+
+    startTransition(async () => {
+      try {
+        const result = await sendConversationTemplateAction(conversationId, {
+          template_name: templateDraft.template.name,
+          language_code: templateDraft.template.language || "es",
+          body_parameters: templateDraft.bodyValues.map((value) => value.trim()),
+          ...(templateDraft.buttonValues.some((value) => value.trim())
+            ? { button_parameters: templateDraft.buttonValues.map((value) => value.trim()) }
+            : {}),
+          ...(replyingTo ? { reply_to_message_id: replyingTo.id } : {}),
+        });
+        if (!result.ok) {
+          toast.error(result.error);
+          onSent?.({ failed: true, optimisticId: optimistic.id, error: result.error });
+          return;
+        }
+        toast.success("Plantilla enviada por WhatsApp");
+        onSent?.({ serverMessage: result.message });
+        router.refresh();
+      } catch (error) {
+        const message = userFacingActionError(error, "No se pudo enviar la plantilla");
+        toast.error(message);
         onSent?.({ failed: true, optimisticId: optimistic.id, error: message });
       }
     });
@@ -339,6 +451,11 @@ export function ReplyForm({
 
     if (humanModeRequired) {
       toast.error(humanModeMessage);
+      return;
+    }
+
+    if (hasTemplateDraft) {
+      handleSendTemplate();
       return;
     }
 
@@ -571,11 +688,13 @@ export function ReplyForm({
         </div>
       )}
 
-      <div className={cn("flex items-center justify-between gap-3", hasInteractiveDraft ? "mb-3 mt-1" : "mb-2 h-6")}>
-        {hasInteractiveDraft ? (
+      <div className={cn("flex items-center justify-between gap-3", hasComposeDraft ? "mb-3 mt-1" : "mb-2 h-6")}>
+        {hasComposeDraft ? (
           <div className="flex w-full items-center justify-between gap-2">
-            <p className="text-xs font-medium text-[#54656f]">
-              Mensaje interactivo · {interactiveDraft?.variant === "button" ? "Botones" : "Lista"}
+            <p className="min-w-0 truncate text-xs font-medium text-[#54656f]">
+              {hasTemplateDraft && templateDraft
+                ? `Plantilla · ${templateDisplayTitle(templateDraft.template)}`
+                : `Mensaje interactivo · ${interactiveDraft?.variant === "button" ? "Botones" : "Lista"}`}
             </p>
             <div className="flex items-center gap-2">
               {serviceWindow ? (
@@ -586,10 +705,12 @@ export function ReplyForm({
               ) : null}
               <button
                 type="button"
-                onClick={handleCancelInteractive}
+                onClick={hasTemplateDraft ? handleCancelTemplate : handleCancelInteractive}
                 disabled={pending}
                 className="rounded-full p-1 text-[#667781] hover:bg-white hover:text-[#111b21] disabled:opacity-50"
-                aria-label="Volver a escribir texto"
+                aria-label={
+                  hasTemplateDraft ? "Cancelar plantilla" : "Volver a escribir texto"
+                }
               >
                 <X className="size-3.5" />
               </button>
@@ -636,10 +757,32 @@ export function ReplyForm({
       <div
         className={cn(
           "flex gap-2 rounded-3xl bg-white px-3 shadow-sm ring-1 ring-[#d1d7db]",
-          hasInteractiveDraft ? "items-end py-3" : "items-end py-2"
+          hasComposeDraft ? "items-end py-3" : "items-end py-2"
         )}
       >
-        {hasInteractiveDraft && interactiveDraft ? (
+        {hasTemplateDraft && templateDraft ? (
+          <div
+            className={cn(
+              "flex min-h-0 min-w-0 flex-1 items-start overflow-y-auto overscroll-contain pt-2 pb-1",
+              "max-h-80",
+              "[scrollbar-width:thin] [scrollbar-color:#8696a0_#e9edef]",
+              "[&::-webkit-scrollbar]:w-2",
+              "[&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#8696a0]/55",
+              "[&::-webkit-scrollbar-thumb]:hover:bg-[#667781]/70",
+              "[&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-[#e9edef]"
+            )}
+          >
+            <TemplateComposePanel
+              draft={templateDraft}
+              context={templateComposeContext}
+              disabled={pending}
+              showValidation={templateShowValidation}
+              activeSlot={templateActiveSlot}
+              onActiveSlotChange={setTemplateActiveSlot}
+              onChange={setTemplateDraft}
+            />
+          </div>
+        ) : hasInteractiveDraft && interactiveDraft ? (
           <div
             className={cn(
               "interactive-compose-scroll flex min-h-0 min-w-0 flex-1 items-start justify-start overflow-y-auto overscroll-contain",
@@ -694,9 +837,11 @@ export function ReplyForm({
           onClick={primaryAction === "send" ? undefined : handlePrimaryAction}
           disabled={
             pending ||
-            composeLocked ||
-            (primaryAction === "mic" && !voiceRecorder.canRecord) ||
-            (hasInteractiveDraft && !interactiveCanSend)
+            humanModeRequired ||
+            (primaryAction === "mic" && (!voiceRecorder.canRecord || sessionClosed)) ||
+            (primaryAction === "send" && sessionBlocksFreeText) ||
+            (hasInteractiveDraft && !interactiveCanSend) ||
+            (hasTemplateDraft && !templateCanSend)
           }
           className={cn(
             "mb-0.5 flex size-10 shrink-0 items-center justify-center rounded-full text-[#111b21] transition-colors disabled:cursor-not-allowed disabled:opacity-50",
@@ -737,10 +882,10 @@ export function ReplyForm({
       <div
         className={cn(
           "mt-2.5 flex items-center gap-3",
-          hasInteractiveDraft ? "justify-end" : "justify-between"
+          hasComposeDraft ? "justify-end" : "justify-between"
         )}
       >
-        {!hasInteractiveDraft && (
+        {!hasComposeDraft && (
           <ComposeAttachMenu
             disabled={pending || isRecording || Boolean(hasVoiceNote) || humanModeRequired}
             sessionClosed={sessionClosed}
@@ -789,31 +934,10 @@ export function ReplyForm({
           </div>
         </div>
       </div>
-      <SendWhatsappTemplateDialog
+      <WhatsappTemplateCatalogDialog
         open={templateDialogOpen}
         onOpenChange={setTemplateDialogOpen}
-        conversationId={conversationId}
-        businessId={businessId}
-        replyToMessageId={replyingTo?.id}
-        outboundSender={outboundSender}
-        onSent={(payload) => {
-          if (payload.optimistic) {
-            onSent?.({ optimistic: payload.optimistic });
-            onCancelReply?.();
-          }
-          if (payload.failed) {
-            onSent?.({
-              failed: true,
-              optimisticId: payload.optimisticId,
-              error: payload.error,
-            });
-            return;
-          }
-          if (payload.serverMessage) {
-            onSent?.({ serverMessage: payload.serverMessage });
-            router.refresh();
-          }
-        }}
+        onSelect={handleSelectTemplate}
       />
     </form>
   );

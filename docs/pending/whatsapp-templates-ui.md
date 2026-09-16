@@ -117,7 +117,7 @@ Errores útiles:
 
 | name | Uso |
 |------|-----|
-| `verificar_responsable_es` | OTP admin (AUTHENTICATION) |
+| `verificar_responsable_es` | Confirmar WhatsApp de admin (UTILITY + botón Confirmar) |
 | `aviso_handoff_es` | Cliente pidió humano → WhatsApp del responsable |
 | `seguimiento_asesor_es` | Recontacto ventana cerrada |
 | `pedido_actualizacion_es` | Estado de pedido |
@@ -136,7 +136,8 @@ No son plantillas globales: cada negocio tiene **su copia** en su WABA.
 |------|-----------|
 | `app/plantillas` o `/app/plantillas` | Lista del pack + chips + botón Crear pack |
 | Composer (ventana cerrada) | Menú **+ → Plantilla WA**: solo `APPROVED` |
-| Modal variables | Usar `parameter_fields` + preview con `body_preview` |
+| Modal catálogo | Tarjetas seleccionables de plantillas aprobadas |
+| Composer (tras elegir) | Formulario de variables + globo live + **X** para cancelar |
 | Burbuja de mensaje | Si `content_type === "TEMPLATE"`, mostrar `content_text` (ya renderizado) |
 
 ---

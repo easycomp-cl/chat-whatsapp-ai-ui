@@ -50,6 +50,7 @@ type ChatWindowProps = {
   messages: Message[];
   initialFlowState?: ConversationFlowState | null;
   outboundSender?: OutboundSenderContext;
+  businessName?: string | null;
   canClearChat?: boolean;
   showCustomerMessageAudit?: boolean;
   botAgentName?: string | null;
@@ -60,6 +61,7 @@ export function ChatWindow({
   messages: initialMessages,
   initialFlowState = null,
   outboundSender,
+  businessName,
   canClearChat = false,
   showCustomerMessageAudit = false,
   botAgentName,
@@ -547,6 +549,8 @@ export function ChatWindow({
               <ReplyForm
                 conversationId={conversation.id}
                 businessId={conversation.business_id}
+                businessName={businessName}
+                customer={customer}
                 outboundSender={outboundSender}
                 replyingTo={replyingTo}
                 serviceWindow={serviceWindow}

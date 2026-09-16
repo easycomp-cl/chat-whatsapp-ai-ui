@@ -23,6 +23,7 @@ import {
   inferInternalKind,
   normalizeTemplateStatus,
   templateBodyPreview,
+  templateLastError,
   templateRejectionReason,
   type TemplatePreviewContext,
 } from "../utils";
@@ -59,9 +60,12 @@ function TemplateCard({
   fallbackBody: string;
 }) {
   const status = normalizeTemplateStatus(apiRow?.status);
-  const body = templateBodyPreview(apiRow ?? { name, status: "NOT_CREATED" }, fallbackBody);
+  const body =
+    status === "NOT_CREATED"
+      ? fallbackBody
+      : templateBodyPreview(apiRow ?? { name, status: "NOT_CREATED" }, fallbackBody);
   const rejection = apiRow ? templateRejectionReason(apiRow) : null;
-  const lastError = apiRow?.last_error?.trim();
+  const lastError = apiRow ? templateLastError(apiRow) : null;
   const metaCategory = category === "AUTHENTICATION" ? "Autenticación" : "Utilidad";
 
   return (
@@ -69,30 +73,16 @@ function TemplateCard({
         <div className="flex items-start justify-between gap-2 px-4 pt-4">
           <div className="min-w-0">
             <h3 className="font-semibold tracking-tight">{title}</h3>
-            <p className="truncate text-xs text-muted-foreground">{name}</p>
           </div>
           <Badge variant="outline" className={cn("shrink-0", TEMPLATE_STATUS_CLASS[status])}>
             {TEMPLATE_STATUS_LABEL[status]}
           </Badge>
         </div>
 
-        <div className="flex flex-wrap gap-1.5 px-4 pt-2">
-          <Badge variant="outline" className="border-slate-200 bg-white text-slate-600">
-            {metaCategory}
-          </Badge>
-          <Badge
-            variant="outline"
-            className={cn(TEMPLATE_INTERNAL_KIND_CLASS[kind])}
-            title="Clasificación interna del producto"
-          >
-            {TEMPLATE_INTERNAL_KIND_LABEL[kind]}
-          </Badge>
-        </div>
-
         <p className="px-4 pt-2 text-sm text-muted-foreground">{description}</p>
 
         <div
-          className="mx-4 mt-3 mb-4 overflow-hidden rounded-xl border border-black/5"
+          className="mx-4 mt-3 overflow-hidden rounded-xl border border-black/5"
           style={{
             backgroundColor: "#efeae2",
             backgroundImage:
@@ -118,6 +108,19 @@ function TemplateCard({
         {lastError && !rejection ? (
           <p className="border-t px-4 py-2 text-xs text-destructive">Último error: {lastError}</p>
         ) : null}
+
+        <div className="mt-auto flex flex-wrap gap-1.5 border-t px-4 py-3">
+          <Badge variant="outline" className="border-slate-200 bg-white text-slate-600">
+            {metaCategory}
+          </Badge>
+          <Badge
+            variant="outline"
+            className={cn(TEMPLATE_INTERNAL_KIND_CLASS[kind])}
+            title="Clasificación interna del producto"
+          >
+            {TEMPLATE_INTERNAL_KIND_LABEL[kind]}
+          </Badge>
+        </div>
       </article>
   );
 }

@@ -11,10 +11,10 @@ Hay **dos plantillas distintas**:
 
 | Nombre | Categoría Meta | Para qué |
 |--------|----------------|----------|
-| `verificar_responsable_es` | **AUTHENTICATION** | OTP: “¿este WhatsApp es tuyo?” |
+| `verificar_responsable_es` | **UTILITY** | Confirmar el WhatsApp personal (cuerpo + botón **Confirmar**) |
 | `aviso_handoff_es` | **UTILITY** | Aviso real: “un cliente necesita un humano” |
 
-No mezclarlas: AUTHENTICATION es solo códigos; UTILITY es el aviso operativo.
+Ya no es AUTHENTICATION/OTP. El responsable toca **Confirmar** y abre `https://chatbotmanager.easycomp.cl/verify-phone/{token}`.
 
 ## Cuándo enviar el OTP
 
@@ -31,19 +31,17 @@ Orden correcto:
 
 Si `notify_on_handoff` es true y el número **no** está verificado, **no enviar** avisos.
 
-## Plantilla AUTHENTICATION (provisión)
+## Plantilla UTILITY de confirmación
 
 Nombre: `verificar_responsable_es`  
 Idioma: `es`  
-Categoría: `AUTHENTICATION`
-
-Cuerpo (formato Meta OTP):
+Categoría: `UTILITY`
 
 ```
-Tu código de verificación de {{business}} es {{1}}. Válido 10 minutos. No lo compartas.
+Hola {{1}}, fuiste agregado al equipo de {{2}}. Confirma que este número es correcto.
 ```
 
-En AUTHENTICATION el `{{1}}` es el código; Meta a veces inyecta el OTP button automáticamente. Seguir [Authentication templates](https://developers.facebook.com/docs/whatsapp/business-management-api/authentication-templates).
+Botón URL `Confirmar` → `https://chatbotmanager.easycomp.cl/verify-phone/{{1}}`. Al enviar, el sufijo es el token (no el URL completo).
 
 ## Plantilla UTILITY de aviso
 

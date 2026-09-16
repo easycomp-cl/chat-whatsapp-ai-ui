@@ -39,9 +39,38 @@ export function templateBodyPreview(template: WhatsappTemplate, fallback = ""): 
   return (template.body_preview ?? template.bodyPreview ?? fallback).trim();
 }
 
+const PLACEHOLDER_META_REASONS = new Set([
+  "none",
+  "none_provided",
+  "n/a",
+  "na",
+  "null",
+  "undefined",
+  "-",
+  "—",
+]);
+
+function isPlaceholderMetaMessage(value?: string | null): boolean {
+  const normalized = value?.trim().toLowerCase() ?? "";
+  return !normalized || PLACEHOLDER_META_REASONS.has(normalized);
+}
+
+/** Motivo de rechazo de Meta, o null si no hay error real (`NONE` no cuenta). */
 export function templateRejectionReason(template: WhatsappTemplate): string | null {
-  const value = template.rejection_reason ?? template.rejectionReason;
-  return value?.trim() ? value.trim() : null;
+  const status = normalizeTemplateStatus(template.status);
+  if (status !== "REJECTED" && status !== "PAUSED" && status !== "DISABLED") {
+    return null;
+  }
+
+  const raw = (template.rejection_reason ?? template.rejectionReason)?.trim() ?? "";
+  if (!isPlaceholderMetaMessage(raw)) return raw;
+  if (status === "REJECTED") return "Meta rechazó esta plantilla";
+  return null;
+}
+
+export function templateLastError(template: WhatsappTemplate): string | null {
+  const value = template.last_error?.trim() ?? "";
+  return isPlaceholderMetaMessage(value) ? null : value;
 }
 
 export function isApprovedTemplate(template: WhatsappTemplate): boolean {
@@ -137,7 +166,10 @@ function packExamplesForContext(
 ): TemplateExample[] {
   switch (pack.name) {
     case "verificar_responsable_es":
-      return pack.examples;
+      return [
+        { label: "Nombre", value: ctx.userFirstName },
+        { label: "Nombre del negocio", value: ctx.businessName },
+      ];
     case "aviso_handoff_es":
       return [
         { label: "Nombre del responsable", value: ctx.userFirstName },
@@ -244,7 +276,28 @@ export function parameterFieldsFor(
   }));
 }
 
+export function templatePackDefinition(name: string): StandardTemplateDefinition | undefined {
+  return STANDARD_WHATSAPP_TEMPLATES.find((item) => item.name === name);
+}
+
 export function templateDisplayTitle(template: WhatsappTemplate): string {
-  const pack = STANDARD_WHATSAPP_TEMPLATES.find((item) => item.name === template.name);
+  const pack = templatePackDefinition(template.name);
   return pack?.title ?? template.product_use ?? template.name;
+}
+
+export function templateResolvedBody(template: WhatsappTemplate): string {
+  const pack = templatePackDefinition(template.name);
+  return templateBodyPreview(template, pack?.body ?? "");
+}
+
+export function templateButtonLabel(template: WhatsappTemplate): string | null {
+  return templatePackDefinition(template.name)?.buttonLabel ?? null;
+}
+
+export function templateFooter(template: WhatsappTemplate): string | null {
+  return templatePackDefinition(template.name)?.footer ?? null;
+}
+
+export function templateDescription(template: WhatsappTemplate): string {
+  return templatePackDefinition(template.name)?.description ?? template.product_use ?? "";
 }

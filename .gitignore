@@ -50,3 +50,6 @@ next-env.d.ts
 
 .vercel
 .env*
+
+# credenciales QA locales (no subir a git)
+.cursor/rules/local-qa-login.mdc

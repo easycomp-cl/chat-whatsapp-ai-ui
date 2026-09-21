@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, useTransition, type FormEvent, type KeyboardEvent } from "react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { CircleHelp, Mic, Send, Square, X } from "lucide-react";
@@ -18,6 +19,7 @@ import {
   sendConversationReplyAction,
   sendConversationTemplateAction,
 } from "@/lib/actions/app-actions";
+import { listCatalogProductsAction } from "@/lib/actions/quote-actions";
 import { getReplyPreviewText } from "@/lib/conversations/message-display";
 import {
   buildOptimisticMediaMessage,
@@ -57,7 +59,8 @@ import {
   templateDraftMissingMessage,
   type TemplateComposeDraft,
 } from "@/features/conversations/lib/template-compose";
-import type { WhatsappTemplate } from "@/lib/bot-api/types";
+import { resolveCustomerDisplayName } from "@/lib/customers/resolve-display-name";
+import type { CatalogProduct, WhatsappTemplate } from "@/lib/bot-api/types";
 import { templateDisplayTitle } from "@/features/whatsapp-templates/utils";
 import {
   formatServiceWindowCountdown,
@@ -66,6 +69,12 @@ import {
 } from "@/lib/conversations/whatsapp-service-window";
 import type { OutboundSenderContext } from "@/lib/conversations/outbound-sender";
 import type { Customer, Message } from "@/types/database.types";
+
+const ProductQuoteModal = dynamic(
+  () =>
+    import("@/features/quotes/product-quote-modal").then((mod) => mod.ProductQuoteModal),
+  { ssr: false }
+);
 
 export type ReplyFormSentPayload = {
   text?: string;
@@ -90,6 +99,7 @@ type ReplyFormProps = {
   humanModeRequired?: boolean;
   onCancelReply?: () => void;
   onSent?: (payload: ReplyFormSentPayload) => void;
+  onLookupPlate?: () => void;
 };
 
 export function ReplyForm({
@@ -104,6 +114,7 @@ export function ReplyForm({
   humanModeRequired = false,
   onCancelReply,
   onSent,
+  onLookupPlate,
 }: ReplyFormProps) {
   const [pending, startTransition] = useTransition();
   const [text, setText] = useState("");
@@ -120,6 +131,11 @@ export function ReplyForm({
     component: "body" | "button";
     index: number;
   } | null>(null);
+  const [quoteModalOpen, setQuoteModalOpen] = useState(false);
+  const [catalogStatus, setCatalogStatus] = useState<"idle" | "loading" | "ok" | "error">("idle");
+  const [catalogProducts, setCatalogProducts] = useState<CatalogProduct[]>([]);
+  const [catalogError, setCatalogError] = useState<string | null>(null);
+  const catalogStatusRef = useRef<"idle" | "loading" | "ok" | "error">("idle");
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const composeInputRef = useRef<HTMLTextAreaElement>(null);
@@ -201,6 +217,11 @@ export function ReplyForm({
     setTemplateDraft(null);
     setTemplateShowValidation(false);
     setTemplateActiveSlot(null);
+    setQuoteModalOpen(false);
+    setCatalogStatus("idle");
+    catalogStatusRef.current = "idle";
+    setCatalogProducts([]);
+    setCatalogError(null);
   }, [conversationId]);
 
   useEffect(() => {
@@ -235,6 +256,69 @@ export function ReplyForm({
     setAttachedFile(file);
     const needsPreview = isImageMimeType(file.type) || isAudioMimeType(file.type);
     setFilePreviewUrl(needsPreview ? URL.createObjectURL(file) : null);
+    setShowPreview(false);
+  }
+
+  function prefetchCatalog() {
+    if (!businessId) return;
+    if (catalogStatusRef.current === "ok" || catalogStatusRef.current === "loading") return;
+    catalogStatusRef.current = "loading";
+    setCatalogStatus("loading");
+    setCatalogError(null);
+    void listCatalogProductsAction().then((result) => {
+      if (!result.ok) {
+        catalogStatusRef.current = "error";
+        setCatalogStatus("error");
+        setCatalogProducts([]);
+        setCatalogError(result.error);
+        return;
+      }
+      catalogStatusRef.current = "ok";
+      setCatalogStatus("ok");
+      setCatalogProducts(result.products);
+      setCatalogError(null);
+    });
+  }
+
+  function handleCreateProductQuote() {
+    if (humanModeRequired) {
+      toast.error(humanModeMessage);
+      return;
+    }
+    if (!businessId) {
+      toast.error("No hay un negocio asociado a esta conversación.");
+      return;
+    }
+    if (catalogStatusRef.current === "error") {
+      toast.error("No se pudo cargar el catálogo");
+      return;
+    }
+    prefetchCatalog();
+    setQuoteModalOpen(true);
+  }
+
+  function handleLookupPlate() {
+    if (humanModeRequired) {
+      toast.error(humanModeMessage);
+      return;
+    }
+    onLookupPlate?.();
+  }
+
+  function handleQuoteFile(file: File) {
+    if (humanModeRequired) {
+      toast.error(humanModeMessage);
+      return;
+    }
+    if (attachedFile && !window.confirm("Ya hay un archivo adjunto. ¿Reemplazarlo por la cotización?")) {
+      return;
+    }
+    if (filePreviewUrl) URL.revokeObjectURL(filePreviewUrl);
+    voiceRecorder.reset();
+    setInteractiveDraft(null);
+    setTemplateDraft(null);
+    setAttachedFile(file);
+    setFilePreviewUrl(null);
     setShowPreview(false);
   }
 
@@ -383,7 +467,9 @@ export function ReplyForm({
           onSent?.({ failed: true, optimisticId: optimistic.id, error: result.error });
           return;
         }
-        toast.success("Plantilla enviada por WhatsApp");
+        toast.success("Plantilla aceptada por WhatsApp", {
+          description: "La entrega al celular se confirma en el chat. Si falla el cobro, pasará a no entregado.",
+        });
         onSent?.({ serverMessage: result.message });
         router.refresh();
       } catch (error) {
@@ -411,9 +497,6 @@ export function ReplyForm({
     });
 
     onSent?.({ text: caption, optimistic });
-    clearAttachment();
-    voiceRecorder.reset();
-    setText("");
     onCancelReply?.();
 
     const formData = new FormData();
@@ -476,6 +559,8 @@ export function ReplyForm({
         type: voiceRecorder.mimeType,
       });
       const previewUrl = URL.createObjectURL(file);
+      voiceRecorder.reset();
+      setText("");
 
       startTransition(async () => {
         try {
@@ -491,11 +576,14 @@ export function ReplyForm({
     }
 
     if (attachedFile) {
-      const previewUrl = filePreviewUrl ?? URL.createObjectURL(attachedFile);
+      const file = attachedFile;
+      const previewUrl = filePreviewUrl ?? URL.createObjectURL(file);
+      clearAttachment();
+      setText("");
 
       startTransition(async () => {
         try {
-          await sendMediaFile(attachedFile, trimmed, previewUrl);
+          await sendMediaFile(file, trimmed, previewUrl);
         } catch (error) {
           const message = sendFailureToast(
             userFacingActionError(error, "No se pudo enviar el archivo")
@@ -588,7 +676,7 @@ export function ReplyForm({
   return (
     <form ref={formRef} onSubmit={handleSubmit}>
       {humanModeRequired && (
-        <p className="mb-3 rounded-lg border border-[#7678ed]/25 bg-[#7678ed]/8 px-3 py-2 text-sm text-[#3f3d8f]">
+        <p className="mb-3 rounded-lg border border-[#0d9488]/25 bg-[#0d9488]/8 px-3 py-2 text-sm text-[#3f3d8f]">
           Activa el <strong className="font-semibold">modo humano</strong> para enviar un
           mensaje al cliente. Con el bot activo no se pueden enviar respuestas desde aquí.
         </p>
@@ -892,6 +980,10 @@ export function ReplyForm({
             onFileSelected={handleFileSelected}
             onInteractivePreview={handleInteractiveComposeOpen}
             onWhatsappTemplate={handleWhatsappTemplateOpen}
+            onCreateProductQuote={handleCreateProductQuote}
+            onLookupPlate={handleLookupPlate}
+            quoteDisabled={!businessId || catalogStatus === "error"}
+            onMenuOpen={prefetchCatalog}
           />
         )}
 
@@ -939,6 +1031,20 @@ export function ReplyForm({
         onOpenChange={setTemplateDialogOpen}
         onSelect={handleSelectTemplate}
       />
-    </form>
+      <ProductQuoteModal
+        open={quoteModalOpen}
+        onOpenChange={setQuoteModalOpen}
+        conversationId={conversationId}
+        customerId={customer?.id ?? null}
+        businessName={businessName ?? ""}
+        customerName={resolveCustomerDisplayName(customer)}
+        customerPhone={customer?.phone_number}
+        defaultCommune={customer?.delivery1_commune}
+        products={catalogProducts}
+        productsLoading={catalogStatus === "loading" || catalogStatus === "idle"}
+        productsError={catalogStatus === "error" ? catalogError ?? "No se pudo cargar el catálogo" : null}
+        onAttach={handleQuoteFile}
+      />
+      </form>
   );
 }

@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { botApi, BotApiError } from "@/lib/bot-api/client";
+import { isSystemChatMessage } from "@/lib/conversations/system-event";
 import type { Conversation, Customer, Message } from "@/types/database.types";
 import type { ActiveFlowRunInbox } from "@/lib/bot-api/types";
 
@@ -67,7 +68,7 @@ export async function loadConversations(
 
   const { data: recentMessages } = await supabase
     .from("messages")
-    .select("conversation_id, content_text, created_at")
+    .select("conversation_id, content_text, created_at, sender_type, content_type")
     .eq("business_id", businessId)
     .order("created_at", { ascending: false })
     .limit(300);
@@ -80,9 +81,10 @@ export async function loadConversations(
 
   for (const msg of (recentMessages ?? []) as Pick<
     Message,
-    "conversation_id" | "content_text" | "created_at"
+    "conversation_id" | "content_text" | "created_at" | "sender_type" | "content_type"
   >[]) {
     if (previewMap.has(msg.conversation_id)) continue;
+    if (isSystemChatMessage(msg)) continue;
 
     const clearedAt = clearedAtMap.get(msg.conversation_id);
     if (clearedAt && new Date(msg.created_at).getTime() <= new Date(clearedAt).getTime()) {

@@ -7,7 +7,6 @@ import type {
   BotPersonality,
   BotPersonalityPatch,
   BusinessSettings,
-  CatalogProduct,
   ChatImportUploadResult,
   ConsolidatedToneAnalysis,
   CreateDeliveryRegionBody,
@@ -47,6 +46,15 @@ import type {
   WhatsappTemplatesResponse,
   WhatsappTemplatesProvisionResponse,
 } from "./types";
+import { normalizeCatalogProducts } from "@/lib/catalog/normalize-product";
+import { parseCustomerGarage } from "@/lib/customers/vehicle";
+import type { QuotePreviewRequest } from "@/types/quote";
+import type { VehicleFitmentQuery, VehicleFitmentResult, VehicleModelsResponse, VehiclePlateLookupResponse } from "@/lib/bot-api/vehicles";
+import {
+  parseVehicleFitmentResult,
+  parseVehicleModelsResponse,
+  parseVehiclePlateLookupResponse,
+} from "@/lib/bot-api/vehicles";
 
 type BotApiOptions = {
   method?: string;
@@ -56,9 +64,11 @@ type BotApiOptions = {
 
 class BotApiError extends Error {
   status: number;
-  constructor(message: string, status: number) {
+  code?: string;
+  constructor(message: string, status: number, code?: string) {
     super(message);
     this.status = status;
+    this.code = code;
   }
 }
 
@@ -110,9 +120,9 @@ function formatHttpErrorBody(text: string, status: number): string {
   return trimmed;
 }
 
-async function parseError(res: Response): Promise<string> {
+async function parseError(res: Response): Promise<{ message: string; code?: string }> {
   const text = await res.text();
-  if (!text) return res.statusText;
+  if (!text) return { message: res.statusText };
 
   try {
     const data = JSON.parse(text) as {
@@ -120,13 +130,17 @@ async function parseError(res: Response): Promise<string> {
       message?: string;
       action?: string;
     };
-    const message = data.error ?? data.message;
+    const code =
+      typeof data.error === "string" && /^[a-z][a-z0-9_]*$/.test(data.error)
+        ? data.error
+        : undefined;
+    const message = data.message ?? data.error;
     if (message && data.action) {
-      return `${message} ${data.action}`;
+      return { message: `${message} ${data.action}`, code };
     }
-    return message ?? formatHttpErrorBody(text, res.status);
+    return { message: message ?? formatHttpErrorBody(text, res.status), code };
   } catch {
-    return formatHttpErrorBody(text, res.status);
+    return { message: formatHttpErrorBody(text, res.status) };
   }
 }
 
@@ -148,7 +162,8 @@ async function runBotFetch<T>(url: string, init: RequestInit): Promise<T> {
   }
 
   if (!res.ok) {
-    throw new BotApiError(await parseError(res), res.status);
+    const parsed = await parseError(res);
+    throw new BotApiError(parsed.message, res.status, parsed.code);
   }
 
   if (res.status === 204) return undefined as T;
@@ -204,10 +219,68 @@ async function botFetchRaw(path: string): Promise<Response> {
   }
 
   if (!res.ok) {
-    throw new BotApiError(await parseError(res), res.status);
+    const parsed = await parseError(res);
+    throw new BotApiError(parsed.message, res.status, parsed.code);
   }
 
   return res;
+}
+
+function filenameFromContentDisposition(header: string | null): string | null {
+  if (!header) return null;
+  const utf = /filename\*=(?:UTF-8'')?([^;]+)/i.exec(header);
+  if (utf?.[1]) {
+    try {
+      return decodeURIComponent(utf[1].replace(/"/g, "").trim());
+    } catch {
+      return utf[1].replace(/"/g, "").trim();
+    }
+  }
+  const ascii = /filename="?([^";]+)"?/i.exec(header);
+  return ascii?.[1]?.trim() ?? null;
+}
+
+export type QuotePdfResponse = {
+  base64: string;
+  filename: string;
+  quoteNumber: string | null;
+  mimeType: string;
+};
+
+async function botFetchQuotePdf(
+  path: string,
+  body: unknown
+): Promise<QuotePdfResponse> {
+  const url = `${getBaseUrl()}${path}`;
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: "POST",
+      headers: getJsonHeaders(),
+      body: JSON.stringify(body),
+      cache: "no-store",
+    });
+  } catch {
+    throw new BotApiError(BOT_API_UNAVAILABLE_MESSAGE, 503);
+  }
+
+  if (!res.ok) {
+    const parsed = await parseError(res);
+    throw new BotApiError(parsed.message, res.status, parsed.code);
+  }
+
+  const buffer = Buffer.from(await res.arrayBuffer());
+  const quoteNumber = res.headers.get("X-Quote-Number")?.trim() || null;
+  const filename =
+    filenameFromContentDisposition(res.headers.get("Content-Disposition")) ||
+    (quoteNumber ? `cotizacion-${quoteNumber}.pdf` : "cotizacion-BORRADOR.pdf");
+
+  return {
+    base64: buffer.toString("base64"),
+    filename,
+    quoteNumber,
+    mimeType: res.headers.get("Content-Type")?.split(";")[0]?.trim() || "application/pdf",
+  };
 }
 
 export type MessageMediaUrlResponse = {
@@ -350,8 +423,55 @@ export const botApi = {
       { method: "POST" }
     ),
 
-  listCatalogProducts: (businessId: string) =>
-    botFetch<CatalogProduct[]>(`/businesses/${businessId}/catalog/products`),
+  listCatalogProducts: async (
+    businessId: string,
+    filters?: { make?: string; model?: string; year?: number; plate?: string }
+  ) => {
+    const raw = await botFetch<unknown>(`/businesses/${businessId}/catalog/products`, {
+      searchParams: {
+        make: filters?.make,
+        model: filters?.model,
+        year: filters?.year,
+        plate: filters?.plate,
+      },
+    });
+    return normalizeCatalogProducts(raw);
+  },
+
+  previewConversationQuote: (conversationId: string, body: QuotePreviewRequest) =>
+    botFetch<unknown>(`/conversations/${conversationId}/quotes/preview`, {
+      method: "POST",
+      body,
+    }),
+
+  generateConversationQuotePdf: (conversationId: string, body: QuotePreviewRequest) =>
+    botFetchQuotePdf(`/conversations/${conversationId}/quotes/pdf`, body),
+
+  lookupConversationVehiclePlate: (conversationId: string, plate: string) =>
+    botFetch<VehiclePlateLookupResponse>(`/conversations/${conversationId}/vehicles/lookup`, {
+      method: "POST",
+      body: { plate },
+    }).then(parseVehiclePlateLookupResponse),
+
+  lookupVehiclePlate: (plate: string) =>
+    botFetch<VehiclePlateLookupResponse>(`/vehicles/plates/${encodeURIComponent(plate)}`).then(
+      parseVehiclePlateLookupResponse
+    ),
+
+  searchVehicleModels: (query: string) =>
+    botFetch<VehicleModelsResponse>("/vehicles/models", {
+      searchParams: { q: query },
+    }).then(parseVehicleModelsResponse),
+
+  getVehicleFitment: (businessId: string, query: VehicleFitmentQuery) =>
+    botFetch<VehicleFitmentResult>(`/businesses/${businessId}/vehicles/fitment`, {
+      searchParams: {
+        plate: query.plate,
+        make: query.make,
+        model: query.model,
+        year: query.year,
+      },
+    }).then(parseVehicleFitmentResult),
 
   importCatalogCsv: (businessId: string, csvText: string) =>
     botFetch<ImportResult>(`/businesses/${businessId}/catalog/import/csv`, {
@@ -652,20 +772,74 @@ export const botApi = {
       created_at: string;
     }>(`/messages/${messageId}`, { method: "PATCH", body }),
 
-  getCustomer: (businessId: string, customerId: string) =>
-    botFetch<import("@/types/database.types").Customer>(
-      `/businesses/${businessId}/customers/${customerId}`
-    ),
+  getCustomer: async (businessId: string, customerId: string) => {
+    const raw = await botFetch<import("@/types/database.types").Customer & {
+      garage?: unknown;
+    }>(`/businesses/${businessId}/customers/${customerId}`);
+    return {
+      ...raw,
+      garage: parseCustomerGarage(
+        raw.garage ?? (raw.profile_metadata as { garage?: unknown } | null)?.garage
+      ),
+    };
+  },
 
-  patchCustomer: (
+  patchCustomer: async (
     businessId: string,
     customerId: string,
     body: import("./types").CustomerProfilePatch
-  ) =>
-    botFetch<import("@/types/database.types").Customer>(
+  ) => {
+    const raw = await botFetch<import("@/types/database.types").Customer & { garage?: unknown }>(
       `/businesses/${businessId}/customers/${customerId}`,
       { method: "PATCH", body }
-    ),
+    );
+    return {
+      ...raw,
+      garage: parseCustomerGarage(
+        raw.garage ?? (raw.profile_metadata as { garage?: unknown } | null)?.garage
+      ),
+    };
+  },
+
+  deleteCustomerVehicle: async (
+    businessId: string,
+    customerId: string,
+    vehicleKey: string,
+    body: { conversation_id: string; actor_name?: string }
+  ) => {
+    const raw = await botFetch<import("@/types/database.types").Customer & { garage?: unknown }>(
+      `/businesses/${businessId}/customers/${customerId}/vehicles/${encodeURIComponent(vehicleKey)}`,
+      { method: "DELETE", body }
+    );
+    return {
+      ...raw,
+      garage: parseCustomerGarage(
+        raw.garage ?? (raw.profile_metadata as { garage?: unknown } | null)?.garage
+      ),
+    };
+  },
+
+  deleteCustomerProduct: async (
+    businessId: string,
+    customerId: string,
+    body: {
+      conversation_id: string;
+      actor_name?: string;
+      bucket: "consulted" | "quoted" | "purchased";
+      identity: string;
+    }
+  ) => {
+    const raw = await botFetch<import("@/types/database.types").Customer & { garage?: unknown }>(
+      `/businesses/${businessId}/customers/${customerId}/products`,
+      { method: "DELETE", body }
+    );
+    return {
+      ...raw,
+      garage: parseCustomerGarage(
+        raw.garage ?? (raw.profile_metadata as { garage?: unknown } | null)?.garage
+      ),
+    };
+  },
 
   getConversation: (conversationId: string) =>
     botFetch<
@@ -895,6 +1069,15 @@ export const botApi = {
       method: "POST",
       body,
     }),
+
+  uploadBusinessLogo: (businessId: string, file: File | Blob) => {
+    const form = new FormData();
+    form.append("file", file);
+    return botFetchMultipart<{ logo_url: string }>(
+      `/businesses/${businessId}/logo`,
+      form
+    );
+  },
 
   sendAdminPhoneVerification: (businessId: string, phone: string) =>
     botFetch<{ ok: boolean; expires_in_sec: number; phone: string }>(

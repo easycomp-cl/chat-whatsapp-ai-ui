@@ -10,6 +10,9 @@ import {
   isValidChileanRut,
   normalizeRutStorage,
 } from "@/lib/customers/rut";
+import { formatProfileDisplayName } from "@/lib/profile/display-name";
+import type { GarageProductBucket } from "@/lib/customers/vehicle";
+import type { CustomerGarage } from "@/types/message";
 
 export async function getCustomerProfileAction(customerId: string) {
   const profile = await requireAppAccess();
@@ -57,6 +60,14 @@ export async function updateCustomerProfileAction(
     body.display_alias = body.display_alias?.trim() || null;
   }
 
+  if (body.first_name !== undefined) {
+    body.first_name = body.first_name?.trim() || null;
+  }
+
+  if (body.last_name !== undefined) {
+    body.last_name = body.last_name?.trim() || null;
+  }
+
   if (body.email !== undefined) {
     body.email = body.email?.trim() || null;
   }
@@ -77,15 +88,33 @@ export async function updateCustomerProfileAction(
     body.delivery1_notes = body.delivery1_notes?.trim() || null;
   }
 
+  const nameMetadata: Record<string, unknown> = {};
+  if (body.first_name !== undefined) nameMetadata.first_name = body.first_name;
+  if (body.last_name !== undefined) nameMetadata.last_name = body.last_name;
+  delete body.first_name;
+  delete body.last_name;
+  delete body.profile_metadata;
+
   try {
+    const actorName = formatProfileDisplayName(profile);
     const customer = await botApi.patchCustomer(
       profile.business_id,
       customerId,
-      body
+      {
+        ...body,
+        ...(Object.keys(nameMetadata).length > 0 ? { profile_metadata: nameMetadata } : {}),
+        conversation_id: conversationId,
+        profile_updated_by: "BUSINESS_ADMIN",
+        actor_name: actorName,
+      }
     );
     revalidatePath("/app/conversations");
     revalidatePath(`/app/conversations/${conversationId}`);
-    return { ok: true as const, customer };
+    return {
+      ok: true as const,
+      customer,
+      actorName,
+    };
   } catch (error) {
     if (error instanceof BotApiError && (error.status === 404 || error.status === 501)) {
       throw new Error(
@@ -99,7 +128,8 @@ export async function updateCustomerProfileAction(
 export async function setCustomerFrequentAction(
   conversationId: string,
   customerId: string,
-  frequent: boolean
+  frequent: boolean,
+  _currentMetadata?: Record<string, unknown> | null
 ) {
   await requireBusinessAdmin();
   const profile = await requireAppAccess();
@@ -107,17 +137,106 @@ export async function setCustomerFrequentAction(
     throw new Error("Negocio no configurado");
   }
 
+  const actorName = formatProfileDisplayName(profile);
+
   try {
     const customer = await botApi.patchCustomer(profile.business_id, customerId, {
       profile_metadata: { manual_returning: frequent },
+      conversation_id: conversationId,
+      profile_updated_by: "BUSINESS_ADMIN",
+      actor_name: actorName,
     });
     revalidatePath("/app/conversations");
     revalidatePath(`/app/conversations/${conversationId}`);
     revalidatePath("/app/customers");
-    return { ok: true as const, persisted: true as const, customer };
+    return { ok: true as const, persisted: true as const, customer, actorName };
   } catch (error) {
     if (error instanceof BotApiError && (error.status === 404 || error.status === 501)) {
-      return { ok: true as const, persisted: false as const, customer: null };
+      return { ok: true as const, persisted: false as const, customer: null, actorName };
+    }
+    throw error;
+  }
+}
+
+export async function removeCustomerGarageVehicleAction(
+  conversationId: string,
+  customerId: string,
+  vehicleKey: string
+) {
+  await requireBusinessAdmin();
+  const profile = await requireAppAccess();
+  if (!profile.business_id) throw new Error("Negocio no configurado");
+
+  const actorName = formatProfileDisplayName(profile);
+
+  try {
+    const customer = await botApi.deleteCustomerVehicle(
+      profile.business_id,
+      customerId,
+      vehicleKey,
+      {
+        conversation_id: conversationId,
+        actor_name: actorName,
+      }
+    );
+    revalidatePath("/app/conversations");
+    revalidatePath(`/app/conversations/${conversationId}`);
+    revalidatePath("/app/customers");
+    return {
+      ok: true as const,
+      customer,
+      garage: (customer.garage ?? null) as CustomerGarage | null,
+      actorName,
+    };
+  } catch (error) {
+    if (error instanceof BotApiError && error.status === 404) {
+      throw new Error("Ese vehículo ya no está en el garage del contacto.");
+    }
+    if (error instanceof BotApiError && error.status === 501) {
+      throw new Error(
+        "No se pudo eliminar el vehículo. El backend debe exponer DELETE .../vehicles/:vehicleKey."
+      );
+    }
+    throw error;
+  }
+}
+
+export async function removeCustomerGarageProductAction(
+  conversationId: string,
+  customerId: string,
+  bucket: GarageProductBucket,
+  identity: string
+) {
+  await requireBusinessAdmin();
+  const profile = await requireAppAccess();
+  if (!profile.business_id) throw new Error("Negocio no configurado");
+
+  const actorName = formatProfileDisplayName(profile);
+
+  try {
+    const customer = await botApi.deleteCustomerProduct(profile.business_id, customerId, {
+      conversation_id: conversationId,
+      actor_name: actorName,
+      bucket,
+      identity,
+    });
+    revalidatePath("/app/conversations");
+    revalidatePath(`/app/conversations/${conversationId}`);
+    revalidatePath("/app/customers");
+    return {
+      ok: true as const,
+      customer,
+      garage: (customer.garage ?? null) as CustomerGarage | null,
+      actorName,
+    };
+  } catch (error) {
+    if (error instanceof BotApiError && error.status === 404) {
+      throw new Error("Ese producto ya no está en el historial del contacto.");
+    }
+    if (error instanceof BotApiError && error.status === 501) {
+      throw new Error(
+        "No se pudo eliminar el producto. El backend debe exponer DELETE .../products."
+      );
     }
     throw error;
   }

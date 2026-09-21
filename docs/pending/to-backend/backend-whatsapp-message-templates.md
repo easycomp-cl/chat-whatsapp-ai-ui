@@ -1,10 +1,12 @@
 # Backend — Plantillas de mensaje WhatsApp (fuera de ventana 24 h)
 
+> **Estado:** contrato vigente en [../whatsapp-templates-ui.md](../whatsapp-templates-ui.md). El backend ya lista, provisiona y envía; la UI consume ese contrato.
+
 ## Resumen
 
 Permitir al **asesor humano** (y opcionalmente al bot) enviar **message templates** aprobados por Meta cuando la conversación **no está en ventana de servicio** o como mensaje estructurado de apertura.
 
-**Bloquea en UI:** selector de plantillas en composer / acción “Enviar plantilla”.
+**UI:** selector de plantillas en composer / acción “Plantilla WA”.
 
 ---
 
@@ -16,7 +18,7 @@ Permitir al **asesor humano** (y opcionalmente al bot) enviar **message template
 
 ---
 
-## API sugerida
+## API
 
 ### Listar plantillas del negocio
 
@@ -24,26 +26,7 @@ Permitir al **asesor humano** (y opcionalmente al bot) enviar **message template
 GET /businesses/:businessId/whatsapp/templates?status=APPROVED
 ```
 
-Response:
-
-```json
-{
-  "templates": [
-    {
-      "name": "order_update_es",
-      "language": "es",
-      "status": "APPROVED",
-      "category": "UTILITY",
-      "components": [
-        { "type": "BODY", "text": "Hola {{1}}, tu pedido {{2}} está en camino." }
-      ],
-      "variable_count": 2
-    }
-  ]
-}
-```
-
-Implementación: proxy a Meta `GET /{WABA_ID}/message_templates` con cache corto (5–15 min).
+Campos: `name`, `language`, `category`, `status`, `quality`, `rejection_reason`, `body_preview`, `variable_count`, `parameter_fields`, `in_pack`, `product_use`, `meta_template_id`, `last_error`, `updated_at`, más `pack` y `connected` en el envelope.
 
 ### Enviar plantilla en conversación
 
@@ -51,40 +34,32 @@ Implementación: proxy a Meta `GET /{WABA_ID}/message_templates` con cache corto
 POST /conversations/:conversationId/messages/template
 ```
 
-Body:
-
 ```json
 {
-  "template_name": "order_update_es",
+  "template_name": "pedido_actualizacion_es",
   "language_code": "es",
-  "components": [
-    {
-      "type": "body",
-      "parameters": [
-        { "type": "text", "text": "María" },
-        { "type": "text", "text": "#12345" }
-      ]
-    }
-  ],
+  "body_parameters": ["Juan", "#1042", "En preparación"],
+  "button_parameters": ["pedido-1042"],
   "agent_phone": "+569...",
   "reply_to_message_id": "uuid-opcional"
 }
 ```
 
-Response `201`: mensaje serializado (`content_type: TEMPLATE` o `TEXT` con metadata en `rawPayloadJson`).
+Respuesta `201`: mensaje serializado con `content_type: "TEMPLATE"`, `template_name` y `template`. Eso es Graph `SENT` + `wamid`. La entrega (o `FAILED` por cobro) llega por webhook / Realtime.
+
+Errores inmediatos: `409 template_not_approved` | `409 not_connected` | `400 parameter_mismatch` | `502/503 whatsapp_send_failed` / `token_expired`.
 
 ---
 
 ## Persistencia
 
 | Campo | Valor |
-|-------|-------|
-| `content_type` | `TEMPLATE` (nuevo enum Prisma) o `TEXT` + flag |
+|-------|--------|
+| `content_type` | `TEMPLATE` |
 | `content_text` | Texto renderizado para inbox (body con variables sustituidas) |
-| `rawPayloadJson.outbound.template` | `{ name, language, components, parameters }` |
+| `template_name` / `template` | Nombre y payload de la plantilla |
 | `external_id` | wamid de Meta |
-
-Vista `messages` (Supabase): exponer `template_name` / preview si la UI lo necesita en Realtime.
+| `whatsapp_delivery_error_kind` | Clasificación del fallo asíncrono (`billing_*`, etc.) |
 
 ---
 
@@ -92,31 +67,13 @@ Vista `messages` (Supabase): exponer `template_name` / preview si la UI lo neces
 
 - Canal WhatsApp activo del tenant.
 - Plantilla existe y `APPROVED`.
-- Número de `parameters` coincide con `{{n}}` del body/header.
+- Número de `body_parameters` coincide con `{{n}}` del body.
 - Si ventana 24 h cerrada: solo permitir template (rechazar texto libre — ya debería fallar en Meta).
 
 ---
 
-## Implementación en `chat-whatsapp-ai`
-
-1. `WhatsAppClient.sendTemplateMessage()` — Cloud API `type: template`.
-2. `messages.controller.ts` — `sendConversationTemplateMessage`.
-3. Sync/list templates — job o on-demand con cache Redis/memoria.
-4. `MessageIngestService.ingestHumanMessage` con `contentType: TEMPLATE`.
-
----
-
-## Prueba E2E
-
-1. Plantilla `hello_world` o custom APPROVED en WABA dev.
-2. Conversación con ventana cerrada (>24 h sin inbound del cliente).
-3. Dashboard: elegir plantilla, rellenar variables, enviar.
-4. Cliente recibe plantilla; mensaje en BD con wamid y ticks de entrega.
-
----
-
-## UI (este repo, cuando backend listo)
+## UI (este repo)
 
 - Menú **+** → “Plantilla WA”.
-- Modal: lista plantillas, preview, inputs por variable.
-- Sin implementar hasta `GET` + `POST` estables.
+- Modal: lista `APPROVED`, preview con `body_preview`, inputs por `parameter_fields`.
+- Toast si Realtime marca `FAILED` con `whatsapp_delivery_error_message`.

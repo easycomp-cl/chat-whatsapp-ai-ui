@@ -1,12 +1,24 @@
-import { Suspense } from "react";
 import { LoginForm } from "@/features/auth/components/login-form";
+import { AuthSplitShell } from "@/features/auth/components/auth-split-shell";
 
-export default function LoginPage() {
+type LoginPageProps = {
+  searchParams: Promise<{
+    registered?: string;
+    error?: string;
+    redirect?: string;
+  }>;
+};
+
+export default async function LoginPage({ searchParams }: LoginPageProps) {
+  const params = await searchParams;
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/30 p-4">
-      <Suspense>
-        <LoginForm />
-      </Suspense>
-    </div>
+    <AuthSplitShell>
+      <LoginForm
+        registered={params.registered === "1"}
+        errorCode={typeof params.error === "string" ? params.error : undefined}
+        redirectTo={typeof params.redirect === "string" ? params.redirect : undefined}
+      />
+    </AuthSplitShell>
   );
 }

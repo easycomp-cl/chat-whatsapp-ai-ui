@@ -33,7 +33,7 @@ export function ConversationModeSwitch({
       <Bot
         className={cn(
           "size-4 shrink-0 transition-colors",
-          !isHuman ? "text-[#7678ed]" : "text-[#202022]/30"
+          !isHuman ? "text-[#0d9488]" : "text-[#202022]/30"
         )}
         aria-hidden
       />
@@ -41,7 +41,7 @@ export function ConversationModeSwitch({
         checked={isHuman}
         disabled={disabled}
         onCheckedChange={(checked) => onModeChange(checked ? "HUMAN" : "BOT")}
-        className="data-unchecked:bg-[#7678ed] data-checked:bg-[#ff7a55]"
+        className="data-unchecked:bg-[#0d9488] data-checked:bg-[#ff7a55]"
         aria-label={isHuman ? "Cambiar a modo bot" : "Cambiar a modo humano"}
       />
       <User

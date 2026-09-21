@@ -1,4 +1,4 @@
-import type { WhatsappTemplateCategory } from "@/lib/bot-api/types";
+import type { WhatsappTemplateCategory, WhatsappTemplateParameterField } from "@/lib/bot-api/types";
 
 export type TemplateInternalKind =
   | "autenticacion"
@@ -25,6 +25,11 @@ export type StandardTemplateDefinition = {
   examples: TemplateExample[];
   footer?: string;
   buttonLabel?: string;
+  /** Qué representa el valor del botón (para tooltip). */
+  buttonHint?: string;
+  /** URL registrada en Meta, con `{{1}}` como sufijo dinámico. */
+  buttonUrlTemplate?: string;
+  buttonParameter?: WhatsappTemplateParameterField;
 };
 
 export const TEMPLATE_INTERNAL_KIND_LABEL: Record<TemplateInternalKind, string> = {
@@ -39,9 +44,9 @@ export const TEMPLATE_INTERNAL_KIND_LABEL: Record<TemplateInternalKind, string> 
 };
 
 export const TEMPLATE_INTERNAL_KIND_CLASS: Record<TemplateInternalKind, string> = {
-  autenticacion: "border-indigo-200 bg-indigo-50 text-indigo-700",
+  autenticacion: "border-rose-200 bg-rose-50 text-rose-700",
   servicio: "border-sky-200 bg-sky-50 text-sky-800",
-  consulta: "border-violet-200 bg-violet-50 text-violet-700",
+  consulta: "border-teal-200 bg-teal-50 text-teal-700",
   producto: "border-emerald-200 bg-emerald-50 text-emerald-800",
   pedido: "border-amber-200 bg-amber-50 text-amber-800",
   notificacion: "border-orange-200 bg-orange-50 text-orange-800",
@@ -62,6 +67,14 @@ export const STANDARD_WHATSAPP_TEMPLATES: StandardTemplateDefinition[] = [
       { label: "Nombre del negocio", value: "Panadería Aurora" },
     ],
     buttonLabel: "Confirmar",
+    buttonHint: "Enlace para confirmar el WhatsApp del responsable",
+    buttonUrlTemplate: "https://chatbotmanager.easycomp.cl/verify-phone/{{1}}",
+    buttonParameter: {
+      component: "button",
+      index: 1,
+      label: "Token de confirmación",
+      example: "abc123",
+    },
   },
   {
     name: "aviso_handoff_es",
@@ -76,6 +89,14 @@ export const STANDARD_WHATSAPP_TEMPLATES: StandardTemplateDefinition[] = [
       { label: "Cliente", value: "Israel G." },
     ],
     buttonLabel: "Abrir chat",
+    buttonHint: "Enlace al chat en el inbox",
+    buttonUrlTemplate: "https://chatbotmanager.easycomp.cl/app/conversations/{{1}}",
+    buttonParameter: {
+      component: "button",
+      index: 1,
+      label: "ID de conversación",
+      example: "conv-uuid",
+    },
   },
   {
     name: "seguimiento_asesor_es",
@@ -140,6 +161,14 @@ export const STANDARD_WHATSAPP_TEMPLATES: StandardTemplateDefinition[] = [
     ],
     buttonLabel: "Pagar",
     footer: "Link de pago",
+    buttonHint: "URL de pago que recibe el cliente",
+    buttonUrlTemplate: "https://chatbotmanager.easycomp.cl/pay/{{1}}",
+    buttonParameter: {
+      component: "button",
+      index: 1,
+      label: "Código de pago",
+      example: "pedido-1042",
+    },
   },
   {
     name: "muestra_producto_es",

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
+import Link from "next/link";
 import Script from "next/script";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { CheckCircle2, Loader2, Smartphone, TriangleAlert } from "lucide-react";
@@ -29,6 +30,8 @@ import {
 import { toWhatsappConnectionView } from "../map-connection";
 import { useFacebookEmbeddedSignup } from "../use-facebook-embedded-signup";
 import { PinVerificationDialog } from "./pin-verification-dialog";
+import { PlanCheckoutModal } from "@/features/billing/components/plan-checkout-modal";
+import { isNeedsBillingCheckout } from "@/lib/billing/pending-selection";
 import type { CompleteEmbeddedSignupInput, WhatsappConnectUiStatus, WhatsappConnectionView } from "../types";
 
 function isRedactedServerError(message: string) {
@@ -96,6 +99,8 @@ export function ConnectWhatsappPanel({
     business_id?: string | null;
     redirect_uri?: string | null;
   } | null>(null);
+  const [needsBilling, setNeedsBilling] = useState(false);
+  const [planOpen, setPlanOpen] = useState(false);
 
   const busy = pending || status === "connecting" || status === "completing" || status === "sdk_loading";
 
@@ -179,6 +184,15 @@ export function ConnectWhatsappPanel({
     },
     []
   );
+
+  useEffect(() => {
+    void isNeedsBillingCheckout().then(setNeedsBilling);
+  }, []);
+
+  useEffect(() => {
+    if (status !== "connected" || !needsBilling) return;
+    setPlanOpen(true);
+  }, [status, needsBilling]);
 
   useEffect(() => {
     if (initialConnection?.connected) {
@@ -340,6 +354,12 @@ export function ConnectWhatsappPanel({
         busy={busy}
       />
 
+      <PlanCheckoutModal
+        open={planOpen}
+        onOpenChange={setPlanOpen}
+        required={needsBilling}
+      />
+
       <Card className="w-full">
         <CardHeader className="gap-3">
           <div className="flex items-start justify-between gap-3">
@@ -373,14 +393,25 @@ export function ConnectWhatsappPanel({
                 <DetailRow label="waba_id" value={view.wabaId} />
                 <DetailRow label="business_id" value={view.metaBusinessId} />
               </div>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleConnect}
-                disabled={busy || !sdkReady}
-              >
-                Reconectar con Meta
-              </Button>
+              <div className="flex flex-wrap gap-2">
+                {needsBilling ? (
+                  <Button type="button" onClick={() => setPlanOpen(true)}>
+                    Elegir plan
+                  </Button>
+                ) : (
+                  <Button type="button" render={<Link href="/app/dashboard" />}>
+                    Ir al dashboard
+                  </Button>
+                )}
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleConnect}
+                  disabled={busy || !sdkReady}
+                >
+                  Reconectar con Meta
+                </Button>
+              </div>
             </div>
           ) : (
             <div className="space-y-4">

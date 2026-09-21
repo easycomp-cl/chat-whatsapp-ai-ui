@@ -21,7 +21,7 @@ const FLOW_STEPS = [
     label: "Ajusta el tono",
     hint: "Cómo hablará tu bot",
     icon: Sparkles,
-    accent: "text-violet-600 bg-violet-100 dark:bg-violet-950",
+    accent: "text-teal-600 bg-teal-100 dark:bg-teal-950",
   },
   {
     step: 3,

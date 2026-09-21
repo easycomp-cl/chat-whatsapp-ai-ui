@@ -27,6 +27,8 @@ export type CustomerInvoiceType = "RECEIPT" | "INVOICE" | "NONE";
 
 export type CustomerProfileFields = {
   display_alias?: string | null;
+  first_name?: string | null;
+  last_name?: string | null;
   email?: string | null;
   tax_id?: string | null;
   invoice_type?: CustomerInvoiceType | null;
@@ -37,6 +39,10 @@ export type CustomerProfileFields = {
   delivery1_region?: string | null;
   delivery1_notes?: string | null;
   profile_metadata?: Record<string, unknown> | null;
+  conversation_id?: string | null;
+  profile_updated_by?: string | null;
+  /** Nombre real del asesor para el globo azul (no “Asesor” ni el tenant). */
+  actor_name?: string | null;
 };
 
 export type CustomerProfilePatch = Partial<CustomerProfileFields>;

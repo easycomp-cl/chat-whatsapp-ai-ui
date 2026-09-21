@@ -33,7 +33,7 @@ Refactor técnico y rebrand completo del nombre de producto **ConversAI** a **ea
 - `api-chatbotmanager.easycomp.cl` (hostname del backend)
 - `BOT_API_BASE_URL` en `.env.example`
 
-El correo visible de soporte es `igonzalez@easycomp.cl` (`SUPPORT_EMAIL`).
+El correo visible de soporte es `contacto@easycomp.cl` (`SUPPORT_EMAIL`).
 
 ## Variable de entorno Spline
 

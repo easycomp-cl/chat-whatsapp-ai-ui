@@ -45,11 +45,11 @@ export function OnboardingStepper({
       <div className="space-y-3">
         <div className="flex items-center justify-between text-xs text-muted-foreground">
           <span>Progreso</span>
-          <span className="font-medium text-[#7678ed]">{progressPercent}%</span>
+          <span className="font-medium text-[#0d9488]">{progressPercent}%</span>
         </div>
         <div className="h-1.5 overflow-hidden rounded-full bg-muted">
           <div
-            className="h-full rounded-full bg-[#7678ed] transition-all duration-500 ease-out"
+            className="h-full rounded-full bg-[#0d9488] transition-all duration-500 ease-out"
             style={{ width: `${progressPercent}%` }}
           />
         </div>
@@ -69,9 +69,9 @@ export function OnboardingStepper({
                   onClick={() => clickable && onStepClick(step.id)}
                   className={cn(
                     "flex size-8 items-center justify-center rounded-full text-xs font-semibold transition-all duration-200",
-                    isCurrent && "bg-[#7678ed] text-white",
-                    isCompleted && !isCurrent && "bg-[#7678ed]/15 text-[#7678ed]",
-                    clickable && !isCurrent && "hover:bg-[#7678ed]/25 cursor-pointer",
+                    isCurrent && "bg-[#0d9488] text-white",
+                    isCompleted && !isCurrent && "bg-[#0d9488]/15 text-[#0d9488]",
+                    clickable && !isCurrent && "hover:bg-[#0d9488]/25 cursor-pointer",
                     !clickable && !isCurrent && "bg-muted text-muted-foreground/50"
                   )}
                 >
@@ -98,7 +98,7 @@ export function OnboardingStepper({
         </p>
         <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted">
           <div
-            className="h-full rounded-full bg-[#7678ed] transition-all duration-500 ease-out"
+            className="h-full rounded-full bg-[#0d9488] transition-all duration-500 ease-out"
             style={{ width: `${progressPercent}%` }}
           />
         </div>
@@ -120,9 +120,9 @@ export function OnboardingStepper({
                 onClick={() => clickable && onStepClick?.(step.id)}
                 className={cn(
                   "flex w-full items-start gap-3 rounded-lg px-2 py-2.5 text-left transition-all duration-300",
-                  isCurrent && "bg-[#7678ed]/8",
+                  isCurrent && "bg-[#0d9488]/8",
                   isUpcoming && "opacity-50",
-                  clickable && "cursor-pointer hover:bg-[#7678ed]/5",
+                  clickable && "cursor-pointer hover:bg-[#0d9488]/5",
                   !clickable && !isCurrent && "cursor-default"
                 )}
               >
@@ -130,10 +130,10 @@ export function OnboardingStepper({
                   className={cn(
                     "relative flex size-8 shrink-0 items-center justify-center rounded-full border-2 transition-all duration-300",
                     isCompleted &&
-                      "border-[#7678ed] bg-[#7678ed] text-white scale-100",
+                      "border-[#0d9488] bg-[#0d9488] text-white scale-100",
                     isCurrent &&
                       !isCompleted &&
-                      "border-[#7678ed] border-dashed bg-[#7678ed]/10 text-[#7678ed]",
+                      "border-[#0d9488] border-dashed bg-[#0d9488]/10 text-[#0d9488]",
                     isUpcoming && "border-muted-foreground/30 text-muted-foreground"
                   )}
                 >
@@ -149,9 +149,9 @@ export function OnboardingStepper({
                   <p
                     className={cn(
                       "text-sm font-medium leading-tight transition-colors duration-300",
-                      isCurrent && "text-[#7678ed]",
+                      isCurrent && "text-[#0d9488]",
                       isCompleted && !isCurrent && "text-foreground",
-                      clickable && !isCurrent && "group-hover:text-[#7678ed]"
+                      clickable && !isCurrent && "group-hover:text-[#0d9488]"
                     )}
                   >
                     {step.label}

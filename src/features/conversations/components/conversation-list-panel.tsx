@@ -62,7 +62,7 @@ function ConversationModeSelectField({
       <Select value={value} onValueChange={(v) => onValueChange(v ?? "all")}>
         <SelectTrigger
           id={selectId}
-          className="h-10 w-full rounded-xl border-[#202022]/10 bg-white text-sm text-[#202022] shadow-none focus-visible:border-[#7678ed]/40 focus-visible:ring-[#7678ed]/15"
+          className="h-10 w-full rounded-xl border-[#202022]/10 bg-white text-sm text-[#202022] shadow-none focus-visible:border-[#0d9488]/40 focus-visible:ring-[#0d9488]/15"
         >
           <SelectValue placeholder="Todas">{selectedLabel}</SelectValue>
         </SelectTrigger>
@@ -114,7 +114,7 @@ function ConversationListFilters({
         <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-[#202022]/35" />
         <Input
           placeholder="Buscar conversación..."
-          className="rounded-full border-[#202022]/10 bg-[#f9fafc] pl-9 text-[#202022] placeholder:text-[#202022]/35 focus-visible:border-[#7678ed]/40 focus-visible:ring-[#7678ed]/15"
+          className="rounded-full border-[#202022]/10 bg-[#f9fafc] pl-9 text-[#202022] placeholder:text-[#202022]/35 focus-visible:border-[#0d9488]/40 focus-visible:ring-[#0d9488]/15"
           defaultValue={query}
           onChange={(e) => onQueryChange(e.target.value)}
         />
@@ -246,7 +246,7 @@ function MobileConversationFiltersPopover({
               onChange={(e) =>
                 onDraftChange({ ...draft, query: e.target.value })
               }
-              className="h-10 rounded-xl border-[#202022]/10 bg-[#f9fafc] pl-9 text-[#202022] placeholder:text-[#202022]/35 focus-visible:border-[#7678ed]/40 focus-visible:ring-[#7678ed]/15"
+              className="h-10 rounded-xl border-[#202022]/10 bg-[#f9fafc] pl-9 text-[#202022] placeholder:text-[#202022]/35 focus-visible:border-[#0d9488]/40 focus-visible:ring-[#0d9488]/15"
             />
           </div>
 
@@ -278,7 +278,7 @@ function MobileConversationFiltersPopover({
           <Button
             type="button"
             onClick={onApply}
-            className="h-10 w-full rounded-xl bg-[#7678ed] text-white hover:bg-[#7678ed]/90"
+            className="h-10 w-full rounded-xl bg-[#0d9488] text-white hover:bg-[#0d9488]/90"
           >
             <Search className="size-4" />
             Aplicar
@@ -287,7 +287,7 @@ function MobileConversationFiltersPopover({
           <EnableBotOnAllHumanButton
             humanCount={humanCount}
             size="sm"
-            className="h-10 w-full rounded-xl border-[#7678ed]/25 text-[#7678ed] hover:bg-[#7678ed]/8"
+            className="h-10 w-full rounded-xl border-[#0d9488]/25 text-[#0d9488] hover:bg-[#0d9488]/8"
           />
         </div>
       </div>
@@ -412,13 +412,13 @@ export function ConversationListPanel({
           className={cn(
             "relative flex size-10 items-center justify-center rounded-xl transition-colors",
             hasActiveFilters
-              ? "bg-[#7678ed]/20 text-[#7678ed]"
-              : "bg-[#7678ed]/12 text-[#7678ed] hover:bg-[#7678ed]/18"
+              ? "bg-[#0d9488]/20 text-[#0d9488]"
+              : "bg-[#0d9488]/12 text-[#0d9488] hover:bg-[#0d9488]/18"
           )}
         >
           <Filter className="size-5" />
           {hasActiveFilters && (
-            <span className="absolute top-1.5 right-1.5 size-2 rounded-full bg-[#7678ed] ring-2 ring-white" />
+            <span className="absolute top-1.5 right-1.5 size-2 rounded-full bg-[#0d9488] ring-2 ring-white" />
           )}
         </button>
       </div>
@@ -452,7 +452,7 @@ export function ConversationListPanel({
         <EnableBotOnAllHumanButton
           humanCount={humanCount}
           size="sm"
-          className="mt-4 w-full rounded-xl border-[#7678ed]/25 text-[#7678ed] hover:bg-[#7678ed]/8"
+          className="mt-4 w-full rounded-xl border-[#0d9488]/25 text-[#0d9488] hover:bg-[#0d9488]/8"
         />
       </div>
 
@@ -578,7 +578,7 @@ export function ConversationListPanel({
                       className={cn(
                         "rounded-full px-2 py-0.5 text-[10px] font-semibold",
                         c.mode === "BOT"
-                          ? "bg-[#7678ed]/12 text-[#7678ed]"
+                          ? "bg-[#0d9488]/12 text-[#0d9488]"
                           : "bg-[#ff7a55]/12 text-[#c44d2a]"
                       )}
                     >
@@ -589,7 +589,7 @@ export function ConversationListPanel({
                     )}
                     {c.active_flow_run && (
                       <span
-                        className="inline-flex items-center gap-0.5 rounded-full bg-[#7678ed]/12 px-2 py-0.5 text-[10px] font-semibold text-[#7678ed]"
+                        className="inline-flex items-center gap-0.5 rounded-full bg-[#0d9488]/12 px-2 py-0.5 text-[10px] font-semibold text-[#0d9488]"
                         title="Flujo activo"
                       >
                         <Workflow className="size-3" />

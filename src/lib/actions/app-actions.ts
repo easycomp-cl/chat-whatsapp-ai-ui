@@ -19,6 +19,7 @@ import { patchConversationInDatabase } from "@/lib/conversation/patch-conversati
 import { isAgent } from "@/lib/rbac";
 import type { UserRole } from "@/types/database.types";
 import { parseCsvFaqs, parseJsonFaqs } from "@/lib/faqs/parse-faq-import";
+import { validateBusinessLogoFile } from "@/features/onboarding/logo-utils";
 import type {
   FaqInput,
   AgentInput,
@@ -538,6 +539,9 @@ const TEMPLATE_SEND_ERROR_LABEL: Record<string, string> = {
 };
 
 function templateSendFailureMessage(error: unknown): string {
+  if (error instanceof BotApiError && error.code && TEMPLATE_SEND_ERROR_LABEL[error.code]) {
+    return TEMPLATE_SEND_ERROR_LABEL[error.code];
+  }
   const raw = sendConversationFailureMessage(error, "No se pudo enviar la plantilla");
   const code = raw.split(/[\s:]/)[0]?.trim();
   if (code && TEMPLATE_SEND_ERROR_LABEL[code]) return TEMPLATE_SEND_ERROR_LABEL[code];
@@ -888,6 +892,33 @@ export async function patchOnboardingAction(
   try {
     const status = await botApi.patchOnboarding(businessId, body);
     return { ok: true as const, status };
+  } catch (error) {
+    return {
+      ok: false as const,
+      error: getBotApiErrorMessage(error) || BOT_API_UNAVAILABLE_MESSAGE,
+    };
+  }
+}
+
+export async function uploadOnboardingLogoAction(businessId: string, formData: FormData) {
+  const profile = await requireBusinessAdmin();
+  if (profile.business_id !== businessId) {
+    return { ok: false as const, error: "No tienes acceso a este negocio." };
+  }
+
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) {
+    return { ok: false as const, error: "Archivo requerido" };
+  }
+
+  const validationError = validateBusinessLogoFile(file);
+  if (validationError) {
+    return { ok: false as const, error: validationError };
+  }
+
+  try {
+    const result = await botApi.uploadBusinessLogo(businessId, file);
+    return { ok: true as const, logo_url: result.logo_url };
   } catch (error) {
     return {
       ok: false as const,

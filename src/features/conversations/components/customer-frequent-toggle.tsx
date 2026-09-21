@@ -9,6 +9,7 @@ import {
   isCustomerFrequent,
   setCustomerFrequentLocally,
 } from "@/lib/customers/frequent-customer";
+import { rememberProfileEventActor } from "@/lib/customers/profile-event-actor";
 import { cn } from "@/lib/utils";
 
 type CustomerFrequentToggleProps = {
@@ -91,7 +92,13 @@ export function CustomerFrequentToggle({
     const next = !frequent;
     startTransition(async () => {
       try {
-        const result = await setCustomerFrequentAction(conversationId, customerId, next);
+        const result = await setCustomerFrequentAction(
+          conversationId,
+          customerId,
+          next,
+          profileMetadata
+        );
+        rememberProfileEventActor(conversationId, result.actorName);
         setCustomerFrequentLocally(businessId, customerId, next);
         setFrequent(next);
         toast.success(

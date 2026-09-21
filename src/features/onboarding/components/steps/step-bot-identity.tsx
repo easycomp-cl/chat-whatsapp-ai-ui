@@ -137,8 +137,8 @@ export function StepBotIdentity({ draft, onChange }: StepBotIdentityProps) {
               className={cn(
                 "rounded-full border px-2.5 py-1 text-xs transition-all duration-200",
                 bot.bot_tone === tone
-                  ? "border-[#7678ed] bg-[#7678ed]/10 text-[#7678ed]"
-                  : "border-border hover:border-[#7678ed]/40"
+                  ? "border-[#0d9488] bg-[#0d9488]/10 text-[#0d9488]"
+                  : "border-border hover:border-[#0d9488]/40"
               )}
             >
               {tone}
@@ -154,7 +154,7 @@ export function StepBotIdentity({ draft, onChange }: StepBotIdentityProps) {
             type="button"
             variant="outline"
             size="sm"
-            className="border-[#7678ed]/30 text-[#7678ed] hover:bg-[#7678ed]/5"
+            className="border-[#0d9488]/30 text-[#0d9488] hover:bg-[#0d9488]/5"
             onClick={handleGenerateGreeting}
             disabled={pending || needsAgentNameForGreeting}
             title={

@@ -43,7 +43,7 @@ export function HeroFallback() {
       <div className="absolute inset-10 rounded-full bg-[radial-gradient(circle_at_60%_25%,rgba(62,230,208,0.2),transparent_60%)] blur-2xl" />
 
       {/* Anillos orbitales */}
-      <div className="absolute top-1/2 left-1/2 size-56 -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#6d5ef5]/20 sm:size-64" />
+      <div className="absolute top-1/2 left-1/2 size-56 -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#22d3a3]/20 sm:size-64" />
       <div className="absolute top-1/2 left-1/2 size-72 -translate-x-1/2 -translate-y-1/2 rounded-full border border-dashed border-[#3ee6d0]/25 sm:size-80" />
 
       {/* Núcleo 3D con logo */}
@@ -92,7 +92,7 @@ export function HeroFallback() {
             <div className="absolute -inset-px rounded-[2.25rem] bg-gradient-to-tl from-[#3ee6d0]/0 via-transparent to-[#3ee6d0]/30" />
           </div>
 
-          <div className="absolute -inset-6 -z-10 rounded-[3rem] bg-[#6d5ef5]/25 blur-3xl" />
+          <div className="absolute -inset-6 -z-10 rounded-[3rem] bg-[#22d3a3]/25 blur-3xl" />
         </motion.div>
       </div>
 
@@ -106,7 +106,7 @@ export function HeroFallback() {
         <div className="flex items-center gap-2">
           <ConnectorDot />
           <div>
-            <p className="text-[10px] font-semibold tracking-wide text-[#6d5ef5] uppercase">
+            <p className="text-[10px] font-semibold tracking-wide text-[#22d3a3] uppercase">
               Intención
             </p>
             <p className="text-xs leading-snug text-[var(--landing-ink)]/85">
@@ -138,7 +138,7 @@ export function HeroFallback() {
           animate={reduced ? undefined : { opacity: 1, y: 0, scale: 1 }}
           transition={{ delay: card.delay, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
         >
-          <p className="text-[10px] font-semibold tracking-wide text-[#6d5ef5] uppercase">
+          <p className="text-[10px] font-semibold tracking-wide text-[#22d3a3] uppercase">
             {card.label}
           </p>
           <p className="mt-1 text-xs leading-snug text-[var(--landing-ink)]/85">
@@ -167,7 +167,7 @@ export function HeroFallback() {
           </div>
           <div className="flex items-center justify-between rounded-lg px-2 py-1">
             <span className="text-[10px] text-[var(--landing-ink)]/70">Pedro L.</span>
-            <span className="text-[9px] font-semibold text-[#6d5ef5]">Bot</span>
+            <span className="text-[9px] font-semibold text-[#22d3a3]">Bot</span>
           </div>
         </div>
       </motion.div>

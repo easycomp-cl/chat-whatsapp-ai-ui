@@ -29,17 +29,25 @@ import { AddNoteForm } from "@/features/conversations/components/add-note-form";
 import { ReplyForm } from "@/features/conversations/components/reply-form";
 import { PendingIndicator } from "@/features/conversations/components/pending-indicator";
 import { usePendingMessages } from "@/features/conversations/context/pending-messages-context";
-import { buildMessageMap } from "@/lib/conversations/message-display";
+import { buildMessageMap, isSystemMessage } from "@/lib/conversations/message-display";
+import { resolveSystemEvent, VEHICLE_SYSTEM_EVENT_KINDS } from "@/lib/conversations/system-event";
 import { stripWhatsAppFormatting } from "@/lib/conversations/whatsapp-formatting";
-import { hasUnreadCustomerReactions, countUnreadCustomerActivity } from "@/lib/conversations/pending-activity";
+import {
+  countUnreadCustomerActivity,
+  getLatestSeenTimestamp,
+  hasUnreadCustomerReactions,
+} from "@/lib/conversations/pending-activity";
 import { useChatScroll } from "@/features/conversations/hooks/use-chat-scroll";
 import { useLiveConversation } from "@/features/conversations/hooks/use-live-conversation";
 import { useMounted } from "@/hooks/use-mounted";
 import { resolveCustomerDisplayName } from "@/lib/customers/resolve-display-name";
 import { FlowRunBanner } from "@/features/conversations/components/flow-run-banner";
 import { FlowAgentInputBubble } from "@/features/conversations/components/flow-agent-input-bubble";
+import { ConversationVehicleChips } from "@/features/conversations/components/conversation-vehicle-chips";
+import { ChatPlateLookupBalloon } from "@/features/conversations/components/chat-plate-lookup-balloon";
 import { useWhatsappServiceWindow } from "@/features/conversations/hooks/use-whatsapp-service-window";
 import { useConversationFlowState } from "@/features/conversations/hooks/use-conversation-flow-state";
+import { useCustomerGarage } from "@/features/conversations/hooks/use-customer-garage";
 import { useInboxColumnLayoutContext } from "@/features/conversations/context/inbox-column-layout-context";
 import type { ConversationFlowState } from "@/lib/bot-api/types";
 import type { OutboundSenderContext } from "@/lib/conversations/outbound-sender";
@@ -82,10 +90,11 @@ export function ChatWindow({
     markConversationRead(conversation.id, messagesRef.current);
   }, [conversation.id, markConversationRead]);
 
+  const latestSeenAt = getLatestSeenTimestamp(messages);
+
   useEffect(() => {
     acknowledgeRead();
-    return () => acknowledgeRead();
-  }, [acknowledgeRead, messages]);
+  }, [acknowledgeRead, latestSeenAt]);
 
   const { showScrollButton, scrollToBottom } = useChatScroll(
     conversation.id,
@@ -102,9 +111,19 @@ export function ChatWindow({
   const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [tab, setTab] = useState(conversation.mode === "HUMAN" ? "reply" : "note");
+  const [plateLookups, setPlateLookups] = useState<string[]>([]);
+  const [garageNonce, setGarageNonce] = useState(0);
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
   const customer = conversation.customers;
   const displayName = resolveCustomerDisplayName(customer);
+  const garageRefreshKey = useMemo(() => {
+    for (let index = messages.length - 1; index >= 0; index -= 1) {
+      const event = messages[index].system_event;
+      if (event && VEHICLE_SYSTEM_EVENT_KINDS.has(event.kind)) return messages[index].id;
+    }
+    return "";
+  }, [messages]);
+  const { garage } = useCustomerGarage(conversation.customer_id, `${garageRefreshKey}:${garageNonce}`);
   const canReply = conversation.mode === "HUMAN";
   const serviceWindow = useWhatsappServiceWindow({
     messages,
@@ -124,8 +143,11 @@ export function ChatWindow({
         : 0,
     [mounted, messages, lastReadAt, conversation.id]
   );
-  const lastMessage = messages.at(-1);
-  const awaitingResponse = lastMessage?.direction === "INBOUND";
+  const lastNonSystem = useMemo(
+    () => [...messages].reverse().find((message) => !isSystemMessage(message)),
+    [messages]
+  );
+  const awaitingResponse = lastNonSystem?.direction === "INBOUND";
   const hasUnreadReactions = useMemo(
     () =>
       mounted &&
@@ -139,11 +161,12 @@ export function ChatWindow({
     const query = searchQuery.trim().toLowerCase();
     if (!query) return [];
     return messages
-      .filter((message) =>
-        stripWhatsAppFormatting(message.content_text ?? "")
-          .toLowerCase()
-          .includes(query)
-      )
+      .filter((message) => {
+        const haystack = isSystemMessage(message)
+          ? `${resolveSystemEvent(message)?.title ?? ""} ${resolveSystemEvent(message)?.body ?? ""} ${message.content_text ?? ""}`
+          : stripWhatsAppFormatting(message.content_text ?? "");
+        return haystack.toLowerCase().includes(query);
+      })
       .map((message) => message.id);
   }, [messages, searchQuery]);
 
@@ -235,11 +258,26 @@ export function ChatWindow({
     });
   }
 
+  useEffect(() => {
+    setPlateLookups([]);
+  }, [conversation.id]);
+
+  function openPlateLookup() {
+    const draft = scrollRef.current?.querySelector<HTMLElement>("[data-plate-lookup='draft']");
+    if (draft) {
+      draft.scrollIntoView({ block: "end", behavior: "smooth" });
+      window.setTimeout(() => draft.querySelector("input")?.focus(), 220);
+      return;
+    }
+    setPlateLookups((items) => [...items, crypto.randomUUID()]);
+  }
+
   function handleClearChat() {
     startClearTransition(async () => {
       try {
         await clearConversationChatAction(conversation.id);
         clearChatView();
+        setPlateLookups([]);
         acknowledgeRead();
         setClearDialogOpen(false);
         toast.success("Chat limpiado. Los mensajes se conservan en el historial.");
@@ -260,7 +298,7 @@ export function ChatWindow({
             seed={conversation.customer_id}
             size="sm"
           />
-          <div>
+          <div className="min-w-0">
             <div className="flex items-center gap-2">
               <h2 className="font-semibold text-[#111b21]">{displayName}</h2>
               {showPendingInHeader && <PendingIndicator size="md" showLabel />}
@@ -272,6 +310,7 @@ export function ChatWindow({
                   ? "Nueva reacción del cliente sin revisar"
                   : customer?.phone_number}
             </p>
+            <ConversationVehicleChips garage={garage} />
           </div>
         </div>
         <div className="flex flex-col items-end gap-0.5">
@@ -279,7 +318,7 @@ export function ChatWindow({
             <button
               type="button"
               onClick={toggleContactCollapsed}
-              className="hidden rounded-lg p-1.5 text-[#7678ed] transition-colors hover:bg-[#7678ed]/10 xl:flex"
+              className="hidden rounded-lg p-1.5 text-[#0d9488] transition-colors hover:bg-[#0d9488]/10 xl:flex"
               aria-label="Mostrar información del contacto"
               title="Mostrar información del contacto"
             >
@@ -291,7 +330,7 @@ export function ChatWindow({
               <button
                 type="button"
                 onClick={openContactOverlay}
-                className="rounded-full p-2 text-[#202022]/40 transition-colors hover:bg-[#f9fafc] hover:text-[#7678ed] xl:hidden"
+                className="rounded-full p-2 text-[#202022]/40 transition-colors hover:bg-[#f9fafc] hover:text-[#0d9488] xl:hidden"
                 aria-label="Ver información del contacto"
                 title="Ver información del contacto"
               >
@@ -313,7 +352,7 @@ export function ChatWindow({
               render={
                 <button
                   type="button"
-                  className="rounded-full p-2 text-[#202022]/40 transition-colors hover:bg-[#f9fafc] hover:text-[#7678ed]"
+                  className="rounded-full p-2 text-[#202022]/40 transition-colors hover:bg-[#f9fafc] hover:text-[#0d9488]"
                   aria-label="Más opciones"
                 />
               }
@@ -323,7 +362,7 @@ export function ChatWindow({
             <DropdownMenuContent align="end" className="min-w-44">
               <DropdownMenuItem
                 onClick={openSearch}
-                className="text-[#111b21] focus:bg-accent focus:text-[#111b21] data-highlighted:text-[#111b21] [&>svg]:text-[#111b21] hover:[&>svg]:text-[#7678ed] focus:[&>svg]:text-[#7678ed] data-highlighted:[&>svg]:text-[#7678ed]"
+                className="text-[#111b21] focus:bg-accent focus:text-[#111b21] data-highlighted:text-[#111b21] [&>svg]:text-[#111b21] hover:[&>svg]:text-[#0d9488] focus:[&>svg]:text-[#0d9488] data-highlighted:[&>svg]:text-[#0d9488]"
               >
                 <Search />
                 Buscar
@@ -379,7 +418,7 @@ export function ChatWindow({
             type="button"
             onClick={goToPreviousMatch}
             disabled={matchingMessageIds.length === 0}
-            className="rounded-full p-1.5 text-[#667781] transition-colors hover:bg-white hover:text-[#7678ed] disabled:cursor-not-allowed disabled:opacity-40"
+            className="rounded-full p-1.5 text-[#667781] transition-colors hover:bg-white hover:text-[#0d9488] disabled:cursor-not-allowed disabled:opacity-40"
             aria-label="Resultado anterior"
           >
             <ChevronUp className="size-4" />
@@ -388,7 +427,7 @@ export function ChatWindow({
             type="button"
             onClick={goToNextMatch}
             disabled={matchingMessageIds.length === 0}
-            className="rounded-full p-1.5 text-[#667781] transition-colors hover:bg-white hover:text-[#7678ed] disabled:cursor-not-allowed disabled:opacity-40"
+            className="rounded-full p-1.5 text-[#667781] transition-colors hover:bg-white hover:text-[#0d9488] disabled:cursor-not-allowed disabled:opacity-40"
             aria-label="Siguiente resultado"
           >
             <ChevronDown className="size-4" />
@@ -396,7 +435,7 @@ export function ChatWindow({
           <button
             type="button"
             onClick={closeSearch}
-            className="rounded-full p-1.5 text-[#667781] transition-colors hover:bg-white hover:text-[#7678ed]"
+            className="rounded-full p-1.5 text-[#667781] transition-colors hover:bg-white hover:text-[#0d9488]"
             aria-label="Cerrar búsqueda"
           >
             <X className="size-4" />
@@ -476,6 +515,17 @@ export function ChatWindow({
               );
               })
             )}
+            {plateLookups.map((lookupId) => (
+              <ChatPlateLookupBalloon
+                key={lookupId}
+                conversationId={conversation.id}
+                onDismiss={() => setPlateLookups((items) => items.filter((id) => id !== lookupId))}
+                onResolved={() => {
+                  setGarageNonce((value) => value + 1);
+                  window.dispatchEvent(new CustomEvent("easycomp:customer-garage-updated"));
+                }}
+              />
+            ))}
           </div>
         </div>
 
@@ -561,6 +611,7 @@ export function ChatWindow({
                   setReplyingTo(null);
                   void refreshAfterSend(payload);
                 }}
+                onLookupPlate={openPlateLookup}
               />
           ) : (
             <AddNoteForm conversationId={conversation.id} />

@@ -10,9 +10,9 @@ export function HeroSection() {
   return (
     <section className="relative overflow-hidden pt-24 pb-16 sm:pt-28 lg:min-h-[92svh] lg:pb-20">
       <div className="pointer-events-none absolute inset-0">
-        <div className="absolute -top-24 left-1/4 size-[28rem] rounded-full bg-[#7678ed]/15 blur-3xl" />
-        <div className="absolute top-1/3 right-0 size-[24rem] rounded-full bg-[#38bdf8]/12 blur-3xl" />
-        <div className="absolute bottom-0 left-0 size-[20rem] rounded-full bg-[#a78bfa]/10 blur-3xl" />
+        <div className="absolute -top-24 left-1/4 size-[28rem] rounded-full bg-[#0d9488]/15 blur-3xl" />
+        <div className="absolute top-1/3 right-0 size-[24rem] rounded-full bg-[#c4121a]/12 blur-3xl" />
+        <div className="absolute bottom-0 left-0 size-[20rem] rounded-full bg-[#2dd4bf]/10 blur-3xl" />
       </div>
 
       <div className="relative mx-auto grid max-w-7xl items-center gap-12 px-4 sm:px-6 lg:grid-cols-2 lg:gap-16 lg:px-8">

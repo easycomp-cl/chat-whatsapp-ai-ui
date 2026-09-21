@@ -263,6 +263,11 @@ export function parameterFieldsFor(
     .sort((a, b) => a.index - b.index);
   if (matched.length > 0) return matched;
 
+  if (component === "button") {
+    const packButton = templatePackDefinition(template.name)?.buttonParameter;
+    return packButton ? [packButton] : [];
+  }
+
   if (component !== "body") return [];
 
   const count =

@@ -26,6 +26,7 @@ import { WhatsAppFormattedText } from "@/features/conversations/components/whats
 import { ChatMediaDocument, ChatMediaImage } from "@/features/conversations/components/chat-media-preview";
 import { ChatInteractiveMessage } from "@/features/conversations/components/chat-interactive-message";
 import { ChatAudioPlayer } from "@/features/conversations/components/chat-audio-player";
+import { ChatSystemEventBubble } from "@/features/conversations/components/chat-system-event-bubble";
 import { MessageCustomerChangeBadge } from "@/features/conversations/components/message-customer-change-badge";
 import { ConversationAvatar } from "@/features/conversations/components/conversation-avatar";
 import {
@@ -33,6 +34,8 @@ import {
   isCustomerRevokedMessage,
 } from "@/lib/conversations/customer-message-change";
 import { parseMessageInteractive, isInteractivePreviewMessage, resolveMessageInteractive, isInteractiveReplySelection, findCustomerSelectionForInteractive } from "@/lib/conversations/interactive-message";
+import { resolveMessageTemplateCta } from "@/features/whatsapp-templates/template-cta";
+import { TemplateCtaButton } from "@/features/whatsapp-templates/components/template-cta-button";
 import {
   EMPTY_MESSAGE_MEDIA,
   getAudioTranscriptText,
@@ -207,7 +210,7 @@ function MessageBody({
     );
   }
 
-  if (isTemplateContentType(message.content_type)) {
+  if (isTemplateContentType(message.content_type) || resolveMessageTemplateCta(message)) {
     return (
       <>
         <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-[#667781]">
@@ -296,16 +299,7 @@ export function ChatMessageBubble({
   }, [message.id]);
 
   if (isSystemMessage(message)) {
-    return (
-      <div className="flex justify-center py-2">
-        <div className="max-w-md min-w-0 overflow-hidden rounded-lg border border-amber-200/80 bg-[#fff3cd] px-4 py-2 text-center text-xs wrap-anywhere text-[#54656f] shadow-sm">
-          <WhatsAppFormattedText text={message.content_text} />
-          <div className="mt-1 text-[10px] text-[#667781]">
-            {formatFullTime(message.created_at)}
-          </div>
-        </div>
-      </div>
-    );
+    return <ChatSystemEventBubble message={message} outboundSender={outboundSender} />;
   }
 
   const inbound = isInbound(message);
@@ -327,6 +321,9 @@ export function ChatMessageBubble({
   const humanAvatarInitial = humanSenderLabel?.trim().charAt(0).toUpperCase() || "A";
   const botSenderLabel = resolveAiAgentSenderLabel(botAgentName);
   const botAvatarInitial = resolveAiAgentAvatarInitial(botAgentName);
+  const templateCta = resolveMessageTemplateCta(message);
+  const isTemplateCard =
+    isTemplateContentType(message.content_type) || Boolean(templateCta);
   const isInteractiveOutbound =
     !inbound &&
     (isInteractiveContentType(message.content_type) ||
@@ -368,7 +365,7 @@ export function ChatMessageBubble({
           <div
             className={cn(
               "relative min-w-0 max-w-full overflow-hidden rounded-lg text-sm shadow-sm",
-              isInteractiveOutbound ? "overflow-hidden px-0 py-0" : "px-3 py-1.5",
+              isInteractiveOutbound || isTemplateCard ? "overflow-hidden px-0 py-0" : "px-3 py-1.5",
               inbound
                 ? cn(
                     "rounded-tl-none bg-white text-[#111b21]",
@@ -410,6 +407,7 @@ export function ChatMessageBubble({
                 )}
               </div>
             )}
+            <div className={cn(isTemplateCard && "px-3 pt-1.5 pb-1")}>
             {quoted && (
               <MessageQuotedBlock
                 quotedText={quoted.text}
@@ -455,6 +453,12 @@ export function ChatMessageBubble({
                 />
               )}
             </div>
+            </div>
+            {templateCta ? (
+              <div className="border-t border-black/10">
+                <TemplateCtaButton cta={templateCta} variant="chat" />
+              </div>
+            ) : null}
           </div>
           <MessageReactions reactions={reactions} inbound={inbound} />
         </div>

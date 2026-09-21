@@ -1,15 +1,13 @@
 "use client";
 
-import { MessageCircle, PanelRightClose, Tag, Workflow } from "lucide-react";
+import { MessageCircle, PanelRightClose, Workflow } from "lucide-react";
 import { FLOW_RUN_STATUS_LABELS } from "@/lib/flows/utils";
-import { AiEventsAccordion } from "@/features/conversations/components/ai-events-accordion";
 import { ActivateFlowsAccordion } from "@/features/conversations/components/activate-flows-accordion";
 import { ContactExtraInfoAccordion } from "@/features/conversations/components/contact-extra-info-accordion";
 import { ContactNotesSection } from "@/features/conversations/components/contact-notes-section";
 import { CustomerFrequentToggle } from "@/features/conversations/components/customer-frequent-toggle";
 import { CustomerProfileSection } from "@/features/conversations/components/customer-profile-section";
 import { ConversationAvatar } from "@/features/conversations/components/conversation-avatar";
-import { ModeBadge, StatusBadge } from "@/features/conversations/components/conversation-badges";
 import { useInboxColumnLayoutContext } from "@/features/conversations/context/inbox-column-layout-context";
 import { cn } from "@/lib/utils";
 import { resolveCustomerDisplayName } from "@/lib/customers/resolve-display-name";
@@ -29,7 +27,8 @@ type ContactDetailsPanelProps = {
   conversation: Conversation & { customers: Customer | null };
   flowState?: ConversationFlowState | null;
   notes: ConversationNoteWithAuthor[];
-  events: Array<{ id: string; event_type: string; created_at: string }>;
+  /** Reservado; la UI ya no muestra Eventos de IA. */
+  events?: Array<{ id: string; event_type: string; created_at: string }>;
   canEditCustomerProfile: boolean;
   deliveryRegions: DeliveryRegion[];
   activatableFlows?: FlowDefinition[];
@@ -40,7 +39,6 @@ export function ContactDetailsPanel({
   conversation,
   flowState = null,
   notes,
-  events,
   canEditCustomerProfile,
   deliveryRegions,
   activatableFlows = [],
@@ -52,6 +50,7 @@ export function ContactDetailsPanel({
     toggleContactCollapsed,
   } = useInboxColumnLayoutContext();
   const showDesktopColumnClose = contactPanelAvailable && !contactOverlayOpen;
+  const isDev = process.env.NODE_ENV === "development";
   const customer = conversation.customers;
   const displayName = resolveCustomerDisplayName(customer);
   const hasAlias = Boolean(customer?.display_alias?.trim());
@@ -70,7 +69,7 @@ export function ContactDetailsPanel({
           <button
             type="button"
             onClick={toggleContactCollapsed}
-            className="rounded-lg p-2 text-[#202022]/40 transition-colors hover:bg-[#f9fafc] hover:text-[#7678ed]"
+            className="rounded-lg p-2 text-[#202022]/40 transition-colors hover:bg-[#f9fafc] hover:text-[#0d9488]"
             aria-label="Ocultar información del contacto"
             title="Ocultar información del contacto"
           >
@@ -147,25 +146,9 @@ export function ContactDetailsPanel({
 
         <ContactNotesSection conversationId={conversation.id} notes={notes} />
 
-        <section className="rounded-xl border border-[#202022]/8 bg-white p-4 shadow-sm">
-          <h4 className="mb-2.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-[#202022]/50">
-            <Tag className="size-3.5 text-[#7678ed]" />
-            Etiquetas
-          </h4>
-          <div className="flex flex-wrap gap-2">
-            <ModeBadge mode={conversation.mode} />
-            <StatusBadge status={conversation.status} />
-            {conversation.handoff_reason && (
-              <span className="rounded-full bg-[#ff7a55]/12 px-2.5 py-0.5 text-xs font-medium text-[#c44d2a]">
-                Derivada
-              </span>
-            )}
-          </div>
-        </section>
-
         {flowState?.active_flow_run && (
-          <section className="rounded-xl border border-[#7678ed]/20 bg-[#7678ed]/5 p-4 shadow-sm">
-            <h4 className="mb-2.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-[#7678ed]">
+          <section className="rounded-xl border border-[#0d9488]/20 bg-[#0d9488]/5 p-4 shadow-sm">
+            <h4 className="mb-2.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-[#0d9488]">
               <Workflow className="size-3.5" />
               Flujo activo
             </h4>
@@ -180,7 +163,7 @@ export function ContactDetailsPanel({
             {flowState.active_flow_run.status === "AWAITING_REVIEW" && (
               <a
                 href="/app/flows/reviews"
-                className="mt-2 inline-block text-xs font-medium text-[#7678ed] hover:underline"
+                className="mt-2 inline-block text-xs font-medium text-[#0d9488] hover:underline"
               >
                 Ir a revisiones pendientes
               </a>
@@ -188,13 +171,13 @@ export function ContactDetailsPanel({
           </section>
         )}
 
-        <ActivateFlowsAccordion
-          conversationId={conversation.id}
-          flows={activatableFlows}
-          flowState={flowState}
-        />
-
-        <AiEventsAccordion events={events} />
+        {isDev ? (
+          <ActivateFlowsAccordion
+            conversationId={conversation.id}
+            flows={activatableFlows}
+            flowState={flowState}
+          />
+        ) : null}
       </div>
       </div>
     </aside>

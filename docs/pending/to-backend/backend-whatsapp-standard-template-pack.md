@@ -168,14 +168,34 @@ Ejemplo: `Pedro` · `Panadería Aurora`
 
 Eso **reabre la ventana 24 h** cuando el cliente responde. Hasta entonces solo plantilla.
 
-## API (además de las ya specced)
+### 7. `link_pago_es`
 
 ```
-POST /businesses/:businessId/whatsapp/templates/provision-defaults
+Hola {{1}}, aquí tienes el link de pago de {{2}}.
+```
+
+Ejemplo body: `Juan` · `Pedido #1042`
+
+Botón URL `Pagar` → `https://chatbotmanager.easycomp.cl/pay/{{1}}`. Al enviar, `button_parameters: ["pedido-1042"]` (sufijo, no el URL completo). El backend guarda el código y la UI sirve `/pay/:code`.
+
+### 8. `muestra_producto_es`
+
+```
+Hola {{1}}, sobre {{2}}: {{3}}.
+```
+
+Ejemplo: `Camila` · `Tabla de pino 2x4` · `18 mm, $12.900`
+
+## API (contrato vigente)
+
+```
 GET  /businesses/:businessId/whatsapp/templates
+GET  /businesses/:businessId/whatsapp/templates?status=APPROVED
+POST /businesses/:businessId/whatsapp/templates/provision-defaults
+POST /conversations/:id/messages/template
 ```
 
-Respuesta GET (todas, no solo APPROVED):
+Respuesta GET:
 
 ```json
 {
@@ -186,27 +206,41 @@ Respuesta GET (todas, no solo APPROVED):
       "category": "UTILITY",
       "status": "PENDING",
       "quality": null,
-      "variable_count": 2
+      "rejection_reason": null,
+      "body_preview": "Hola {{1}}, te escribimos de {{2}} por tu consulta...",
+      "variable_count": 2,
+      "parameter_fields": [
+        { "component": "body", "index": 1, "label": "Nombre del cliente", "example": "Pedro" },
+        { "component": "body", "index": 2, "label": "Nombre del negocio", "example": "Panadería Aurora" }
+      ],
+      "in_pack": true,
+      "product_use": "Reabrir chat de forma controlada",
+      "meta_template_id": "123",
+      "last_error": null,
+      "updated_at": "2026-09-15T00:00:00.000Z"
     }
   ],
-  "pack": "standard_v1"
+  "pack": "standard_v1",
+  "connected": true
 }
 ```
 
-## UI (este repo, cuando GET exista)
+Envío (solo `APPROVED`): `{ "template_name", "language_code", "body_parameters", "agent_phone" }`. `link_pago_es` también acepta `button_parameters`. Un `201` es Graph `SENT`; fallos de cobro llegan después por Realtime (`FAILED` + `whatsapp_delivery_error_*`).
 
-- Ajustes o **Mis plantillas** (`/app/templates`): lista del pack con chips Pendiente / Aprobada / Rechazada.
-- Composer con ventana cerrada: solo plantillas `APPROVED` del pack (más las que el negocio cree después).
-- OTP responsable: solo si `verificar_responsable_es` está `APPROVED`.
+Detalle UI: [../whatsapp-templates-ui.md](../whatsapp-templates-ui.md).
 
-Hasta que el backend no implemente provisión + listar + enviar, la UI no inventa plantillas en Meta.
+## UI (este repo)
+
+- **Mis plantillas** (`/app/templates`): lista del pack con chips Pendiente / Aprobada / Rechazada.
+- Composer con ventana cerrada: solo plantillas `APPROVED` del pack (más las que el negocio cree después), vía `parameter_fields` + `body_preview`.
+- Confirmación del responsable: solo si `verificar_responsable_es` está `APPROVED` (botón Confirmar, no OTP).
 
 ## Prueba
 
 1. Signup WABA de un negocio de prueba.
-2. Job crea 6 plantillas → `PENDING` en Graph y en BD.
+2. Job crea 8 plantillas → `PENDING` en Graph y en BD.
 3. Aprobar en WhatsApp Manager **o** esperar webhook.
 4. Ventana cerrada → enviar `reabrir_conversacion_es` → llega al cliente.
 5. Cliente responde → ventana 24 h abierta → texto libre otra vez.
-6. OTP admin con `verificar_responsable_es`.
+6. Confirmación admin con `verificar_responsable_es` (botón Confirmar).
 7. Handoff → `aviso_handoff_es` al personal verificado.

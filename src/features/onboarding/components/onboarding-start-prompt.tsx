@@ -16,6 +16,7 @@ type OnboardingStartPromptProps = {
   onOpenChange: (open: boolean) => void;
   onStart: () => void;
   onLater: () => void;
+  hasDraft?: boolean;
 };
 
 export function OnboardingStartPrompt({
@@ -23,6 +24,7 @@ export function OnboardingStartPrompt({
   onOpenChange,
   onStart,
   onLater,
+  hasDraft = false,
 }: OnboardingStartPromptProps) {
   return (
     <Dialog
@@ -37,13 +39,16 @@ export function OnboardingStartPrompt({
     >
       <DialogContent className="max-w-md gap-0 p-6 sm:max-w-md">
         <DialogHeader className="gap-3">
-          <div className="flex size-10 items-center justify-center rounded-xl bg-[#7678ed]/10 text-[#7678ed]">
+          <div className="flex size-10 items-center justify-center rounded-xl bg-[#0d9488]/10 text-[#0d9488]">
             <Sparkles className="size-5" />
           </div>
-          <DialogTitle className="text-lg">Configura tu asistente</DialogTitle>
+          <DialogTitle className="text-lg">
+            {hasDraft ? "Sigue configurando tu asistente" : "Configura tu asistente"}
+          </DialogTitle>
           <DialogDescription>
-            Completa la configuración inicial para que el bot conozca tu negocio y
-            responda bien en WhatsApp. Puedes hacerlo ahora o más tarde.
+            {hasDraft
+              ? "Dejamos tu avance guardado en este dispositivo. Puedes continuar desde donde lo dejaste."
+              : "Completa la configuración inicial para que el bot conozca tu negocio y responda bien en WhatsApp. Puedes hacerlo ahora o más tarde."}
           </DialogDescription>
         </DialogHeader>
         <DialogFooter className="mt-6">
@@ -53,9 +58,9 @@ export function OnboardingStartPrompt({
           <Button
             type="button"
             onClick={onStart}
-            className="bg-[#7678ed] text-white hover:bg-[#7678ed]/90"
+            className="bg-[#0d9488] text-white hover:bg-[#0d9488]/90"
           >
-            Empezar ahora
+            {hasDraft ? "Continuar" : "Empezar ahora"}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -63,7 +63,7 @@ export function ConversationDemo() {
         <FadeIn className="mx-auto mt-12 max-w-xl">
           <div className="rounded-[1.75rem] border border-white/70 bg-white/80 p-4 shadow-xl backdrop-blur-md sm:p-6">
             <div className="mb-4 flex items-center gap-3 border-b border-black/5 pb-4">
-              <div className="flex size-10 items-center justify-center rounded-full bg-[#7678ed]/15 text-sm font-semibold text-[var(--landing-accent)]">
+              <div className="flex size-10 items-center justify-center rounded-full bg-[#0d9488]/15 text-sm font-semibold text-[var(--landing-accent)]">
                 MG
               </div>
               <div>
@@ -81,7 +81,7 @@ export function ConversationDemo() {
                   className={cn(
                     "max-w-[90%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed",
                     msg.role === "client" &&
-                      "ml-auto bg-[#7678ed] text-white rounded-br-md",
+                      "ml-auto bg-[#0d9488] text-white rounded-br-md",
                     msg.role === "bot" &&
                       "mr-auto bg-[#f0f2f5] text-[var(--landing-ink)] rounded-bl-md",
                     msg.role === "system" &&

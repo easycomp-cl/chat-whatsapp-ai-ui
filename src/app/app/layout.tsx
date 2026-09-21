@@ -1,5 +1,6 @@
 import { requireAppAccess } from "@/lib/auth/session";
 import { getBusinessById } from "@/lib/business/get-business";
+import { loadWhatsappConnection } from "@/lib/whatsapp/connection";
 import { AppShell } from "@/components/layout/app-shell";
 
 export default async function AppLayout({
@@ -8,7 +9,10 @@ export default async function AppLayout({
   children: React.ReactNode;
 }) {
   const profile = await requireAppAccess();
-  const business = await getBusinessById(profile.business_id!);
+  const [business, connection] = await Promise.all([
+    getBusinessById(profile.business_id!),
+    loadWhatsappConnection(profile.business_id!).catch(() => null),
+  ]);
 
   return (
     <AppShell
@@ -17,6 +21,7 @@ export default async function AppLayout({
       botEnabled={business?.bot_global_enabled ?? false}
       userName={profile.full_name ?? "Usuario"}
       userRole={profile.role}
+      whatsappConnected={Boolean(connection?.connected)}
     >
       {children}
     </AppShell>

@@ -23,8 +23,10 @@ import {
   templateButtonLabel,
   templateDescription,
   templateDisplayTitle,
+  templatePackDefinition,
   templateResolvedBody,
 } from "@/features/whatsapp-templates/utils";
+import { exampleTemplateCta } from "@/features/whatsapp-templates/template-cta";
 import {
   TEMPLATE_INTERNAL_KIND_CLASS,
   TEMPLATE_INTERNAL_KIND_LABEL,
@@ -112,7 +114,7 @@ export function WhatsappTemplateCatalogDialog({
         ) : approved.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             No hay plantillas aprobadas para este chat. Revísalas en{" "}
-            <Link href="/app/templates" className="font-medium text-[#7678ed] underline">
+            <Link href="/app/templates" className="font-medium text-[#0d9488] underline">
               Mis plantillas
             </Link>
             .
@@ -139,6 +141,8 @@ export function WhatsappTemplateCatalogDialog({
                   {filtered.map((template) => {
                     const kind = inferInternalKind(template.name, template.product_use);
                     const title = templateDisplayTitle(template);
+                    const pack = templatePackDefinition(template.name);
+                    const cta = pack ? exampleTemplateCta(pack) : null;
                     return (
                       <button
                         key={template.name}
@@ -147,7 +151,7 @@ export function WhatsappTemplateCatalogDialog({
                           onSelect(template);
                           window.setTimeout(() => onOpenChange(false), 0);
                         }}
-                        className="flex flex-col overflow-hidden rounded-2xl border bg-card text-left shadow-sm ring-foreground/5 transition hover:-translate-y-0.5 hover:border-[#7678ed]/40 hover:shadow-md focus-visible:border-[#7678ed] focus-visible:ring-3 focus-visible:ring-[#7678ed]/30"
+                        className="flex flex-col overflow-hidden rounded-2xl border bg-card text-left shadow-sm ring-foreground/5 transition hover:-translate-y-0.5 hover:border-[#0d9488]/40 hover:shadow-md focus-visible:border-[#0d9488] focus-visible:ring-3 focus-visible:ring-[#0d9488]/30"
                       >
                         <div className="flex items-start justify-between gap-2 px-3.5 pt-3.5">
                           <h3 className="font-semibold tracking-tight text-[#111b21]">{title}</h3>
@@ -174,7 +178,9 @@ export function WhatsappTemplateCatalogDialog({
                         >
                           <WhatsappTemplateBubble
                             body={templateResolvedBody(template)}
-                            buttonLabel={templateButtonLabel(template)}
+                            buttonLabel={cta?.label ?? templateButtonLabel(template)}
+                            buttonHint={cta?.hint ?? pack?.buttonHint}
+                            buttonUrl={cta?.url}
                             compact
                           />
                         </div>

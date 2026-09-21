@@ -46,7 +46,7 @@ export default async function WhatsappCallbackPage() {
   return (
     <div className="space-y-6">
       <div className="space-y-2">
-        <p className="text-xs font-medium uppercase tracking-wider text-[#7678ed]">
+        <p className="text-xs font-medium uppercase tracking-wider text-[#0d9488]">
           Resultado de Meta
         </p>
         <h1 className="text-2xl font-semibold tracking-tight">Conexión de WhatsApp</h1>

@@ -7,6 +7,7 @@ import {
   templatePackDefinition,
   templateResolvedBody,
 } from "@/features/whatsapp-templates/utils";
+import { resolveTemplateButtonUrl } from "@/features/whatsapp-templates/template-cta";
 
 export type TemplateComposeDraft = {
   template: WhatsappTemplate;
@@ -170,7 +171,7 @@ export function missingReasonForKind(kind: TemplateFieldKind): string | null {
       return "No hay una cita con hora en este chat.";
     case "payment":
     case "button":
-      return "No hay un enlace de pago generado para este chat.";
+      return "Completa el código del enlace (ej. pedido-1042).";
     default:
       return null;
   }
@@ -245,6 +246,11 @@ export function buildOptimisticTemplateMessage(input: {
     sender_type: "HUMAN",
     content_text: renderedTemplateBody(input.draft),
     content_type: "TEMPLATE",
+    template_name: input.draft.template.name,
+    template_button_url: resolveTemplateButtonUrl(
+      templatePackDefinition(input.draft.template.name),
+      input.draft.buttonValues.find((value) => value.trim()) ?? null
+    ),
     ai_generated: false,
     created_at: new Date().toISOString(),
     whatsapp_delivery_status: "pending",

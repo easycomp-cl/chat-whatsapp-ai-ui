@@ -150,7 +150,7 @@ function GlobalFieldsEditor({
         </p>
         <button
           type="button"
-          className="text-xs font-medium text-[#7678ed] hover:underline"
+          className="text-xs font-medium text-[#0d9488] hover:underline"
           onClick={addField}
         >
           + Campo

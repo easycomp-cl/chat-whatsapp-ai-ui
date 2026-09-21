@@ -20,6 +20,7 @@ import {
   laterTimestamp,
   mergeConversationActivity,
 } from "@/lib/conversations/pending-activity";
+import { isSystemChatMessage } from "@/lib/conversations/system-event";
 import { playNotificationSound } from "@/lib/notifications/play-notification-sound";
 import type { Message, MessageReactionRow } from "@/types/database.types";
 
@@ -75,14 +76,22 @@ export function PendingMessagesProvider({
   const markConversationRead = useCallback((conversationId: string, messages: Message[]) => {
     const latest = getLatestSeenTimestamp(messages);
     const current = lastReadRef.current[conversationId];
-    const nextAt = current ? laterTimestamp(current, latest) : latest;
-    lastReadRef.current = { ...lastReadRef.current, [conversationId]: nextAt };
-    setLastReadAt((prev) => {
-      if (prev[conversationId] === nextAt) return prev;
-      const next = { ...prev, [conversationId]: nextAt };
-      saveLastReadMap(next);
-      return next;
-    });
+    const nextAt = latest
+      ? current
+        ? laterTimestamp(current, latest)
+        : latest
+      : current;
+
+    if (nextAt && nextAt !== current) {
+      lastReadRef.current = { ...lastReadRef.current, [conversationId]: nextAt };
+      setLastReadAt((prev) => {
+        if (prev[conversationId] === nextAt) return prev;
+        const next = { ...prev, [conversationId]: nextAt };
+        saveLastReadMap(next);
+        return next;
+      });
+    }
+
     setPendingIds((prev) => {
       if (!prev.has(conversationId)) return prev;
       const next = new Set(prev);
@@ -148,7 +157,7 @@ export function PendingMessagesProvider({
 
       const { data: messages } = await supabase
         .from("messages")
-        .select("conversation_id, direction, created_at, reactions")
+        .select("conversation_id, direction, created_at, reactions, sender_type, content_type")
         .eq("business_id", businessId)
         .order("created_at", { ascending: false })
         .limit(500);
@@ -229,8 +238,13 @@ export function PendingMessagesProvider({
             conversationId: string;
             direction: string;
             createdAt: string;
+            senderType?: string;
+            contentType?: string;
           };
           if (row.direction !== "INBOUND") return;
+          if (isSystemChatMessage({ sender_type: row.senderType, content_type: row.contentType })) {
+            return;
+          }
           markPendingFromActivity(row.conversationId, row.createdAt);
         }
       )

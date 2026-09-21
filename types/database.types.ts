@@ -1,3 +1,5 @@
+import type { CustomerGarage, SystemEvent } from "@/types/message";
+
 export type UserRole = "SUPER_ADMIN" | "BUSINESS_ADMIN" | "COLLABORATOR" | "AGENT";
 
 export type CustomerInvoiceType = "RECEIPT" | "INVOICE" | "NONE";
@@ -58,6 +60,8 @@ export type Customer = {
   first_seen_at?: string | null;
   last_seen_at?: string | null;
   display_alias?: string | null;
+  first_name?: string | null;
+  last_name?: string | null;
   email?: string | null;
   tax_id?: string | null;
   invoice_type?: CustomerInvoiceType | null;
@@ -68,6 +72,7 @@ export type Customer = {
   delivery1_region?: string | null;
   delivery1_notes?: string | null;
   profile_metadata?: Record<string, unknown> | null;
+  garage?: CustomerGarage | null;
 };
 
 export type MessageReaction = {
@@ -110,7 +115,12 @@ export type Message = {
   external_id?: string | null;
   whatsapp_delivery_status?: string | null;
   whatsapp_delivery_error_code?: number | null;
+  whatsapp_delivery_error_kind?: string | null;
   whatsapp_delivery_error_message?: string | null;
+  /** Nombre de plantilla Meta cuando `content_type` es `TEMPLATE`. */
+  template_name?: string | null;
+  /** URL o sufijo del botón URL de la plantilla (pago, confirmar, abrir chat). */
+  template_button_url?: string | null;
   ai_generated: boolean;
   created_at: string;
   reply_to_message_id?: string | null;
@@ -127,6 +137,8 @@ export type Message = {
   audio_transcript?: string | null;
   /** Botones o lista interactiva (flujos / bot). */
   interactive?: unknown | null;
+  /** Evento de sistema (solo panel; no va a WhatsApp). */
+  system_event?: SystemEvent | null;
   /** Usuario del dashboard que envió el mensaje (auditoría). */
   sender_user_id?: string | null;
   /** Nombre visible del remitente humano (cache UI / futuro backend). */

@@ -28,7 +28,9 @@ export async function updateSession(request: NextRequest) {
   const path = request.nextUrl.pathname;
   const isRoot = path === "/";
   const isAuthRoute =
-    path.startsWith("/login") || path.startsWith("/forgot-password");
+    path.startsWith("/login") ||
+    path.startsWith("/forgot-password") ||
+    path.startsWith("/register");
   const isAuthCallback =
     path.startsWith("/auth/callback") ||
     path.startsWith("/api/auth/callback/facebook");

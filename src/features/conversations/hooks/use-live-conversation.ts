@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { usePendingMessages } from "@/features/conversations/context/pending-messages-context";
 import { fetchConversationMessages } from "@/lib/conversations/fetch-conversation-messages";
@@ -11,7 +12,12 @@ import {
   isDeliveryStatusRealtimePatch,
   patchMessageFromRealtimeRow,
 } from "@/lib/conversations/patch-realtime-message";
+import {
+  getWhatsappDeliveryFailureLabel,
+  resolveWhatsappDeliveryStatus,
+} from "@/lib/conversations/delivery-status";
 import type { OutboundSenderContext } from "@/lib/conversations/outbound-sender";
+import { APPEND_SYSTEM_EVENT } from "@/features/conversations/lib/append-system-event";
 import type { Conversation, Customer, Message } from "@/types/database.types";
 
 const POLL_MS = 2500;
@@ -60,6 +66,21 @@ export function useLiveConversation(
   useEffect(() => {
     syncConversationMessages(conversationId, messages);
   }, [conversationId, messages, syncConversationMessages]);
+
+  useEffect(() => {
+    function onAppend(event: Event) {
+      const detail = (event as CustomEvent<{ conversationId?: string; message?: Message }>).detail;
+      if (!detail?.message || detail.conversationId !== conversationId) return;
+      setMessages((prev) => {
+        const next = normalizeMessages([...prev, detail.message as Message]);
+        prevCountRef.current = next.length;
+        return next;
+      });
+    }
+
+    window.addEventListener(APPEND_SYSTEM_EVENT, onAppend);
+    return () => window.removeEventListener(APPEND_SYSTEM_EVENT, onAppend);
+  }, [conversationId]);
 
   const applyMessages = useCallback(
     (server: Message[], options?: { authoritative?: boolean }) => {
@@ -148,11 +169,27 @@ export function useLiveConversation(
       }
 
       if (row.id && isDeliveryStatusRealtimePatch(row)) {
+        const current = messagesRef.current.find((message) => message.id === row.id);
+        const patched = current
+          ? patchMessageFromRealtimeRow(current, row as Record<string, unknown>)
+          : null;
+
         setMessages((prev) =>
           prev.map((message) =>
-            message.id === row.id ? patchMessageFromRealtimeRow(message, row) : message
+            message.id === row.id
+              ? patchMessageFromRealtimeRow(message, row as Record<string, unknown>)
+              : message
           )
         );
+
+        if (
+          current &&
+          patched &&
+          resolveWhatsappDeliveryStatus(current) !== "failed" &&
+          resolveWhatsappDeliveryStatus(patched) === "failed"
+        ) {
+          toast.error(getWhatsappDeliveryFailureLabel(patched));
+        }
         return;
       }
 
@@ -312,6 +349,7 @@ export function useLiveConversation(
               ...message,
               whatsapp_delivery_status: "failed",
               whatsapp_delivery_error_message: payload.error ?? "No se pudo enviar",
+              whatsapp_delivery_error_kind: null,
             };
           }).reverse();
           prevCountRef.current = next.length;
@@ -352,6 +390,8 @@ export function useLiveConversation(
             ? {
                 ...item,
                 whatsapp_delivery_status: "pending",
+                whatsapp_delivery_error_code: null,
+                whatsapp_delivery_error_kind: null,
                 whatsapp_delivery_error_message: null,
                 created_at: new Date().toISOString(),
               }

@@ -41,7 +41,7 @@ export function Hero3DFallback({
         }}
       />
 
-      <div className="absolute top-1/2 left-1/2 size-56 -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#6d5ef5]/25 sm:size-64" />
+      <div className="absolute top-1/2 left-1/2 size-56 -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#22d3a3]/25 sm:size-64" />
       <div className="absolute top-1/2 left-1/2 size-72 -translate-x-1/2 -translate-y-1/2 rounded-full border border-dashed border-[#3ee6d0]/30 sm:size-80" />
 
       <div className="absolute inset-0 flex items-center justify-center">
@@ -103,7 +103,7 @@ export function Hero3DFallback({
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.45, duration: 0.5 }}
       >
-        <div className="size-2 rounded-full bg-[#6d5ef5]" />
+        <div className="size-2 rounded-full bg-[#22d3a3]" />
         <div className="mt-2 h-1.5 w-14 rounded-full bg-black/10" />
       </motion.div>
 
@@ -116,7 +116,7 @@ export function Hero3DFallback({
         <div className="mb-1.5 h-1 w-16 rounded-full bg-black/15" />
         <div className="space-y-1">
           <div className="h-5 rounded-md bg-[#00a884]/15" />
-          <div className="h-5 rounded-md bg-[#6d5ef5]/10" />
+          <div className="h-5 rounded-md bg-[#22d3a3]/10" />
         </div>
       </motion.div>
     </div>

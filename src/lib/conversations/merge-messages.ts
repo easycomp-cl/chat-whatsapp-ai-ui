@@ -1,7 +1,13 @@
 import { normalizeMessage, normalizeMessages } from "@/lib/conversations/message-display";
 import { parseMessageInteractive, resolveMessageInteractive } from "@/lib/conversations/interactive-message";
 import { parseMessageMedia, enrichMessageMedia, pickBestMessageMedia } from "@/lib/conversations/message-media";
+import { parseSystemEvent } from "@/lib/conversations/system-event";
 import { mergeWhatsappDeliveryStatusString } from "@/lib/conversations/delivery-status";
+import {
+  extractTemplateButtonSuffix,
+  resolveTemplateButtonUrl,
+} from "@/features/whatsapp-templates/template-cta";
+import { templatePackDefinition } from "@/features/whatsapp-templates/utils";
 import type { Message } from "@/types/database.types";
 
 function sortByCreatedAt(messages: Message[]) {
@@ -30,13 +36,18 @@ export function mergeOutboundMessage(local: Message, server: Message): Message {
     sender_display_name: server.sender_display_name ?? local.sender_display_name ?? null,
     whatsapp_delivery_error_code:
       server.whatsapp_delivery_error_code ?? local.whatsapp_delivery_error_code ?? null,
+    whatsapp_delivery_error_kind:
+      server.whatsapp_delivery_error_kind ?? local.whatsapp_delivery_error_kind ?? null,
     whatsapp_delivery_error_message:
       server.whatsapp_delivery_error_message ?? local.whatsapp_delivery_error_message ?? null,
+    template_name: server.template_name ?? local.template_name ?? null,
+    template_button_url: server.template_button_url ?? local.template_button_url ?? null,
     interactive:
       parseMessageInteractive(server.interactive) ??
       resolveMessageInteractive(server) ??
       local.interactive ??
       null,
+    system_event: parseSystemEvent(server.system_event) ?? local.system_event ?? null,
   });
 }
 
@@ -48,11 +59,20 @@ export function mergeServerMessageWithLocal(server: Message, prev?: Message): Me
     _local_preview_url: prev._local_preview_url,
     sender_user_id: server.sender_user_id ?? prev.sender_user_id ?? null,
     sender_display_name: server.sender_display_name ?? prev.sender_display_name ?? null,
+    whatsapp_delivery_error_code:
+      server.whatsapp_delivery_error_code ?? prev.whatsapp_delivery_error_code ?? null,
+    whatsapp_delivery_error_kind:
+      server.whatsapp_delivery_error_kind ?? prev.whatsapp_delivery_error_kind ?? null,
+    whatsapp_delivery_error_message:
+      server.whatsapp_delivery_error_message ?? prev.whatsapp_delivery_error_message ?? null,
+    template_name: server.template_name ?? prev.template_name ?? null,
+    template_button_url: server.template_button_url ?? prev.template_button_url ?? null,
     interactive:
       parseMessageInteractive(server.interactive) ??
       resolveMessageInteractive(server) ??
       prev.interactive ??
       null,
+    system_event: parseSystemEvent(server.system_event) ?? prev.system_event ?? null,
   });
 }
 
@@ -88,6 +108,31 @@ export function mergeServerWithLocal(
   );
 }
 
+function readTemplateName(raw: Record<string, unknown>): string | null {
+  const nested =
+    raw.template && typeof raw.template === "object"
+      ? (raw.template as { name?: unknown }).name
+      : null;
+  const value = raw.template_name ?? raw.templateName ?? nested ?? null;
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function readTemplateButtonUrl(raw: Record<string, unknown>, templateName: string | null): string | null {
+  const direct = raw.template_button_url ?? raw.templateButtonUrl;
+  if (typeof direct === "string" && direct.trim()) return direct.trim();
+
+  const suffix = extractTemplateButtonSuffix(
+    raw.template ??
+      (raw.raw_payload_json as Record<string, unknown> | undefined)?.template ??
+      (raw.rawPayloadJson as Record<string, unknown> | undefined)?.template ??
+      (raw.raw_payload_json as Record<string, unknown> | undefined)?.outbound ??
+      (raw.rawPayloadJson as Record<string, unknown> | undefined)?.outbound ??
+      raw
+  );
+  if (!suffix) return null;
+  return resolveTemplateButtonUrl(templatePackDefinition(templateName ?? ""), suffix);
+}
+
 export function mapApiMessageToMessage(
   raw: Record<string, unknown>,
   fallback: { conversationId: string; businessId: string }
@@ -117,9 +162,14 @@ export function mapApiMessageToMessage(
     whatsapp_delivery_error_code: (raw.whatsapp_delivery_error_code ??
       raw.whatsappDeliveryErrorCode ??
       null) as number | null,
+    whatsapp_delivery_error_kind: (raw.whatsapp_delivery_error_kind ??
+      raw.whatsappDeliveryErrorKind ??
+      null) as string | null,
     whatsapp_delivery_error_message: (raw.whatsapp_delivery_error_message ??
       raw.whatsappDeliveryErrorMessage ??
       null) as string | null,
+    template_name: readTemplateName(raw),
+    template_button_url: readTemplateButtonUrl(raw, readTemplateName(raw)),
     ai_generated: Boolean(raw.ai_generated ?? raw.aiGenerated ?? false),
     created_at: String(raw.created_at ?? raw.createdAt ?? new Date().toISOString()),
     reply_to_message_id: (raw.reply_to_message_id ?? raw.replyToMessageId ?? null) as
@@ -139,6 +189,7 @@ export function mapApiMessageToMessage(
       parsedInteractive ??
       resolveMessageInteractive({ content_text, content_type, interactive: parsedInteractive }) ??
       null,
+    system_event: parseSystemEvent(raw.system_event ?? raw.systemEvent),
     sender_user_id: (raw.sender_user_id ?? raw.senderUserId ?? raw.sent_by_user_id ?? raw.sentByUserId ?? null) as
       | string
       | null,

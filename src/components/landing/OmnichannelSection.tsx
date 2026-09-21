@@ -18,9 +18,9 @@ export function OmnichannelSection() {
         />
 
         <FadeIn className="mt-12">
-          <div className="rounded-2xl border border-[#7678ed]/20 bg-gradient-to-br from-[#7678ed]/5 to-white p-8">
+          <div className="rounded-2xl border border-[#0d9488]/20 bg-gradient-to-br from-[#0d9488]/5 to-white p-8">
             <div className="flex items-center gap-3">
-              <div className="flex size-12 items-center justify-center rounded-2xl bg-[#7678ed]/15">
+              <div className="flex size-12 items-center justify-center rounded-2xl bg-[#0d9488]/15">
                 <MessageCircle className="size-6 text-[var(--landing-accent)]" />
               </div>
               <div>

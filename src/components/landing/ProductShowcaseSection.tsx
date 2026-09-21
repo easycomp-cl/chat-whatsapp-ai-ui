@@ -34,7 +34,7 @@ const CONVERSATIONS = [
 
 const MODE_STYLES = {
   assigned: { label: "Asignada", className: "bg-[#00a884]/12 text-[#00a884]" },
-  bot: { label: "Bot", className: "bg-[#6d5ef5]/12 text-[#6d5ef5]" },
+  bot: { label: "Bot", className: "bg-[#22d3a3]/12 text-[#22d3a3]" },
   human: { label: "Humano", className: "bg-[#ff7a55]/12 text-[#c44d2a]" },
 } as const;
 
@@ -66,11 +66,11 @@ export function ProductShowcaseSection() {
 
           {/* Marco tipo producto */}
           <div
-            className="relative mx-auto max-w-4xl rounded-[1.75rem] border border-white/70 bg-white shadow-[0_50px_120px_-20px_rgba(68,56,202,0.35)]"
+            className="relative mx-auto max-w-4xl rounded-[1.75rem] border border-white/70 bg-white shadow-[0_50px_120px_-20px_rgba(13,148,136,0.35)]"
             style={{ transform: "perspective(1600px) rotateX(1.5deg)" }}
           >
             {/* Barra superior tipo navegador */}
-            <div className="flex items-center gap-2 rounded-t-[1.75rem] border-b border-black/5 bg-[#f7f8ff] px-4 py-2.5">
+            <div className="flex items-center gap-2 rounded-t-[1.75rem] border-b border-black/5 bg-[#f4fbf8] px-4 py-2.5">
               <span className="size-2.5 rounded-full bg-[#ff7a55]/60" />
               <span className="size-2.5 rounded-full bg-[#ffcf5c]/70" />
               <span className="size-2.5 rounded-full bg-[#00a884]/60" />
@@ -96,7 +96,7 @@ export function ProductShowcaseSection() {
                           : "flex items-center gap-2.5 px-3 py-3"
                       }
                     >
-                      <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[#6d5ef5]/12 text-[11px] font-semibold text-[#6d5ef5]">
+                      <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[#22d3a3]/12 text-[11px] font-semibold text-[#22d3a3]">
                         {c.initials}
                       </span>
                       <div className="min-w-0 flex-1">
@@ -126,7 +126,7 @@ export function ProductShowcaseSection() {
               <div className="flex flex-col">
                 <div className="flex items-center justify-between border-b border-black/5 px-4 py-3">
                   <div className="flex items-center gap-2.5">
-                    <span className="flex size-8 items-center justify-center rounded-full bg-[#6d5ef5]/12 text-[11px] font-semibold text-[#6d5ef5]">
+                    <span className="flex size-8 items-center justify-center rounded-full bg-[#22d3a3]/12 text-[11px] font-semibold text-[#22d3a3]">
                       MG
                     </span>
                     <div>
@@ -147,7 +147,7 @@ export function ProductShowcaseSection() {
                 </div>
 
                 <div className="flex-1 space-y-2.5 px-4 py-4">
-                  <div className="ml-auto max-w-[80%] rounded-2xl rounded-br-md bg-[#6d5ef5] px-3.5 py-2 text-xs text-white">
+                  <div className="ml-auto max-w-[80%] rounded-2xl rounded-br-md bg-[#22d3a3] px-3.5 py-2 text-xs text-white">
                     Hola, necesito cotizar 20 unidades con mi logo.
                   </div>
 
@@ -161,7 +161,7 @@ export function ProductShowcaseSection() {
                       logo.
                     </div>
                     <div className="mt-1.5 flex gap-1.5">
-                      <span className="rounded-full bg-[#6d5ef5] px-2.5 py-1 text-[10px] font-semibold text-white">
+                      <span className="rounded-full bg-[#22d3a3] px-2.5 py-1 text-[10px] font-semibold text-white">
                         Usar respuesta
                       </span>
                       <span className="rounded-full border border-black/10 px-2.5 py-1 text-[10px] font-semibold text-[var(--landing-muted)]">
@@ -172,13 +172,13 @@ export function ProductShowcaseSection() {
                 </div>
 
                 <div className="flex items-center gap-2 border-t border-black/5 px-4 py-3">
-                  <span className="inline-flex items-center gap-1 rounded-full bg-[#6d5ef5]/10 px-2 py-1 text-[10px] font-semibold text-[#6d5ef5]">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-[#22d3a3]/10 px-2 py-1 text-[10px] font-semibold text-[#22d3a3]">
                     <Bot className="size-3" /> IA activa
                   </span>
-                  <div className="flex-1 rounded-full bg-[#f7f8ff] px-3 py-1.5 text-[11px] text-[var(--landing-muted)]">
+                  <div className="flex-1 rounded-full bg-[#f4fbf8] px-3 py-1.5 text-[11px] text-[var(--landing-muted)]">
                     Escribe un mensaje…
                   </div>
-                  <span className="flex size-7 items-center justify-center rounded-full bg-[#6d5ef5] text-white">
+                  <span className="flex size-7 items-center justify-center rounded-full bg-[#22d3a3] text-white">
                     <Send className="size-3.5" />
                   </span>
                 </div>

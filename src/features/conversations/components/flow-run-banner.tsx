@@ -33,15 +33,15 @@ export function FlowRunBanner({ run, onCancelled }: FlowRunBannerProps) {
   }
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#7678ed]/20 bg-[#7678ed]/8 px-4 py-2.5 text-sm">
+    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#0d9488]/20 bg-[#0d9488]/8 px-4 py-2.5 text-sm">
       <div className="flex items-center gap-2 text-[#202022]">
-        <Workflow className="size-4 text-[#7678ed]" />
+        <Workflow className="size-4 text-[#0d9488]" />
         <span className="font-medium">{flowName}</span>
         {flowVersion !== null && (
           <span className="text-[#202022]/50">· v{flowVersion}</span>
         )}
         <span className="text-[#202022]/50">·</span>
-        <span className="text-[#7678ed]">{FLOW_RUN_STATUS_LABELS[run.status]}</span>
+        <span className="text-[#0d9488]">{FLOW_RUN_STATUS_LABELS[run.status]}</span>
       </div>
       <div className="flex items-center gap-2">
         <Button

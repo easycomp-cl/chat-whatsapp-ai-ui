@@ -142,15 +142,15 @@ export function StepOperations({
                 className={cn(
                   "flex w-full cursor-pointer items-center gap-3 rounded-xl border-2 px-4 py-3 text-left transition-colors duration-200",
                   selected
-                    ? "border-[#7678ed] bg-[#7678ed]/5"
-                    : "border-transparent bg-card ring-1 ring-border hover:border-[#7678ed]/30"
+                    ? "border-[#0d9488] bg-[#0d9488]/5"
+                    : "border-transparent bg-card ring-1 ring-border hover:border-[#0d9488]/30"
                 )}
               >
                 <span
                   className={cn(
                     "flex size-5 shrink-0 items-center justify-center rounded border transition-colors duration-200",
                     selected
-                      ? "border-[#7678ed] bg-[#7678ed] text-white"
+                      ? "border-[#0d9488] bg-[#0d9488] text-white"
                       : "border-input bg-background"
                   )}
                 >

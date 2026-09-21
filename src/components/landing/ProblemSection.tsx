@@ -92,7 +92,7 @@ export function ProblemSection() {
               </div>
             </div>
 
-            <div className="rounded-2xl border border-[#7678ed]/20 bg-gradient-to-br from-white to-[#7678ed]/5 p-6">
+            <div className="rounded-2xl border border-[#0d9488]/20 bg-gradient-to-br from-white to-[#0d9488]/5 p-6">
               <p className="text-sm font-semibold text-[var(--landing-accent)]">
                 Bandeja easycomp-chat-bot-manager
               </p>
@@ -114,7 +114,7 @@ export function ProblemSection() {
                         {item.preview}
                       </p>
                     </div>
-                    <span className="rounded-full bg-[#7678ed]/10 px-2.5 py-1 text-[10px] font-semibold text-[var(--landing-accent)]">
+                    <span className="rounded-full bg-[#0d9488]/10 px-2.5 py-1 text-[10px] font-semibold text-[var(--landing-accent)]">
                       {item.status}
                     </span>
                   </motion.div>

@@ -13,11 +13,12 @@ import {
   isTemplateContentType,
   parseMessageMedia,
 } from "@/lib/conversations/message-media";
+import { isSystemChatMessage, parseSystemEvent } from "@/lib/conversations/system-event";
 
 export const QUOTED_UNAVAILABLE = "[Mensaje no disponible]";
 
-export function isSystemMessage(msg: Message) {
-  return msg.sender_type === "SYSTEM";
+export function isSystemMessage(msg: Pick<Message, "sender_type" | "content_type">) {
+  return isSystemChatMessage(msg);
 }
 
 export function isInbound(msg: Message) {
@@ -89,6 +90,7 @@ export function normalizeMessage(raw: Message): Message {
     media: raw.media ? parseMessageMedia(raw.media) : EMPTY_MESSAGE_MEDIA,
     audio_transcript: (raw.audio_transcript ?? null) as string | null,
     interactive: parseMessageInteractive(raw.interactive),
+    system_event: parseSystemEvent(raw.system_event),
     reactions: parseReactions(raw.reactions).map((reaction) => ({
       ...reaction,
       created_at: normalizeTimestampString(reaction.created_at),
@@ -155,6 +157,12 @@ export function getReplyPreviewText(message: Message): string {
       return `🎤 ${preview}`;
     }
     return "🎤 Audio";
+  }
+
+  if (isSystemMessage(message)) {
+    const event = parseSystemEvent(message.system_event);
+    const text = (event?.title || stripWhatsAppFormatting(message.content_text?.trim() ?? "")).trim();
+    return text || "Evento del sistema";
   }
 
   const text = stripWhatsAppFormatting(message.content_text?.trim() ?? "");

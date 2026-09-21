@@ -116,7 +116,7 @@ export function FlowReviewsInbox({ reviews }: { reviews: FlowReview[] }) {
                         href={review.file.signed_url}
                         target="_blank"
                         rel="noreferrer"
-                        className="text-sm text-[#7678ed] hover:underline"
+                        className="text-sm text-[#0d9488] hover:underline"
                       >
                         {review.file.original_filename}
                       </a>

@@ -62,15 +62,15 @@ export function FlowFieldPicker({
             className={cn(
               "flex w-full items-center gap-2 rounded-lg border px-2.5 py-2 text-left text-xs transition-colors",
               selected
-                ? "border-[#7678ed] bg-[#7678ed]/10"
+                ? "border-[#0d9488] bg-[#0d9488]/10"
                 : "border-transparent bg-white hover:bg-white/80"
             )}
-            style={{ borderColor: selected ? "#7678ed" : flowEditorTheme.panelBorder }}
+            style={{ borderColor: selected ? "#0d9488" : flowEditorTheme.panelBorder }}
           >
             <span
               className={cn(
                 "flex size-4 shrink-0 items-center justify-center rounded border",
-                selected ? "border-[#7678ed] bg-[#7678ed] text-white" : "border-gray-300 bg-white"
+                selected ? "border-[#0d9488] bg-[#0d9488] text-white" : "border-gray-300 bg-white"
               )}
             >
               {selected && <Check className="size-3" strokeWidth={3} />}

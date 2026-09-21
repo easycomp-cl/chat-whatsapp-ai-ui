@@ -40,6 +40,7 @@ import { AppHeader } from "@/components/layout/app-header";
 import { PendingMessagesProvider, usePendingMessages } from "@/features/conversations/context/pending-messages-context";
 import { OnboardingDevTrigger } from "@/features/onboarding/components/onboarding-dev-trigger";
 import { OnboardingRequiredGuard } from "@/features/onboarding/components/onboarding-required-guard";
+import { BillingCheckoutGuard } from "@/features/billing/components/billing-checkout-guard";
 import { Bell } from "lucide-react";
 
 import { TEAM_MODULE, CLIENTS_MODULE } from "@/lib/roles/labels";
@@ -71,6 +72,7 @@ type AppShellProps = {
   botEnabled: boolean;
   userName: string;
   userRole: UserRole;
+  whatsappConnected: boolean;
 };
 
 function NavItemWithPending({
@@ -134,6 +136,7 @@ export function AppShell({
   botEnabled,
   userName,
   userRole,
+  whatsappConnected,
 }: AppShellProps) {
   const pathname = usePathname();
   const items = navItems.filter((item) => roleMatchesNav(userRole, item.roles));
@@ -183,7 +186,13 @@ export function AppShell({
         <main className="flex-1 p-6">{children}</main>
       </SidebarInset>
       {userRole === "BUSINESS_ADMIN" && (
-        <OnboardingRequiredGuard businessId={businessId} businessName={businessName} />
+        <>
+          <OnboardingRequiredGuard businessId={businessId} businessName={businessName} />
+          <BillingCheckoutGuard
+            businessId={businessId}
+            whatsappConnected={whatsappConnected}
+          />
+        </>
       )}
     </SidebarProvider>
     </PendingMessagesProvider>

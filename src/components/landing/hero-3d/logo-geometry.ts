@@ -90,7 +90,7 @@ const BAR_EXTRUDE: THREE.ExtrudeGeometryOptions = {
   depth: 0.24,
 };
 
-/** Diagonal brand gradient (violet → blue → cyan), baked as vertex colors. */
+/** Diagonal brand gradient (electric green → blue → cyan), baked as vertex colors. */
 function applyDiagonalGradient(geometry: THREE.BufferGeometry): void {
   const position = geometry.getAttribute("position");
   geometry.computeBoundingBox();

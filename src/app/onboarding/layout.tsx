@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Logo } from "@/components/brand/logo";
 import { PRODUCT_DISPLAY_NAME } from "@/lib/brand/constants";
+import { OnboardingDashboardLink } from "@/features/onboarding/components/onboarding-dashboard-link";
 
 export default function OnboardingLayout({
   children,
@@ -17,12 +18,7 @@ export default function OnboardingLayout({
               {PRODUCT_DISPLAY_NAME}
             </span>
           </Link>
-          <Link
-            href="/app/dashboard"
-            className="text-sm text-muted-foreground transition-colors hover:text-foreground"
-          >
-            Ir al dashboard
-          </Link>
+          <OnboardingDashboardLink />
         </div>
       </header>
       <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 py-8">

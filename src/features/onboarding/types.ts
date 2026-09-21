@@ -12,6 +12,8 @@ export type OnboardingIdentity = {
   business_name: string;
   business_type: BusinessType;
   description: string;
+  /** URL pública del logo. Opcional; `null` lo quita si ya existía. */
+  logo_url?: string | null;
 };
 
 export const BUSINESS_DESCRIPTION_MIN = 50;
@@ -74,14 +76,19 @@ export type SetupStatus = {
   };
   missing_for_go_live: string[];
   draft: OnboardingDraft;
+  /** Última persistencia del borrador en servidor. */
+  draft_updated_at?: string | null;
+  /** Paso del wizard donde el usuario se quedó (1–5). */
+  current_step?: number | null;
 };
 
 export type OnboardingPatch = Partial<{
-  identity: OnboardingIdentity;
+  identity: Partial<OnboardingIdentity>;
   offerings: OnboardingOffering[];
-  operations: OnboardingOperations;
-  human_contact: OnboardingHumanContact;
-  bot_identity: OnboardingBotIdentity;
+  operations: Partial<OnboardingOperations>;
+  human_contact: Partial<OnboardingHumanContact>;
+  bot_identity: Partial<OnboardingBotIdentity>;
+  current_step: number;
 }>;
 
 export type CompleteOnboardingBody = {
@@ -90,7 +97,7 @@ export type CompleteOnboardingBody = {
 };
 
 export const WIZARD_STEPS = [
-  { id: 1, key: "identity", label: "Tu negocio", hint: "Nombre, tipo y descripción" },
+  { id: 1, key: "identity", label: "Tu negocio", hint: "Nombre, logo, tipo y descripción" },
   { id: 2, key: "offerings", label: "Qué ofreces", hint: "Productos o servicios" },
   { id: 3, key: "operations", label: "Operación", hint: "Horario y pagos" },
   { id: 4, key: "human_contact", label: "Contacto humano", hint: "Responsable del negocio" },

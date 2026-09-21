@@ -29,7 +29,7 @@ export default async function WhatsappOnboardingPage() {
   return (
     <div className="space-y-6">
       <div className="space-y-2">
-        <p className="text-xs font-medium uppercase tracking-wider text-[#7678ed]">
+        <p className="text-xs font-medium uppercase tracking-wider text-[#0d9488]">
           Alta de cliente
         </p>
         <h1 className="text-2xl font-semibold tracking-tight">Conectar WhatsApp</h1>

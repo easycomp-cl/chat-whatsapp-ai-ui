@@ -91,9 +91,59 @@ export function canResendWhatsappMessage(message: Message): boolean {
   return status === "failed";
 }
 
+export type WhatsappDeliveryErrorKind =
+  | "billing_currency"
+  | "billing_payment_method"
+  | "billing_insufficient_funds"
+  | "billing"
+  | "reengagement_window"
+  | "undeliverable"
+  | "rate_limited"
+  | "other";
+
+const DELIVERY_ERROR_KIND_LABEL: Record<WhatsappDeliveryErrorKind, string> = {
+  billing_currency: "WhatsApp no pudo cobrar la plantilla (moneda de facturación).",
+  billing_payment_method: "WhatsApp no pudo cobrar la plantilla (método de pago).",
+  billing_insufficient_funds: "WhatsApp no pudo cobrar la plantilla (saldo insuficiente).",
+  billing: "WhatsApp no pudo cobrar la plantilla.",
+  reengagement_window: "La ventana de 24 h está cerrada para este mensaje.",
+  undeliverable: "WhatsApp no pudo entregar el mensaje.",
+  rate_limited: "WhatsApp limitó el envío. Intenta de nuevo en unos minutos.",
+  other: "WhatsApp no pudo entregar el mensaje.",
+};
+
+type WhatsappDeliveryErrorFields = Pick<
+  Message,
+  "whatsapp_delivery_error_message" | "whatsapp_delivery_error_code" | "whatsapp_delivery_error_kind"
+>;
+
+export function normalizeWhatsappDeliveryErrorKind(
+  raw?: string | null
+): WhatsappDeliveryErrorKind | null {
+  const value = raw?.trim().toLowerCase();
+  if (!value) return null;
+  if (value in DELIVERY_ERROR_KIND_LABEL) return value as WhatsappDeliveryErrorKind;
+  return "other";
+}
+
+export function getWhatsappDeliveryFailureLabel(
+  message?: WhatsappDeliveryErrorFields
+): string {
+  const detail = message?.whatsapp_delivery_error_message?.trim();
+  if (detail) return detail;
+
+  const kind = normalizeWhatsappDeliveryErrorKind(message?.whatsapp_delivery_error_kind);
+  if (kind) return DELIVERY_ERROR_KIND_LABEL[kind];
+
+  const code = message?.whatsapp_delivery_error_code;
+  if (code === 131042) return DELIVERY_ERROR_KIND_LABEL.billing;
+  if (code != null) return `No entregado (${code})`;
+  return "No entregado";
+}
+
 export function getWhatsappDeliveryStatusLabel(
   status: WhatsappDeliveryStatus,
-  message?: Pick<Message, "whatsapp_delivery_error_message" | "whatsapp_delivery_error_code">
+  message?: WhatsappDeliveryErrorFields
 ): string {
   switch (status) {
     case "pending":
@@ -104,13 +154,8 @@ export function getWhatsappDeliveryStatusLabel(
       return "Entregado";
     case "read":
       return "Visto";
-    case "failed": {
-      const detail = message?.whatsapp_delivery_error_message?.trim();
-      if (detail) return detail;
-      const code = message?.whatsapp_delivery_error_code;
-      if (code != null) return `No entregado (${code})`;
-      return "No entregado";
-    }
+    case "failed":
+      return getWhatsappDeliveryFailureLabel(message);
   }
 }
 

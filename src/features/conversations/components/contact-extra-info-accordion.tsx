@@ -42,7 +42,7 @@ export function ContactExtraInfoAccordion({
         aria-expanded={open}
       >
         <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-[#202022]/50">
-          <Info className="size-3.5 text-[#7678ed]" />
+          <Info className="size-3.5 text-[#0d9488]" />
           Más información
         </span>
         <ChevronDown

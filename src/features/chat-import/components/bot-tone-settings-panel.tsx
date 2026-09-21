@@ -40,7 +40,7 @@ function SettingCard({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0 flex-1 space-y-1">
           <div className="flex flex-wrap items-center gap-2">
-            <Icon className="size-4 shrink-0 text-violet-600 dark:text-violet-400" />
+            <Icon className="size-4 shrink-0 text-teal-600 dark:text-teal-400" />
             <Label className="text-sm font-semibold">{title}</Label>
             {detected && (
               <Badge variant="secondary" className="text-[11px] font-normal">
@@ -71,7 +71,7 @@ export function BotToneSettingsPanel({
   return (
     <div className="space-y-3">
       <div>
-        <p className="text-sm font-semibold text-violet-900 dark:text-violet-200">
+        <p className="text-sm font-semibold text-teal-900 dark:text-teal-200">
           Ajustes del bot
         </p>
         <p className="mt-0.5 text-xs text-muted-foreground">
@@ -117,7 +117,7 @@ export function BotToneSettingsPanel({
         <div className="rounded-xl border bg-background/80 p-4 shadow-sm">
           <div className="space-y-3">
             <div className="flex flex-wrap items-center gap-2">
-              <Ruler className="size-4 text-violet-600 dark:text-violet-400" />
+              <Ruler className="size-4 text-teal-600 dark:text-teal-400" />
               <Label className="text-sm font-semibold">Longitud de respuesta</Label>
               {detectedResponseLength && (
                 <Badge variant="secondary" className="text-[11px] font-normal">

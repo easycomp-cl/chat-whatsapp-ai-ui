@@ -5,6 +5,23 @@ export const loginSchema = z.object({
   password: z.string().min(6, "Mínimo 6 caracteres"),
 });
 
+export const registerSchema = z
+  .object({
+    fullName: z.string().trim().min(2, "Ingresa tu nombre"),
+    businessName: z.string().trim().min(2, "Ingresa el nombre del negocio"),
+    email: z.string().trim().email("Email inválido"),
+    phone: z.string().trim().optional(),
+    password: z.string().min(8, "Mínimo 8 caracteres"),
+    confirmPassword: z.string().min(8, "Confirma tu contraseña"),
+    consent: z
+      .boolean()
+      .refine((v) => v === true, { message: "Debes aceptar la política de privacidad" }),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Las contraseñas no coinciden",
+    path: ["confirmPassword"],
+  });
+
 export const faqSchema = z.object({
   question: z.string().min(1, "La pregunta es requerida"),
   answer: z.string().min(1, "La respuesta es requerida"),
@@ -176,6 +193,7 @@ export const simulateFlowSchema = z.object({
 });
 
 export type LoginInput = z.infer<typeof loginSchema>;
+export type RegisterInput = z.infer<typeof registerSchema>;
 export type FaqInput = z.infer<typeof faqSchema>;
 export type AgentInput = z.infer<typeof agentSchema>;
 export type KnowledgeInput = z.infer<typeof knowledgeSchema>;

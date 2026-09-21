@@ -1,8 +1,9 @@
 # UI — Plantillas WhatsApp (Mis plantillas + envío)
 
-> **Estado UI:** implementado en `/app/templates` + composer **Plantilla WA**. Redirect: `/app/plantillas`.
+> **Estado UI:** alineado al contrato de backend (2026-09-16).  
+> Pantalla: `/app/templates` + composer **Plantilla WA**. Redirect: `/app/plantillas`.
 
-**Resumen:** El backend ya puede **crear el pack estándar** en la WABA del negocio, **listar estados** de Meta y **enviar** plantillas `APPROVED` en una conversación. La UI debe mostrar chips en **Mis plantillas** y un selector en el composer cuando la ventana 24 h está cerrada.
+**Resumen:** El backend ya puede **crear el pack estándar** en la WABA del negocio, **listar estados** de Meta y **enviar** plantillas `APPROVED` en una conversación. La UI muestra chips en **Mis plantillas** y un selector en el composer cuando la ventana 24 h está cerrada.
 
 **Backend:** `chat-whatsapp-ai` — migración `20260915010000_whatsapp_templates`  
 **Specs previas (UI):** `docs/pending/to-backend/backend-whatsapp-standard-template-pack.md`
@@ -16,7 +17,7 @@
 | Backend | Migración Prisma + worker `whatsapp-templates` |
 | Meta | Webhook de la app: campo `message_template_status_update` |
 | Vercel / UI | Ninguna variable nueva |
-| Supabase | No hay migración de UI |
+| Supabase | No hay migración de UI. Realtime lee `Message.whatsappDeliveryErrorKind` si el backend lo persiste. El poll de `public.messages` usa `whatsapp_delivery_error_message`. |
 
 ---
 
@@ -96,13 +97,22 @@ POST /conversations/:id/messages/template
 }
 ```
 
-`link_pago_es` acepta `button_parameters: ["pedido-1042"]` (sufijo de `https://chatbotmanager.easycomp.cl/pay/{{1}}`).
+`link_pago_es` también acepta `button_parameters: ["pedido-1042"]` (sufijo de `https://chatbotmanager.easycomp.cl/pay/{{1}}`).
 
-`aviso_handoff_es` (al WhatsApp del responsable, no al del cliente) usa el mismo patrón: `button_parameters: ["<conversationId>"]` sobre `https://chatbotmanager.easycomp.cl/app/conversations/{{1}}`.
+Respuesta `201`: mensaje serializado con `content_type: "TEMPLATE"`, `template_name` y `template`. Eso solo significa que **Graph aceptó** el envío (`SENT` + `wamid`). La entrega al celular llega después por webhook.
 
-Respuesta `201`: mensaje serializado con `content_type: "TEMPLATE"`, `template_name` y `template`.
+Si Meta no puede cobrar la plantilla (moneda, método de pago, saldo), el mensaje pasa a `FAILED` (~5–15 s) vía Realtime:
 
-Errores útiles:
+| Campo | Uso |
+|-------|-----|
+| `whatsapp_delivery_status` | `FAILED` |
+| `whatsapp_delivery_error_code` | Código Meta (`131042` = facturación) |
+| `whatsapp_delivery_error_kind` | `billing_currency` \| `billing_payment_method` \| `billing_insufficient_funds` \| `billing` \| `reengagement_window` \| `undeliverable` \| `rate_limited` \| `other` |
+| `whatsapp_delivery_error_message` | Texto en español para toast/tooltip |
+
+No esperes un 4xx en el POST: Graph responde 201 y el fallo de pago es asíncrono.
+
+Errores útiles del POST inmediato:
 
 | HTTP | `error` | Cuándo |
 |------|---------|--------|
@@ -117,7 +127,7 @@ Errores útiles:
 
 | name | Uso |
 |------|-----|
-| `verificar_responsable_es` | Confirmar WhatsApp de admin (UTILITY + botón Confirmar) |
+| `verificar_responsable_es` | Confirmar WhatsApp de admin/asistente (botón link) |
 | `aviso_handoff_es` | Cliente pidió humano → WhatsApp del responsable |
 | `seguimiento_asesor_es` | Recontacto ventana cerrada |
 | `pedido_actualizacion_es` | Estado de pedido |
@@ -130,15 +140,14 @@ No son plantillas globales: cada negocio tiene **su copia** en su WABA.
 
 ---
 
-## Archivos sugeridos (repo UI)
+## Archivos UI
 
-| Ruta | Qué hacer |
-|------|-----------|
-| `app/plantillas` o `/app/plantillas` | Lista del pack + chips + botón Crear pack |
-| Composer (ventana cerrada) | Menú **+ → Plantilla WA**: solo `APPROVED` |
-| Modal catálogo | Tarjetas seleccionables de plantillas aprobadas |
-| Composer (tras elegir) | Formulario de variables + globo live + **X** para cancelar |
-| Burbuja de mensaje | Si `content_type === "TEMPLATE"`, mostrar `content_text` (ya renderizado) |
+| Ruta | Qué hace |
+|------|----------|
+| `/app/templates` (`/app/plantillas` redirige) | Lista del pack + chips + botón Crear pack |
+| Composer (ventana cerrada) | Menú **+ → Plantilla WA**: solo `APPROVED` del chat del cliente |
+| Modal variables | Usa `parameter_fields` + preview con `body_preview` |
+| Burbuja de mensaje | Si `content_type === "TEMPLATE"`, muestra `content_text` (ya renderizado) |
 
 ---
 
@@ -150,8 +159,17 @@ No son plantillas globales: cada negocio tiene **su copia** en su WABA.
 4. `GET .../templates` → **Aprobada**.
 5. Conversación con ventana 24 h cerrada → enviar `reabrir_conversacion_es` → llega al celular.
 6. Adjuntar MP3 no aplica; un `REJECTED` debe mostrar `rejection_reason`.
+7. Si Meta no puede cobrar: el POST sigue en 201 y a los ~5–15 s el globo pasa a **No entregado** + toast con `whatsapp_delivery_error_message`.
 
 ## Fuera de alcance UI
 
 - Crear plantillas custom distintas del pack (más adelante).
-- Envío de OTP admin (`verificar_responsable_es`) y aviso de handoff al celular del responsable: el pack se crea, el envío a un número que no es la conversación del cliente es otro endpoint.
+
+OTP admin y aviso de handoff: el pack se crea en Meta; el envío al WhatsApp **personal** del responsable es:
+
+- `POST /businesses/:id/admin-phone/verification` (manda `verificar_responsable_es` UTILITY con botón Confirmar)
+- El admin toca el botón → `https://chatbotmanager.easycomp.cl/verify-phone/:token`
+- `GET`/`POST /verify-phone/:token` (público) marca `phoneVerifiedAt`
+- Worker de handoff usa `aviso_handoff_es` solo si el número está verificado.
+
+Página de pago: `https://chatbotmanager.easycomp.cl/pay/:code` (ruta pública en la UI). El backend guarda el código al enviar `link_pago_es` y expone `GET /pay/:code` sin API key.

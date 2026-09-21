@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type { BusinessType, OnboardingDraft } from "../../types";
 import { BUSINESS_DESCRIPTION_MAX, BUSINESS_DESCRIPTION_MIN } from "../../types";
+import { BusinessLogoPicker } from "../business-logo-picker";
 
 const BUSINESS_TYPES: { value: BusinessType; label: string; description: string }[] = [
   { value: "products", label: "Productos", description: "Vendes bienes físicos o digitales" },
@@ -16,9 +17,10 @@ const BUSINESS_TYPES: { value: BusinessType; label: string; description: string 
 type StepIdentityProps = {
   draft: OnboardingDraft;
   onChange: (patch: Partial<OnboardingDraft>) => void;
+  onLogoFileChange: (file: File | null) => void;
 };
 
-export function StepIdentity({ draft, onChange }: StepIdentityProps) {
+export function StepIdentity({ draft, onChange, onLogoFileChange }: StepIdentityProps) {
   const identity = draft.identity ?? {
     business_name: "",
     business_type: "products" as BusinessType,
@@ -35,6 +37,22 @@ export function StepIdentity({ draft, onChange }: StepIdentityProps) {
         description: value.slice(0, BUSINESS_DESCRIPTION_MAX),
       },
     });
+  }
+
+  function revokePreviewIfBlob(url?: string | null) {
+    if (url?.startsWith("blob:")) URL.revokeObjectURL(url);
+  }
+
+  function handleLogoSelect(file: File, previewUrl: string) {
+    revokePreviewIfBlob(identity.logo_url);
+    onLogoFileChange(file);
+    onChange({ identity: { ...identity, logo_url: previewUrl } });
+  }
+
+  function handleLogoClear() {
+    revokePreviewIfBlob(identity.logo_url);
+    onLogoFileChange(null);
+    onChange({ identity: { ...identity, logo_url: null } });
   }
 
   return (
@@ -54,6 +72,13 @@ export function StepIdentity({ draft, onChange }: StepIdentityProps) {
         />
       </div>
 
+      <BusinessLogoPicker
+        logoUrl={identity.logo_url}
+        businessName={identity.business_name}
+        onSelect={handleLogoSelect}
+        onClear={handleLogoClear}
+      />
+
       <div className="space-y-3">
         <Label>Tipo de negocio</Label>
         <div className="grid gap-3 sm:grid-cols-3">
@@ -65,9 +90,9 @@ export function StepIdentity({ draft, onChange }: StepIdentityProps) {
                 onChange({ identity: { ...identity, business_type: type.value } })
               }
               className={cn(
-                "rounded-xl border p-4 text-left transition-all duration-200 hover:border-[#7678ed]/50 hover:shadow-sm",
+                "rounded-xl border p-4 text-left transition-all duration-200 hover:border-[#0d9488]/50 hover:shadow-sm",
                 identity.business_type === type.value
-                  ? "border-[#7678ed] bg-[#7678ed]/5 ring-2 ring-[#7678ed]/20"
+                  ? "border-[#0d9488] bg-[#0d9488]/5 ring-2 ring-[#0d9488]/20"
                   : "border-border bg-card"
               )}
             >

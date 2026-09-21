@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { fetchConversationsInboxAction } from "@/lib/actions/flow-actions";
 import type { ConversationRow } from "@/lib/conversations/load-conversations";
+import { isSystemChatMessage } from "@/lib/conversations/system-event";
 import type { Conversation, Customer, Message } from "@/types/database.types";
 
 const POLL_MS = 15000;
@@ -12,7 +13,10 @@ const REALTIME_DEBOUNCE_MS = 400;
 function buildConversationRows(
   convs: Conversation[],
   customers: Customer[] | null | undefined,
-  recentMessages: Pick<Message, "conversation_id" | "content_text" | "created_at">[] | null | undefined
+  recentMessages: Pick<
+    Message,
+    "conversation_id" | "content_text" | "created_at" | "sender_type" | "content_type"
+  >[] | null | undefined
 ): ConversationRow[] {
   const customerMap = new Map(
     ((customers ?? []) as Customer[]).map((c) => [c.id, c])
@@ -26,6 +30,7 @@ function buildConversationRows(
 
   for (const msg of recentMessages ?? []) {
     if (previewMap.has(msg.conversation_id)) continue;
+    if (isSystemChatMessage(msg)) continue;
 
     const clearedAt = clearedAtMap.get(msg.conversation_id);
     if (
@@ -138,7 +143,7 @@ export function useLiveConversationsList(
 
       const { data: recentMessages, error: messagesError } = await supabase
         .from("messages")
-        .select("conversation_id, content_text, created_at")
+        .select("conversation_id, content_text, created_at, sender_type, content_type")
         .eq("business_id", businessId)
         .order("created_at", { ascending: false })
         .limit(300);
@@ -156,7 +161,7 @@ export function useLiveConversationsList(
           customers as Customer[] | null,
           (recentMessages ?? []) as Pick<
             Message,
-            "conversation_id" | "content_text" | "created_at"
+            "conversation_id" | "content_text" | "created_at" | "sender_type" | "content_type"
           >[]
         )
       );

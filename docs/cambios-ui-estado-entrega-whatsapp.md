@@ -16,7 +16,15 @@ La UI muestra el estado de entrega de mensajes salientes (bot o asesor) con tick
 | `sent` | ✓ gris + "Enviado" |
 | `delivered` | ✓✓ gris + "Entregado" |
 | `read` | ✓✓ azul + "Visto" |
-| `failed` | ⚠ "No entregado" + botón **Reenviar** |
+| `failed` | ⚠ mensaje de error + botón **Reenviar** |
+
+Si el fallo es asíncrono (p. ej. plantilla que Graph aceptó y Meta no pudo cobrar):
+
+| Campo | Uso en UI |
+|-------|-----------|
+| `whatsapp_delivery_error_message` | Toast + tooltip (texto en español del backend) |
+| `whatsapp_delivery_error_kind` | Fallback si no hay mensaje (`billing_*`, `reengagement_window`, `undeliverable`, `rate_limited`, `other`) |
+| `whatsapp_delivery_error_code` | `131042` se muestra como facturación; otros códigos van entre paréntesis |
 
 Sin estado en BD: se infiere por `external_id` y antigüedad (`delivery-status.ts`).
 

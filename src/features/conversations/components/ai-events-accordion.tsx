@@ -11,7 +11,7 @@ export function AiEventsAccordion({ events }: { events: AiEvent[] }) {
   const [open, setOpen] = useState(false);
 
   return (
-    <section className="overflow-hidden rounded-xl border border-[#7678ed]/15 bg-white shadow-sm">
+    <section className="overflow-hidden rounded-xl border border-[#0d9488]/15 bg-white shadow-sm">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -19,7 +19,7 @@ export function AiEventsAccordion({ events }: { events: AiEvent[] }) {
         aria-expanded={open}
       >
         <span className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-[#202022]/60">
-          <Sparkles className="size-3.5 text-[#7678ed]" />
+          <Sparkles className="size-3.5 text-[#0d9488]" />
           Eventos de IA
           {events.length > 0 && (
             <span className="rounded-full bg-[#ff7a55] px-1.5 py-0.5 text-[10px] font-bold text-white">
@@ -36,7 +36,7 @@ export function AiEventsAccordion({ events }: { events: AiEvent[] }) {
       </button>
 
       {open && (
-        <div className="border-t border-[#7678ed]/10 px-4 py-3">
+        <div className="border-t border-[#0d9488]/10 px-4 py-3">
           {events.length === 0 ? (
             <p className="text-sm text-[#202022]/40">Sin eventos registrados</p>
           ) : (
@@ -44,9 +44,9 @@ export function AiEventsAccordion({ events }: { events: AiEvent[] }) {
               {events.slice(0, 8).map((e) => (
                 <li
                   key={e.id}
-                  className="rounded-lg border border-[#7678ed]/10 bg-[#7678ed]/5 px-3 py-2 text-xs"
+                  className="rounded-lg border border-[#0d9488]/10 bg-[#0d9488]/5 px-3 py-2 text-xs"
                 >
-                  <span className="font-medium text-[#7678ed]">{e.event_type}</span>
+                  <span className="font-medium text-[#0d9488]">{e.event_type}</span>
                   <p className="mt-0.5 text-[#202022]/45">{formatFullTime(e.created_at)}</p>
                 </li>
               ))}

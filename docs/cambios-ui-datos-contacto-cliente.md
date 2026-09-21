@@ -1,8 +1,20 @@
 # Datos del contacto (cliente WhatsApp)
 
 > **Fecha:** 2026-07-28  
+> **Actualizado:** 2026-09-21 — nombre y apellido legales en el panel  
 > **Repositorio:** `chat-whatsapp-ai-ui`  
 > **Tabla backend:** `Customer` (vista Supabase `public.customers`)
+
+## 2026-09-21 — Nombre y apellido
+
+El panel **Datos del cliente** distingue:
+
+- **Alias** — nombre de trabajo (inbox / chat)
+- **Nombre** y **Apellido** — datos reales, opcionales
+- **Nombre WhatsApp** (`name`) — ingest, no editable
+
+Detalle: [cambios-ui-nombre-apellido-cliente.md](./cambios-ui-nombre-apellido-cliente.md).
+
 
 ## Qué guardamos hoy
 

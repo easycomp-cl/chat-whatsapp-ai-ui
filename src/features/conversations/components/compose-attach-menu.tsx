@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { FileSpreadsheet, FileText, Image, LayoutGrid, LayoutTemplate, List, Plus } from "lucide-react";
+import { ClipboardList, Car, FileSpreadsheet, FileText, Image, LayoutGrid, LayoutTemplate, List, Plus } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,6 +24,10 @@ type ComposeAttachMenuProps = {
   onFileSelected: (file: File) => void;
   onInteractivePreview?: (variant: "button" | "list") => void;
   onWhatsappTemplate?: () => void;
+  onCreateProductQuote?: () => void;
+  onLookupPlate?: () => void;
+  quoteDisabled?: boolean;
+  onMenuOpen?: () => void;
 };
 
 type FileAttachOption = {
@@ -112,17 +116,35 @@ const TEMPLATE_ATTACH_OPTION = {
   id: "whatsapp-template",
   label: "Plantilla WA",
   icon: LayoutTemplate,
-  iconClassName: "text-violet-200",
-  circleClassName: "bg-[#7678ed]",
+  iconClassName: "text-teal-100",
+  circleClassName: "bg-[#0d9488]",
+} as const;
+
+const QUOTE_ATTACH_OPTION = {
+  id: "product-quote",
+  label: "Crear cotización",
+  icon: ClipboardList,
+  iconClassName: "text-amber-100",
+  circleClassName: "bg-[#c2410c]",
+} as const;
+
+const PLATE_ATTACH_OPTION = {
+  id: "plate-lookup",
+  label: "Consultar patente",
+  icon: Car,
+  iconClassName: "text-sky-100",
+  circleClassName: "bg-[#1d4ed8]",
 } as const;
 
 function AttachOptionButton({
   option,
   disabled,
+  dimmed,
   onClick,
 }: {
   option: AttachOption;
   disabled?: boolean;
+  dimmed?: boolean;
   onClick: () => void;
 }) {
   const Icon = option.icon;
@@ -131,7 +153,10 @@ function AttachOptionButton({
       type="button"
       disabled={disabled}
       onClick={onClick}
-      className="group flex flex-col items-center gap-2 rounded-xl p-1 transition-colors hover:bg-white/5 disabled:opacity-50"
+      className={cn(
+        "group flex flex-col items-center gap-2 rounded-xl p-1 transition-colors hover:bg-white/5 disabled:opacity-50",
+        dimmed && !disabled ? "opacity-50" : null
+      )}
     >
       <span
         className={cn(
@@ -152,6 +177,10 @@ export function ComposeAttachMenu({
   onFileSelected,
   onInteractivePreview,
   onWhatsappTemplate,
+  onCreateProductQuote,
+  onLookupPlate,
+  quoteDisabled,
+  onMenuOpen,
 }: ComposeAttachMenuProps) {
   const [open, setOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -196,6 +225,18 @@ export function ComposeAttachMenu({
     onWhatsappTemplate();
   }
 
+  function handleCreateProductQuote() {
+    if (!onCreateProductQuote) return;
+    setOpen(false);
+    onCreateProductQuote();
+  }
+
+  function handleLookupPlate() {
+    if (!onLookupPlate) return;
+    setOpen(false);
+    onLookupPlate();
+  }
+
   return (
     <>
       <input
@@ -205,7 +246,13 @@ export function ComposeAttachMenu({
         disabled={sessionOnlyDisabled}
         onChange={handleFileChange}
       />
-      <DropdownMenu open={open} onOpenChange={setOpen}>
+      <DropdownMenu
+        open={open}
+        onOpenChange={(nextOpen) => {
+          setOpen(nextOpen);
+          if (nextOpen) onMenuOpen?.();
+        }}
+      >
         <DropdownMenuTrigger
           disabled={disabled}
           render={
@@ -285,6 +332,51 @@ export function ComposeAttachMenu({
                     onClick={() => handleInteractivePreview(option.variant)}
                   />
                 ))}
+              </div>
+            </>
+          )}
+
+          {(onCreateProductQuote || onLookupPlate) && (
+            <>
+              <div className="mt-4 mb-3 h-px bg-white/10" />
+              <p className="mb-2 text-[10px] font-semibold tracking-wide text-[#8696a0] uppercase">
+                Herramientas EasyComp
+              </p>
+              <p className="mb-3 text-[10px] leading-snug text-[#667781]">
+                Cotiza del catálogo o consulta una patente. Los globos de sistema no salen a WhatsApp.
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                {onCreateProductQuote ? (
+                  <AttachOptionButton
+                    option={{
+                      kind: "preview",
+                      id: "interactive-buttons",
+                      label: QUOTE_ATTACH_OPTION.label,
+                      variant: "button",
+                      icon: QUOTE_ATTACH_OPTION.icon,
+                      iconClassName: QUOTE_ATTACH_OPTION.iconClassName,
+                      circleClassName: QUOTE_ATTACH_OPTION.circleClassName,
+                    }}
+                    disabled={disabled}
+                    dimmed={quoteDisabled}
+                    onClick={handleCreateProductQuote}
+                  />
+                ) : null}
+                {onLookupPlate ? (
+                  <AttachOptionButton
+                    option={{
+                      kind: "preview",
+                      id: "interactive-list",
+                      label: PLATE_ATTACH_OPTION.label,
+                      variant: "list",
+                      icon: PLATE_ATTACH_OPTION.icon,
+                      iconClassName: PLATE_ATTACH_OPTION.iconClassName,
+                      circleClassName: PLATE_ATTACH_OPTION.circleClassName,
+                    }}
+                    disabled={disabled}
+                    onClick={handleLookupPlate}
+                  />
+                ) : null}
               </div>
             </>
           )}

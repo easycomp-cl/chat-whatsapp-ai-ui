@@ -1,5 +1,6 @@
-import type { OnboardingDraft, OnboardingPatch, OnboardingOffering } from "./types";
+import type { OnboardingDraft, OnboardingIdentity, OnboardingPatch, OnboardingOffering } from "./types";
 import { BUSINESS_DESCRIPTION_MAX, BUSINESS_DESCRIPTION_MIN } from "./types";
+import { isPersistedLogoUrl } from "./logo-utils";
 import { validateScheduleString } from "./schedule-utils";
 
 export function createEmptyOffering(): OnboardingOffering {
@@ -115,16 +116,26 @@ export function validateStep(step: number, draft: OnboardingDraft): string | nul
   }
 }
 
-export function buildStepPatch(step: number, draft: OnboardingDraft): OnboardingPatch {
+export function buildStepPatch(
+  step: number,
+  draft: OnboardingDraft,
+  options?: { logoUrl?: string | null; logoCleared?: boolean }
+): OnboardingPatch {
   switch (step) {
-    case 1:
-      return {
-        identity: {
-          business_name: draft.identity!.business_name!.trim(),
-          business_type: draft.identity!.business_type!,
-          description: draft.identity!.description!.trim(),
-        },
+    case 1: {
+      const identity: OnboardingIdentity = {
+        business_name: draft.identity!.business_name!.trim(),
+        business_type: draft.identity!.business_type!,
+        description: draft.identity!.description!.trim(),
       };
+      const logoUrl = options?.logoUrl ?? draft.identity?.logo_url;
+      if (isPersistedLogoUrl(logoUrl)) {
+        identity.logo_url = logoUrl;
+      } else if (options?.logoCleared) {
+        identity.logo_url = null;
+      }
+      return { identity };
+    }
     case 2:
       return {
         offerings: (draft.offerings ?? []).map((o) => ({

@@ -44,6 +44,11 @@ export function patchMessageFromRealtimeRow(
     "whatsappDeliveryErrorCode",
     "whatsapp_delivery_error_code"
   );
+  const incomingErrorKind = readString(
+    row,
+    "whatsappDeliveryErrorKind",
+    "whatsapp_delivery_error_kind"
+  );
   const incomingInteractive = parseMessageInteractive(
     row.interactive ?? row.rawPayloadJson ?? null
   );
@@ -59,6 +64,8 @@ export function patchMessageFromRealtimeRow(
       ) ?? message.whatsapp_delivery_status,
     whatsapp_delivery_error_code:
       incomingErrorCode ?? message.whatsapp_delivery_error_code ?? null,
+    whatsapp_delivery_error_kind:
+      incomingErrorKind ?? message.whatsapp_delivery_error_kind ?? null,
     whatsapp_delivery_error_message:
       incomingErrorMessage ?? message.whatsapp_delivery_error_message ?? null,
     interactive: incomingInteractive ?? message.interactive ?? null,
@@ -71,6 +78,8 @@ export function isDeliveryStatusRealtimePatch(row: Record<string, unknown>): boo
     row.whatsapp_delivery_status != null ||
     row.whatsappDeliveryErrorCode != null ||
     row.whatsapp_delivery_error_code != null ||
+    row.whatsappDeliveryErrorKind != null ||
+    row.whatsapp_delivery_error_kind != null ||
     row.whatsappDeliveryErrorMessage != null ||
     row.whatsapp_delivery_error_message != null ||
     row.externalId != null ||

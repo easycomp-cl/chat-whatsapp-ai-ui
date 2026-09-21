@@ -20,6 +20,7 @@ Hoy cada contacto (`Customer`) solo guarda lo que viene de WhatsApp:
 El equipo de ventas/atención necesita:
 
 - Un **nombre legible** para inbox, chat y reportes (“Camila”, no el string de WhatsApp).
+- **Nombre y apellido reales** del contacto (datos legales/CRM), distintos del alias de trabajo y del nombre de WhatsApp.
 - **Datos de negocio** visibles al atender: dirección de envío, RUT, tipo de documento (boleta/factura), email de facturación, etc.
 - Todo **aislado por empresa** (`business_id` / `tenantId`) — ver [cambios-ui-datos-contacto-cliente.md](../cambios-ui-datos-contacto-cliente.md).
 
@@ -53,6 +54,8 @@ Campos nuevos en Prisma / vista `customers`:
 | Campo | Tipo | Descripción |
 |-------|------|-------------|
 | `displayAlias` | `String?` | Nombre corto elegido por el negocio (“Camila”); usado en UI y en plantillas de saludo del bot |
+| `firstName` | `String?` | Nombre legal / real del contacto. **No** se usa en inbox ni en `{nombre}` del bot. |
+| `lastName` | `String?` | Apellido legal / real del contacto. **No** se usa en inbox ni en `{nombre}` del bot. |
 | `email` | `String?` | Contacto / facturación |
 | `taxId` | `String?` | RUT Chile: validación estricta (dígito verificador) + formato visual `12.345.678-9`; editable por admin o bot |
 | `invoiceType` | `Enum?` | `RECEIPT` (boleta) \| `INVOICE` (factura) \| `NONE` |
@@ -74,6 +77,27 @@ Campos nuevos en Prisma / vista `customers`:
 - `name` ← solo webhook WhatsApp (solo lectura en UI, con etiqueta “Nombre en WhatsApp”).
 - `phoneNumber` ← identificador; no editable.
 - `tenantId` / `business_id` ← multitenancy.
+
+### 3.1.1 Tres capas de nombre (no mezclar)
+
+| Capa | Campo | Quién lo escribe | Dónde se muestra |
+|------|-------|------------------|------------------|
+| Alias de trabajo | `displayAlias` | Admin en el panel | Inbox, chat, `{nombre}` del bot |
+| Nombre WhatsApp | `name` | Webhook Meta | Subtítulo si hay alias; fallback de display |
+| Nombre legal | `firstName` + `lastName` | Admin (o bot si lo extrae) | Solo “Datos del cliente”; facturación / CRM |
+
+Ninguna de las tres se pisa al guardar las otras. Vaciar nombre/apellido no borra el alias ni el `name` de WhatsApp.
+
+**Persistencia hasta que existan columnas Prisma:** la UI también envía `first_name` / `last_name` dentro de `profile_metadata` (merge, no replace). Cuando existan columnas first-class, GET debe devolverlas y PATCH debe escribirlas; se puede dejar de depender del JSON.
+
+**Vista `public.customers` (cuando existan columnas):**
+
+```sql
+"firstName" AS first_name,
+"lastName" AS last_name,
+```
+
+No aplicar esta vista hasta que Prisma tenga las columnas; si no, el dashboard deja de leer `customers`.
 
 ### 3.2 Regla de nombre mostrado (UI + API)
 
@@ -169,7 +193,9 @@ Tabla `CustomerProfile` 1:1 — más normalizada pero más joins; solo vale la p
 
 | Campo UI | Campo BD | Notas |
 |----------|----------|-------|
-| Alias | `displayAlias` | Input texto, max 80 chars |
+| Nombre | `firstName` | Legal / real; opcional; no reemplaza alias |
+| Apellido | `lastName` | Legal / real; opcional; no reemplaza alias |
+| Alias | `displayAlias` | Input texto, max 80 chars; cómo aparece en chat e inbox |
 | RUT | `taxId` | Validación estricta + formato visual CL |
 | Boleta / Factura | `invoiceType` | Select; sin campos obligatorios |
 | Razón social | `companyName` | Visible si factura; opcional |
@@ -215,6 +241,8 @@ Body parcial (solo campos enviados):
 ```json
 {
   "display_alias": "Camila",
+  "first_name": "Camila",
+  "last_name": "Rojas",
   "tax_id": "12.345.678-9",
   "invoice_type": "INVOICE",
   "company_name": "Comercial SpA",
@@ -235,6 +263,8 @@ Body parcial (solo campos enviados):
 - `customer.tenantId === businessId` (403 si no).
 - Solo `BUSINESS_ADMIN` / `SUPER_ADMIN` pueden PATCH desde dashboard (403 para `COLLABORATOR` / `AGENT` legacy).
 - `display_alias`: trim, longitud, sin solo emojis (opcional).
+- `first_name` / `last_name`: trim, max 80, **opcionales**. No copiar a `displayAlias` ni a `name`.
+- `profile_metadata`: **merge** con el JSON actual (no reemplazar la clave entera). La UI puede enviar `first_name`/`last_name` ahí como fallback.
 - `tax_id`: si presente → normalizar + **validar dígito verificador**; rechazar 400 si inválido.
 - `invoice_type`, `company_name`, `business_activity`: **sin reglas de obligatoriedad** en v1.
 - **No** permitir PATCH de `name` ni `phone_number` desde dashboard (solo ingest webhook).
@@ -255,7 +285,7 @@ Actualizar vista `public.customers` con columnas nuevas para lectura directa en 
 
 | Ubicación | Cambio |
 |-----------|--------|
-| Panel contacto | Input “Alias” + guardar; muestra nombre WhatsApp como solo lectura |
+| Panel contacto | Input “Alias” + **Nombre** + **Apellido**; muestra nombre WhatsApp como solo lectura bajo el alias |
 | Lista conversaciones | `resolveCustomerDisplayName` |
 | Cabecera chat + burbujas | Idem |
 | Búsqueda inbox | Buscar por alias **y** teléfono **y** nombre WhatsApp |
@@ -362,10 +392,10 @@ El módulo **Despachos** (`/app/deliveries`) ya define por negocio qué **region
 
 ## 11. Resumen ejecutivo (para pasar al equipo backend)
 
-**Pedido:** Extender `Customer` con `displayAlias`, RUT (validado), factura + **giro**, **2 despachos + facturación** (comuna/región desde Despachos), email, metadata; `GET/PATCH` solo admin; bot puede completar perfil; cliente frecuente por historial; saludos con alias.
+**Pedido:** Extender `Customer` con `displayAlias`, **`firstName` + `lastName` (legales, opcionales)**, RUT (validado), factura + **giro**, **2 despachos + facturación** (comuna/región desde Despachos), email, metadata; `GET/PATCH` solo admin; bot puede completar perfil; cliente frecuente por historial; saludos con alias (no con nombre legal).
 
-**UI lista para:** alias en inbox/chat, formulario admin-only, selects Despachos, helpers RUT, override “cliente frecuente”.
+**UI lista para:** alias en inbox/chat, **nombre y apellido en Datos del cliente**, formulario admin-only, selects Despachos, helpers RUT, override “cliente frecuente”.
 
 **Multitenancy:** Sin cambios; clave `(tenantId, phoneNumber)` sigue vigente.
 
-**Prioridad v1:** alias + RUT validado + tipo documento + giro + 2 despachos (Despachos) + facturación — **todo opcional**.
+**Prioridad v1:** alias + nombre/apellido legales + RUT validado + tipo documento + giro + 2 despachos (Despachos) + facturación — **todo opcional**.

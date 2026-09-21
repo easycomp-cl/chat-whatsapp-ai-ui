@@ -7,7 +7,7 @@ export function ModeBadge({ mode }: { mode: Conversation["mode"] }) {
       variant="outline"
       className={
         mode === "BOT"
-          ? "border-[#7678ed]/25 bg-[#7678ed]/10 text-[#7678ed]"
+          ? "border-[#0d9488]/25 bg-[#0d9488]/10 text-[#0d9488]"
           : "border-[#ff7a55]/25 bg-[#ff7a55]/10 text-[#c44d2a]"
       }
     >
@@ -18,7 +18,7 @@ export function ModeBadge({ mode }: { mode: Conversation["mode"] }) {
 
 export function StatusBadge({ status }: { status: string }) {
   const colors: Record<string, string> = {
-    OPEN: "border-[#7678ed]/25 bg-[#7678ed]/10 text-[#7678ed]",
+    OPEN: "border-[#0d9488]/25 bg-[#0d9488]/10 text-[#0d9488]",
     PENDING: "border-[#ff7a55]/25 bg-[#ff7a55]/10 text-[#c44d2a]",
     CLOSED: "border-[#202022]/15 bg-[#202022]/5 text-[#202022]/60",
   };

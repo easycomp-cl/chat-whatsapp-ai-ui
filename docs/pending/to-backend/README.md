@@ -1,6 +1,6 @@
 # Para el equipo backend (`chat-whatsapp-ai`)
 
-> **Última revisión:** 2026-07-28  
+> **Última revisión:** 2026-09-21  
 > Solo specs **pendientes de implementación o deploy**. Lo ya resuelto está en [../done/](../done/).
 
 ---
@@ -9,10 +9,15 @@
 
 | # | Documento | Qué falta | Esfuerzo |
 |---|-----------|-----------|----------|
-| 1 | [backend-deploy-pendiente-produccion.md](./backend-deploy-pendiente-produccion.md) | Desplegar `GET .../conversations/inbox` + migración índices en **prod** | Bajo (ops) |
-| 2 | [backend-whatsapp-delivery-status-read.md](./backend-whatsapp-delivery-status-read.md) | Enum `DELIVERED`/`READ` + webhooks `statuses` Meta | Medio |
-| 3 | [backend-customer-profile-crm.md](./backend-customer-profile-crm.md) | `displayAlias`, RUT, direcciones, factura + `GET/PATCH` customer | Medio |
-| 4 | [backend-team-roles-collaborador.md](./backend-team-roles-collaborador.md) | Enum `COLLABORATOR` en `profiles.role` | Bajo |
+| 1 | [backend-globo-cambio-datos-cliente.md](./backend-globo-cambio-datos-cliente.md) | Al cambiar datos del contacto, persistir píldora azul con quién y el valor nuevo | Bajo |
+| 1b | [backend-globo-patente.md](./backend-globo-patente.md) | Persistir el globo negro de la patente y aceptar formato de moto | Bajo |
+| 2 | [backend-deploy-pendiente-produccion.md](./backend-deploy-pendiente-produccion.md) | Desplegar `GET .../conversations/inbox` + migración índices en **prod** | Bajo (ops) |
+| 3 | [backend-whatsapp-delivery-status-read.md](./backend-whatsapp-delivery-status-read.md) | Enum `DELIVERED`/`READ` + webhooks `statuses` Meta | Medio |
+| 4 | [backend-customer-profile-crm.md](./backend-customer-profile-crm.md) | `displayAlias`, RUT, direcciones, factura + `GET/PATCH` customer | Medio |
+| 5 | [backend-team-roles-collaborador.md](./backend-team-roles-collaborador.md) | Enum `COLLABORATOR` en `profiles.role` | Bajo |
+| 6 | [backend-cotizacion-productos-pdf.md](./backend-cotizacion-productos-pdf.md) | `POST .../quotes/preview` + `POST .../quotes/pdf` | Medio |
+| 7 | [backend-onboarding-draft-persistence.md](./backend-onboarding-draft-persistence.md) | Borrador parcial + `current_step` + `draft_updated_at` | Medio |
+| 8 | [backend-flow-subscriptions.md](./backend-flow-subscriptions.md) | Self-serve: Business+Profile al signup + checkout Flow **después** de WhatsApp | Alto |
 
 ### WhatsApp — roadmap (no urgente)
 
@@ -24,10 +29,10 @@ Ver también [../whatsapp-cta-templates-roadmap.md](../whatsapp-cta-templates-ro
 |------|-----------|-----------|----------|
 | P1 | [backend-whatsapp-embedded-signup-template-provisioning.md](./backend-whatsapp-embedded-signup-template-provisioning.md) | **UI lista.** Falta `POST /whatsapp/embedded-signup/complete` + persistir WABA/token | Alto |
 | — | [backend-whatsapp-interactive-outbound-human.md](./backend-whatsapp-interactive-outbound-human.md) | `POST .../messages/interactive` asesor humano | Medio |
-| P2–P3 | [backend-whatsapp-message-templates.md](./backend-whatsapp-message-templates.md) | Listar + enviar plantillas Meta | Medio–alto |
+| P2–P3 | [backend-whatsapp-message-templates.md](./backend-whatsapp-message-templates.md) | **UI lista.** Listar + enviar según [../whatsapp-templates-ui.md](../whatsapp-templates-ui.md) | Hecho (falta deploy si 404) |
 | P5–P6 | [backend-whatsapp-embedded-signup-template-provisioning.md](./backend-whatsapp-embedded-signup-template-provisioning.md) | Crear pack al conectar WABA | Alto |
-| — | [backend-whatsapp-standard-template-pack.md](./backend-whatsapp-standard-template-pack.md) | Copy del pack (24 h cerrada, avisos, OTP) | — |
-| — | [backend-admin-phone-verification.md](./backend-admin-phone-verification.md) | OTP AUTHENTICATION + aviso handoff | Medio |
+| — | [backend-whatsapp-standard-template-pack.md](./backend-whatsapp-standard-template-pack.md) | Copy del pack (8 plantillas `standard_v1`) | — |
+| — | [backend-admin-phone-verification.md](./backend-admin-phone-verification.md) | Confirmación UTILITY + aviso handoff | Medio |
 | P7 | [backend-whatsapp-cta-outbound.md](./backend-whatsapp-cta-outbound.md) | CTA URL / llamar en ventana 24 h | Medio |
 
 ---
@@ -50,6 +55,15 @@ Ver también [../whatsapp-cta-templates-roadmap.md](../whatsapp-cta-templates-ro
 
 - UI lista para `pending` → `sent` → `delivered` → `read`.
 - Backend hoy solo persiste hasta `SENT`.
+
+### Billing Flow (SaaS)
+
+- 3 planes: Starter $99.990 + IVA (oferta $79.990 + IVA × 3 meses), Pro $149.990 + IVA, Business $249.990 + IVA.
+- Día de cobro 5 / 15 / 30, inmutable. Primer ciclo prorrateado.
+- Mora: aviso 5 días, premium cortado día 6, paywall día 11. Gracia 10 días.
+- Cancelación: usa hasta día de cobro − 1.
+- Upgrade: dos facturas (días usados plan actual + días restantes plan nuevo).
+- Spec: [backend-flow-subscriptions.md](./backend-flow-subscriptions.md).
 
 ---
 

@@ -19,7 +19,7 @@ import { cn } from "@/lib/utils";
 
 const WARMTH_STYLES: Record<GreetingWarmth, string> = {
   formal: "border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-900/50",
-  neutral: "border-violet-200 bg-violet-50 text-violet-800 dark:border-violet-800 dark:bg-violet-950/40",
+  neutral: "border-teal-200 bg-teal-50 text-teal-800 dark:border-teal-800 dark:bg-teal-950/40",
   warm: "border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-800 dark:bg-amber-950/40",
 };
 
@@ -78,7 +78,7 @@ export function SuggestedGreetingsPanel({
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div>
             <div className="flex items-center gap-2">
-              <Hand className="size-4 text-violet-600" />
+              <Hand className="size-4 text-teal-600" />
               <Label className="text-sm font-semibold">Saludos sugeridos</Label>
             </div>
             <p className="mt-1 text-xs text-muted-foreground">
@@ -215,7 +215,7 @@ export function SuggestedGreetingsPanel({
       {!disabled && (
         <div className="space-y-3 rounded-xl border bg-background/70 p-4">
           <div className="flex items-center gap-2">
-            <Users className="size-4 text-violet-600" />
+            <Users className="size-4 text-teal-600" />
             <Label className="text-sm font-semibold">Criterio por tipo de cliente</Label>
           </div>
           <p className="text-xs text-muted-foreground">

@@ -60,7 +60,7 @@ export function OnboardingDevTrigger({ businessId, businessName }: OnboardingDev
               <SidebarMenuButton
                 size="lg"
                 onClick={() => setOpen(true)}
-                className="text-[#7678ed] hover:bg-[#7678ed]/10 hover:text-[#7678ed]"
+                className="text-[#0d9488] hover:bg-[#0d9488]/10 hover:text-[#0d9488]"
               >
                 <Sparkles />
                 <span>Onboarding wizard</span>

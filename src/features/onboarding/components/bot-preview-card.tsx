@@ -45,7 +45,7 @@ function ChatBubble({
         )}
       >
         {!isBot && (
-          <span className="mb-0.5 block text-[9px] font-medium text-[#7678ed]">
+          <span className="mb-0.5 block text-[9px] font-medium text-[#0d9488]">
             Cliente
           </span>
         )}
@@ -93,8 +93,8 @@ function ProductCardBubble({
         </div>
 
         <div className="mx-2.5 mt-2 overflow-hidden rounded-md border border-black/5 bg-white">
-          <div className="flex h-16 items-center justify-center bg-linear-to-br from-[#7678ed]/15 to-[#7678ed]/5">
-            <Package className="size-7 text-[#7678ed]/70" strokeWidth={1.5} />
+          <div className="flex h-16 items-center justify-center bg-linear-to-br from-[#0d9488]/15 to-[#0d9488]/5">
+            <Package className="size-7 text-[#0d9488]/70" strokeWidth={1.5} />
           </div>
           <div className="space-y-0.5 p-2">
             <p className="text-[11px] font-semibold leading-tight">{offering.name}</p>
@@ -203,8 +203,18 @@ export function BotPreviewCard({ draft, className }: BotPreviewCardProps) {
 
       <div className="overflow-hidden rounded-lg border bg-[#e5ddd5]/40 ring-1 ring-foreground/5">
         <div className="flex items-center gap-2 border-b bg-[#075e54] px-3 py-2 text-white">
-          <div className="flex size-7 items-center justify-center rounded-full bg-white/20">
-            <MessageCircle className="size-3.5" />
+          <div className="flex size-7 items-center justify-center overflow-hidden rounded-full bg-white/20">
+            {draft.identity?.logo_url ? (
+              // Preview local o URL remota del logo del negocio
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={draft.identity.logo_url}
+                alt=""
+                className="size-full object-cover"
+              />
+            ) : (
+              <MessageCircle className="size-3.5" />
+            )}
           </div>
           <div className="min-w-0 flex-1">
             <p className="truncate text-[11px] font-semibold leading-tight">

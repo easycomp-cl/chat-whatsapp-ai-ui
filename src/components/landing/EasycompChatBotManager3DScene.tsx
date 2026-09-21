@@ -34,7 +34,7 @@ function HeroSceneSkeleton() {
       <div className="absolute inset-0 rounded-full bg-[radial-gradient(circle_at_50%_45%,rgba(109,94,245,0.22),transparent_65%)]" />
       <div className="absolute inset-10 rounded-full bg-[radial-gradient(circle_at_60%_25%,rgba(62,230,208,0.16),transparent_60%)] blur-2xl" />
       <div className="absolute inset-0 flex items-center justify-center">
-        <div className="size-44 rounded-[2.25rem] bg-gradient-to-br from-[#6d5ef5]/40 to-[#397bff]/30 shadow-lg sm:size-52" />
+        <div className="size-44 rounded-[2.25rem] bg-gradient-to-br from-[#22d3a3]/40 to-[#397bff]/30 shadow-lg sm:size-52" />
       </div>
     </div>
   );

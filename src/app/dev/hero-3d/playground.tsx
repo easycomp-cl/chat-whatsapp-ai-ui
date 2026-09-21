@@ -25,12 +25,12 @@ export function Hero3DDevPlayground() {
       className={
         theme === "dark"
           ? "min-h-screen bg-[#090b1a] text-white"
-          : "min-h-screen bg-[#f7f8ff] text-[#111326]"
+          : "min-h-screen bg-[#f4fbf8] text-[#111326]"
       }
     >
       <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
         <header className="mb-8">
-          <p className="text-xs font-semibold tracking-wide text-[#6d5ef5] uppercase">
+          <p className="text-xs font-semibold tracking-wide text-[#22d3a3] uppercase">
             Dev only · /dev/hero-3d
           </p>
           <h1 className="mt-2 text-2xl font-bold">easycomp-chat-bot-manager Hero 3D</h1>
@@ -135,7 +135,7 @@ export function Hero3DDevPlayground() {
               CTA de prueba (debe ser clickeable):{" "}
               <button
                 type="button"
-                className="rounded-md bg-[#6d5ef5] px-3 py-1.5 text-white"
+                className="rounded-md bg-[#22d3a3] px-3 py-1.5 text-white"
                 onClick={() => setStatus("cta-clicked")}
               >
                 Solicitar demo

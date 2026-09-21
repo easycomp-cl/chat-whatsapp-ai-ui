@@ -157,7 +157,7 @@ export function BusinessSchedulePicker({ value, onChange, error }: BusinessSched
     <div className="space-y-4 rounded-xl border bg-muted/20 p-4">
       <div className="space-y-1">
         <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-          <Clock className="size-4 text-[#7678ed]" />
+          <Clock className="size-4 text-[#0d9488]" />
           Horario de atención
         </div>
         <p className="text-xs text-muted-foreground">
@@ -175,7 +175,7 @@ export function BusinessSchedulePicker({ value, onChange, error }: BusinessSched
                 key={block.id}
                 className={cn(
                   "flex items-center justify-between gap-3 rounded-lg border bg-background px-3 py-2.5",
-                  editingId === block.id && "border-[#7678ed] ring-1 ring-[#7678ed]/30"
+                  editingId === block.id && "border-[#0d9488] ring-1 ring-[#0d9488]/30"
                 )}
               >
                 <div className="min-w-0">
@@ -244,10 +244,10 @@ export function BusinessSchedulePicker({ value, onChange, error }: BusinessSched
                   onClick={() => toggleDay(day.key)}
                   className={cn(
                     "flex flex-col items-center gap-0.5 rounded-lg py-2 transition-all duration-150",
-                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7678ed]/40",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0d9488]/40",
                     taken && "cursor-not-allowed opacity-35",
                     selected
-                      ? "bg-[#7678ed] text-white shadow-sm"
+                      ? "bg-[#0d9488] text-white shadow-sm"
                       : "bg-muted/40 text-muted-foreground ring-1 ring-border hover:bg-muted"
                   )}
                 >
@@ -319,7 +319,7 @@ export function BusinessSchedulePicker({ value, onChange, error }: BusinessSched
         <Button
           type="button"
           variant="outline"
-          className="w-full border-[#7678ed]/30 text-[#7678ed] hover:bg-[#7678ed]/5"
+          className="w-full border-[#0d9488]/30 text-[#0d9488] hover:bg-[#0d9488]/5"
           onClick={saveBlock}
         >
           <Plus className="size-4" />

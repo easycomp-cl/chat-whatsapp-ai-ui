@@ -79,13 +79,14 @@ Base URL: la misma del resto del portal (`BOT_API_URL` / proxy Next).
 
 ### PATCH `/businesses/:id/onboarding`
 
-Body parcial (snake_case). Guardar al avanzar cada paso o al pulsar *Siguiente*.
+Body **parcial**. Guardar en cada cambio (debounce) y al avanzar de paso. **No** exigir que el paso esté completo.
 
 ```json
 {
   "identity": {
     "business_type": "products",
-    "description": "Panadería artesanal en Santiago con productos horneados todos los días."
+    "description": "Panadería artesanal en Santiago con productos horneados todos los días.",
+    "logo_url": "https://cdn.example.com/tenants/abc/logo.png"
   },
   "offerings": [
     {
@@ -156,7 +157,7 @@ flowchart LR
 
 | Paso | Título | Campos | Acción |
 |------|--------|--------|--------|
-| 1 | Tu negocio | `business_type` (products / services / both), textarea descripción | `PATCH onboarding` |
+| 1 | Tu negocio | `business_name`, logo opcional, `business_type` (products / services / both), textarea descripción | `POST .../logo` + `PATCH onboarding` |
 | 2 | Qué ofreces | Lista 1–3 ítems: nombre, descripción, precio opcional | `PATCH onboarding` |
 | 3 | Operación | Horario, ciudad, comuna, dirección opcional, chips medios de pago, notas despacho | `PATCH onboarding` |
 | 4 | Contacto | Nombre admin, teléfono WhatsApp, toggle notificar handoff | `PATCH onboarding` |

@@ -90,9 +90,9 @@ export function FlowAgentInputBubble({
   }
 
   return (
-    <div className="border-t border-[#7678ed]/25 bg-gradient-to-b from-[#7678ed]/6 to-white p-4">
+    <div className="border-t border-[#0d9488]/25 bg-gradient-to-b from-[#0d9488]/6 to-white p-4">
       <div className="mb-3 flex items-center gap-2 text-sm font-medium text-[#202022]">
-        <Bot className="size-4 text-[#7678ed]" />
+        <Bot className="size-4 text-[#0d9488]" />
         Flujo: completar y enviar al cliente
       </div>
 
@@ -121,7 +121,7 @@ export function FlowAgentInputBubble({
             />
           </div>
         ))}
-        <Button type="submit" disabled={pending} className="w-full bg-[#7678ed] hover:bg-[#7678ed]/90">
+        <Button type="submit" disabled={pending} className="w-full bg-[#0d9488] hover:bg-[#0d9488]/90">
           <Send className="size-4" />
           {pending ? "Enviando..." : "Enviar al cliente"}
         </Button>

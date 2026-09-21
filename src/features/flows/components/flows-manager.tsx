@@ -181,7 +181,7 @@ export function FlowsManager({
                   <TableCell>
                     <Link
                       href={`/app/flows/${flow.id}`}
-                      className="font-medium hover:text-[#7678ed]"
+                      className="font-medium hover:text-[#0d9488]"
                     >
                       {flow.name}
                     </Link>

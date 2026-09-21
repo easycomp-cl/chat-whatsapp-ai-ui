@@ -14,7 +14,7 @@ export const META_APP_NAME = "easycomp-chat-bot-manager";
 export const STORAGE_PREFIX = "easycomp-chat-bot-manager";
 
 /** Contacto de soporte visible en la UI. */
-export const SUPPORT_EMAIL = "igonzalez@easycomp.cl";
+export const SUPPORT_EMAIL = "contacto@easycomp.cl";
 
 /** Sitio comercial de EasyComp (landing pública). */
 export const MARKETING_SITE_URL = "https://easycomp.cl";

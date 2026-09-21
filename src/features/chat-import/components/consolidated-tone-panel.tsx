@@ -217,7 +217,7 @@ export function ConsolidatedTonePanel({
       {!tone ? (
         <CardContent className="p-0">
           <div className="flex flex-col items-center rounded-xl border border-dashed bg-background/60 px-4 py-10 text-center sm:px-6">
-            <Sparkles className="mb-3 size-8 text-violet-400" aria-hidden />
+            <Sparkles className="mb-3 size-8 text-teal-400" aria-hidden />
             <p className="font-medium">Aún no hay tono detectado</p>
             <p className="mt-1 max-w-sm text-sm text-muted-foreground">
               Cuando analices un chat, aquí verás el estilo detectado para revisarlo y

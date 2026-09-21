@@ -22,6 +22,7 @@
 | 2 | [backend-whatsapp-delivery-status-read.md](./to-backend/backend-whatsapp-delivery-status-read.md) | No implementado | Ticks entregado / visto reales |
 | 3 | [backend-customer-profile-crm.md](./to-backend/backend-customer-profile-crm.md) | No implementado | Perfil contacto (alias, RUT, direcciones) |
 | 4 | [backend-team-roles-collaborador.md](./to-backend/backend-team-roles-collaborador.md) | No implementado | Rol `COLLABORATOR` en BD |
+| — | [backend-cotizacion-productos-pdf.md](./to-backend/backend-cotizacion-productos-pdf.md) | No implementado | Adjuntar PDF de cotización desde el composer |
 
 **Roadmap WhatsApp (fases futuras):** [whatsapp-cta-templates-roadmap.md](./whatsapp-cta-templates-roadmap.md)
 

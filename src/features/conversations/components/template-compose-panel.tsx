@@ -18,8 +18,10 @@ import {
   parameterFieldsFor,
   templateButtonLabel,
   templateFooter,
+  templatePackDefinition,
   templateResolvedBody,
 } from "@/features/whatsapp-templates/utils";
+import { resolveTemplateButtonUrl } from "@/features/whatsapp-templates/template-cta";
 import { WhatsappTemplateBubble } from "@/features/whatsapp-templates/components/whatsapp-template-bubble";
 import {
   classifyTemplateField,
@@ -83,14 +85,14 @@ function VariableFieldRow({
   const Icon = FIELD_ICONS[kind];
   const shortLabel = shortTemplateFieldLabel(label);
   const badgeClass =
-    accent === "teal" ? "bg-teal-600 text-white" : "bg-[#7678ed] text-white";
+    accent === "teal" ? "bg-teal-600 text-white" : "bg-[#0d9488] text-white";
 
   return (
     <div className="min-w-0">
       <label
         className={cn(
           "flex items-center gap-1.5 rounded-lg border bg-white/80 px-1.5 py-1",
-          accent === "teal" ? "border-teal-200/80" : "border-[#7678ed]/20",
+          accent === "teal" ? "border-teal-200/80" : "border-[#0d9488]/20",
           invalid && "border-red-300 bg-red-50/70"
         )}
       >
@@ -215,6 +217,13 @@ export function TemplateComposePanel({
           compose
           footer={templateFooter(draft.template)}
           buttonLabel={templateButtonLabel(draft.template)}
+          buttonHint={templatePackDefinition(draft.template.name)?.buttonHint}
+          buttonUrl={resolveTemplateButtonUrl(
+            templatePackDefinition(draft.template.name),
+            draft.buttonValues.find((value) => value.trim()) ??
+              templatePackDefinition(draft.template.name)?.buttonParameter?.example ??
+              null
+          )}
           compact
           className="p-2"
         />

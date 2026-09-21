@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { ChevronDown, Pencil, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { createClient } from "@/lib/supabase/client";
 import {
   Tooltip,
   TooltipContent,
@@ -21,13 +22,24 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { CustomerGarageSection } from "@/features/conversations/components/customer-garage-section";
 import {
   getCustomerProfileAction,
   updateCustomerProfileAction,
 } from "@/lib/actions/customer-profile-actions";
+import {
+  customerLegalNames,
+  withLegalNameMetadata,
+} from "@/lib/customers/legal-name";
+import {
+  buildChangedCustomerProfilePatch,
+  type CustomerProfileSnapshot,
+} from "@/lib/customers/profile-patch";
+import { rememberProfileEventActor } from "@/lib/customers/profile-event-actor";
 import { formatRutDisplay } from "@/lib/customers/rut";
 import type { DeliveryRegion } from "@/lib/bot-api/types";
 import type { Customer, CustomerInvoiceType } from "@/types/database.types";
+import type { CustomerGarage } from "@/types/message";
 
 type CustomerProfileSectionProps = {
   conversationId: string;
@@ -78,7 +90,13 @@ export function CustomerProfileSection({
   const [apiReady, setApiReady] = useState(true);
   const [showDelivery, setShowDelivery] = useState(false);
 
+  const initialLegalNames = customerLegalNames(customer);
+  const [firstName, setFirstName] = useState(initialLegalNames.first_name);
+  const [lastName, setLastName] = useState(initialLegalNames.last_name);
   const [displayAlias, setDisplayAlias] = useState(customer?.display_alias ?? "");
+  const [profileMetadata, setProfileMetadata] = useState<Record<string, unknown> | null>(
+    customer?.profile_metadata ?? null
+  );
   const [email, setEmail] = useState(customer?.email ?? "");
   const [taxId, setTaxId] = useState(customer?.tax_id ?? "");
   const [invoiceType, setInvoiceType] = useState<CustomerInvoiceType>(
@@ -92,6 +110,23 @@ export function CustomerProfileSection({
   const [deliveryRegion, setDeliveryRegion] = useState(customer?.delivery1_region ?? "");
   const [deliveryCommune, setDeliveryCommune] = useState(customer?.delivery1_commune ?? "");
   const [deliveryNotes, setDeliveryNotes] = useState(customer?.delivery1_notes ?? "");
+  const [garage, setGarage] = useState<CustomerGarage | null>(customer?.garage ?? null);
+  const editingRef = useRef(editing);
+  editingRef.current = editing;
+  const baselineRef = useRef<CustomerProfileSnapshot>({
+    first_name: initialLegalNames.first_name,
+    last_name: initialLegalNames.last_name,
+    display_alias: customer?.display_alias ?? "",
+    email: customer?.email ?? "",
+    tax_id: customer?.tax_id ?? "",
+    invoice_type: normalizeInvoiceType(customer?.invoice_type),
+    company_name: customer?.company_name ?? "",
+    business_activity: customer?.business_activity ?? "",
+    delivery1_line1: customer?.delivery1_line1 ?? "",
+    delivery1_region: customer?.delivery1_region ?? "",
+    delivery1_commune: customer?.delivery1_commune ?? "",
+    delivery1_notes: customer?.delivery1_notes ?? "",
+  });
 
   const activeRegions = useMemo(
     () => deliveryRegions.filter((r) => r.is_active),
@@ -106,14 +141,19 @@ export function CustomerProfileSection({
 
   useEffect(() => {
     if (!customer?.id) return;
-    getCustomerProfileAction(customer.id).then((result) => {
-      if (!result.ok) {
-        if (result.reason === "api_not_ready") setApiReady(false);
-        return;
-      }
-      setApiReady(true);
-      const c = result.customer;
+    const customerId: string = customer.id;
+    let cancelled = false;
+
+    function applyCustomer(c: Customer) {
+      const names = customerLegalNames({
+        first_name: c.first_name || c.garage?.first_name,
+        last_name: c.last_name || c.garage?.last_name,
+        profile_metadata: c.profile_metadata,
+      });
+      setFirstName(names.first_name);
+      setLastName(names.last_name);
       setDisplayAlias(c.display_alias ?? "");
+      setProfileMetadata((prev) => c.profile_metadata ?? prev);
       setEmail(c.email ?? "");
       setTaxId(c.tax_id ?? "");
       setInvoiceType(normalizeInvoiceType(c.invoice_type));
@@ -123,12 +163,72 @@ export function CustomerProfileSection({
       setDeliveryRegion(c.delivery1_region ?? "");
       setDeliveryCommune(c.delivery1_commune ?? "");
       setDeliveryNotes(c.delivery1_notes ?? "");
-    });
+      setGarage(c.garage ?? null);
+      baselineRef.current = {
+        first_name: names.first_name,
+        last_name: names.last_name,
+        display_alias: c.display_alias ?? "",
+        email: c.email ?? "",
+        tax_id: c.tax_id ?? "",
+        invoice_type: normalizeInvoiceType(c.invoice_type),
+        company_name: c.company_name ?? "",
+        business_activity: c.business_activity ?? "",
+        delivery1_line1: c.delivery1_line1 ?? "",
+        delivery1_region: c.delivery1_region ?? "",
+        delivery1_commune: c.delivery1_commune ?? "",
+        delivery1_notes: c.delivery1_notes ?? "",
+      };
+    }
+
+    function load() {
+      if (editingRef.current) return;
+      getCustomerProfileAction(customerId).then((result) => {
+        if (cancelled) return;
+        if (!result.ok) {
+          if (result.reason === "api_not_ready") setApiReady(false);
+          return;
+        }
+        setApiReady(true);
+        applyCustomer(result.customer);
+      });
+    }
+
+    load();
+
+    function onGarageUpdated() {
+      load();
+    }
+    window.addEventListener("easycomp:customer-garage-updated", onGarageUpdated);
+
+    const supabase = createClient();
+    const channel = supabase
+      .channel(`customer-profile-${customerId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "Customer",
+          filter: `id=eq.${customerId}`,
+        },
+        () => {
+          load();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      cancelled = true;
+      window.removeEventListener("easycomp:customer-garage-updated", onGarageUpdated);
+      void supabase.removeChannel(channel);
+    };
   }, [customer?.id]);
 
   if (!customer) return null;
 
   const hasSavedData =
+    firstName ||
+    lastName ||
     displayAlias ||
     email ||
     taxId ||
@@ -144,18 +244,40 @@ export function CustomerProfileSection({
     if (!customer) return;
     startTransition(async () => {
       try {
-        await updateCustomerProfileAction(conversationId, customer.id, {
+        const trimmedFirst = firstName.trim();
+        const trimmedLast = lastName.trim();
+        const nextSnapshot: CustomerProfileSnapshot = {
+          first_name: trimmedFirst,
+          last_name: trimmedLast,
           display_alias: displayAlias,
           email,
           tax_id: taxId,
-          invoice_type: invoiceType === "NONE" ? null : invoiceType,
+          invoice_type: invoiceType,
           company_name: companyName,
           business_activity: businessActivity,
           delivery1_line1: deliveryLine1,
-          delivery1_region: deliveryRegion || null,
-          delivery1_commune: deliveryCommune || null,
+          delivery1_region: deliveryRegion,
+          delivery1_commune: deliveryCommune,
           delivery1_notes: deliveryNotes,
-        });
+        };
+        const patch = buildChangedCustomerProfilePatch(baselineRef.current, nextSnapshot);
+        if (!patch) {
+          toast.message("No hay cambios para guardar");
+          setEditing(false);
+          return;
+        }
+        const nextMetadata = withLegalNameMetadata(
+          profileMetadata,
+          trimmedFirst,
+          trimmedLast
+        );
+        const saved = await updateCustomerProfileAction(conversationId, customer.id, patch);
+        rememberProfileEventActor(conversationId, saved.actorName);
+        baselineRef.current = nextSnapshot;
+        setProfileMetadata(nextMetadata);
+        if (saved.customer.garage !== undefined) {
+          setGarage(saved.customer.garage ?? null);
+        }
         toast.success("Datos del cliente guardados");
         setEditing(false);
         router.refresh();
@@ -173,10 +295,11 @@ export function CustomerProfileSection({
   }
 
   return (
+    <>
     <section className="min-w-0 rounded-xl border border-[#202022]/8 bg-white p-4 shadow-sm">
       <div className="mb-3 flex min-w-0 items-center justify-between gap-2">
         <h4 className="flex min-w-0 items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-[#202022]/50">
-          <UserRound className="size-3.5 shrink-0 text-[#7678ed]" />
+          <UserRound className="size-3.5 shrink-0 text-[#0d9488]" />
           <span className="truncate">Datos del cliente</span>
         </h4>
         {canEdit && !editing && (
@@ -188,7 +311,7 @@ export function CustomerProfileSection({
                     type="button"
                     variant="ghost"
                     size="icon"
-                    className="size-7 shrink-0 text-[#7678ed] hover:bg-[#7678ed]/10"
+                    className="size-7 shrink-0 text-[#0d9488] hover:bg-[#0d9488]/10"
                     onClick={() => setEditing(true)}
                     aria-label="Editar"
                   />
@@ -212,6 +335,34 @@ export function CustomerProfileSection({
       {canEdit && editing ? (
         <form onSubmit={handleSave} className="space-y-3">
           <div className="space-y-1.5">
+            <Label htmlFor="customer-first-name" className="text-xs">
+              Nombre
+            </Label>
+            <Input
+              id="customer-first-name"
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+              placeholder="Ej. Pedro"
+              maxLength={80}
+              autoComplete="given-name"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="customer-last-name" className="text-xs">
+              Apellido
+            </Label>
+            <Input
+              id="customer-last-name"
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+              placeholder="Ej. Soto"
+              maxLength={80}
+              autoComplete="family-name"
+            />
+          </div>
+
+          <div className="space-y-1.5">
             <Label htmlFor="customer-alias" className="text-xs">
               Alias
             </Label>
@@ -222,11 +373,10 @@ export function CustomerProfileSection({
               placeholder="Ej. Pedro Ferretería ProMax"
               maxLength={80}
             />
-            {customer.name && (
-              <p className="text-[10px] text-[#202022]/45">
-                WhatsApp: {customer.name}
-              </p>
-            )}
+            <p className="text-[10px] text-[#202022]/45">
+              Cómo aparece en el chat e inbox.
+              {customer.name ? ` WhatsApp: ${customer.name}` : ""}
+            </p>
           </div>
 
           <div className="space-y-1.5">
@@ -315,7 +465,7 @@ export function CustomerProfileSection({
               {activeRegions.length === 0 ? (
                 <p className="text-xs text-[#202022]/50">
                   Configura regiones en{" "}
-                  <Link href="/app/deliveries" className="text-[#7678ed] underline">
+                  <Link href="/app/deliveries" className="text-[#0d9488] underline">
                     Despachos
                   </Link>{" "}
                   para elegir comuna.
@@ -409,11 +559,13 @@ export function CustomerProfileSection({
           {!hasSavedData ? (
             <p className="text-sm text-[#202022]/40">
               {canEdit
-                ? "Sin datos comerciales. Usa Editar para agregar alias, RUT o dirección."
+                ? "Sin datos comerciales. Usa Editar para agregar nombre, alias, RUT o dirección."
                 : "Sin datos comerciales registrados."}
             </p>
           ) : (
             <>
+              <ReadOnlyRow label="Nombre" value={firstName} />
+              <ReadOnlyRow label="Apellido" value={lastName} />
               <ReadOnlyRow label="Alias" value={displayAlias} />
               <ReadOnlyRow label="Email" value={email} />
               <ReadOnlyRow label="RUT" value={taxId} />
@@ -436,5 +588,13 @@ export function CustomerProfileSection({
         </dl>
       )}
     </section>
+    <CustomerGarageSection
+      garage={garage}
+      conversationId={conversationId}
+      customerId={customer?.id}
+      canEdit={canEdit}
+      onGarageChange={setGarage}
+    />
+    </>
   );
 }

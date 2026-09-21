@@ -50,7 +50,7 @@ export function ComparisonSection() {
           </FadeIn>
 
           <FadeIn delay={0.1}>
-            <div className="h-full rounded-2xl border border-[#7678ed]/25 bg-gradient-to-br from-[#7678ed]/8 to-white p-8 shadow-sm">
+            <div className="h-full rounded-2xl border border-[#0d9488]/25 bg-gradient-to-br from-[#0d9488]/8 to-white p-8 shadow-sm">
               <h3 className="text-lg font-semibold text-[var(--landing-accent)]">
                 Con easycomp-chat-bot-manager
               </h3>

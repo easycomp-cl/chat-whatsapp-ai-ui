@@ -21,7 +21,7 @@ export function ColumnResizeHandle({ onMouseDown, className }: ColumnResizeHandl
     >
       <div className="absolute inset-y-0 -left-1.5 -right-1.5 flex items-center justify-center">
         <div
-          className="h-full w-1 rounded-full bg-transparent transition-colors group-hover:bg-[#7678ed]/35 group-active:bg-[#7678ed]/55"
+          className="h-full w-1 rounded-full bg-transparent transition-colors group-hover:bg-[#0d9488]/35 group-active:bg-[#0d9488]/55"
         />
       </div>
     </div>

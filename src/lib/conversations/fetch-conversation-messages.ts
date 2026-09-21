@@ -8,6 +8,10 @@ import type { Message } from "@/types/database.types";
  * y PostgREST responde 400 en cada poll del chat.
  */
 export const MESSAGE_SELECT_COLUMNS =
+  "id, conversation_id, business_id, customer_id, direction, sender_type, sender_phone, receiver_phone, content_text, content_type, content_text_snapshot, customer_edited_at, customer_revoked_at, external_id, whatsapp_delivery_status, whatsapp_delivery_error_code, whatsapp_delivery_error_message, ai_generated, created_at, reply_to_message_id, quoted_text, quoted_sender_type, reactions, media, audio_transcript, interactive, system_event";
+
+/** Sin `system_event` (vista aún no migrada). */
+export const MESSAGE_SELECT_COLUMNS_WITH_INTERACTIVE =
   "id, conversation_id, business_id, customer_id, direction, sender_type, sender_phone, receiver_phone, content_text, content_type, content_text_snapshot, customer_edited_at, customer_revoked_at, external_id, whatsapp_delivery_status, whatsapp_delivery_error_code, whatsapp_delivery_error_message, ai_generated, created_at, reply_to_message_id, quoted_text, quoted_sender_type, reactions, media, audio_transcript, interactive";
 
 /** Sin columnas nuevas de entrega/interactivo (vista anterior). */
@@ -23,15 +27,16 @@ export const MESSAGE_SELECT_COLUMNS_LEGACY =
 
 const COLUMN_SETS = [
   MESSAGE_SELECT_COLUMNS,
+  MESSAGE_SELECT_COLUMNS_WITH_INTERACTIVE,
   MESSAGE_SELECT_COLUMNS_WITH_AUDIO,
   MESSAGE_SELECT_COLUMNS_WITH_MEDIA,
   MESSAGE_SELECT_COLUMNS_LEGACY,
 ] as const;
 
-const CACHE_KEY = "messages-select-columns-v3";
+const CACHE_KEY = "messages-select-columns-v4";
 
 const MISSING_COLUMN_PATTERN =
-  /column|schema cache|does not exist|reactions|quoted|snapshot|customer_edited|customer_revoked|media|audio_transcript|interactive|whatsapp_delivery_error|sender_user|sender_display/i;
+  /column|schema cache|does not exist|reactions|quoted|snapshot|customer_edited|customer_revoked|media|audio_transcript|interactive|whatsapp_delivery_error|sender_user|sender_display|system_event/i;
 
 type Supabase = SupabaseClient<Database>;
 type QueryError = { message?: string; code?: string } | null;

@@ -54,7 +54,7 @@ export function ActivateFlowsAccordion({
   }
 
   return (
-    <section className="min-w-0 overflow-hidden rounded-xl border border-[#7678ed]/15 bg-white shadow-sm">
+    <section className="min-w-0 overflow-hidden rounded-xl border border-[#0d9488]/15 bg-white shadow-sm">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -62,10 +62,10 @@ export function ActivateFlowsAccordion({
         aria-expanded={open}
       >
         <span className="flex min-w-0 items-center gap-2 text-xs font-semibold uppercase tracking-wide text-[#202022]/60">
-          <Workflow className="size-3.5 shrink-0 text-[#7678ed]" />
+          <Workflow className="size-3.5 shrink-0 text-[#0d9488]" />
           <span className="truncate">Activar flujo</span>
           {flows.length > 0 && (
-            <span className="shrink-0 rounded-full bg-[#7678ed] px-1.5 py-0.5 text-[10px] font-bold text-white">
+            <span className="shrink-0 rounded-full bg-[#0d9488] px-1.5 py-0.5 text-[10px] font-bold text-white">
               {flows.length}
             </span>
           )}
@@ -79,9 +79,9 @@ export function ActivateFlowsAccordion({
       </button>
 
       {open && (
-        <div className="border-t border-[#7678ed]/10 px-4 py-3">
+        <div className="border-t border-[#0d9488]/10 px-4 py-3">
           {flowBlocked && (
-            <p className="mb-3 rounded-lg border border-[#7678ed]/15 bg-[#7678ed]/5 px-3 py-2 text-xs text-[#202022]/65">
+            <p className="mb-3 rounded-lg border border-[#0d9488]/15 bg-[#0d9488]/5 px-3 py-2 text-xs text-[#202022]/65">
               Hay un flujo en curso. Cancela el flujo activo para iniciar otro.
             </p>
           )}
@@ -91,7 +91,7 @@ export function ActivateFlowsAccordion({
               <p>No hay flujos activos publicados.</p>
               <Link
                 href="/app/flows"
-                className="text-xs font-medium text-[#7678ed] hover:underline"
+                className="text-xs font-medium text-[#0d9488] hover:underline"
               >
                 Crear o publicar flujos
               </Link>
@@ -105,7 +105,7 @@ export function ActivateFlowsAccordion({
                 return (
                   <li
                     key={flow.id}
-                    className="flex min-w-0 items-start justify-between gap-2 rounded-lg border border-[#7678ed]/10 bg-[#7678ed]/5 px-3 py-2"
+                    className="flex min-w-0 items-start justify-between gap-2 rounded-lg border border-[#0d9488]/10 bg-[#0d9488]/5 px-3 py-2"
                   >
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium text-[#202022]">{flow.name}</p>
@@ -115,14 +115,14 @@ export function ActivateFlowsAccordion({
                         </p>
                       )}
                       {versionNumber != null && (
-                        <p className="mt-1 text-[10px] text-[#7678ed]">v{versionNumber}</p>
+                        <p className="mt-1 text-[10px] text-[#0d9488]">v{versionNumber}</p>
                       )}
                     </div>
                     <Button
                       type="button"
                       size="sm"
                       variant="outline"
-                      className="h-8 shrink-0 gap-1 border-[#7678ed]/25 text-xs text-[#7678ed] hover:bg-[#7678ed]/10"
+                      className="h-8 shrink-0 gap-1 border-[#0d9488]/25 text-xs text-[#0d9488] hover:bg-[#0d9488]/10"
                       disabled={flowBlocked || isActivating}
                       onClick={() => handleActivate(flow)}
                     >

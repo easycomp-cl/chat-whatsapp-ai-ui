@@ -1,9 +1,10 @@
 "use client";
 
-import { CheckCheck, ExternalLink } from "lucide-react";
+import { CheckCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { splitTemplateBody } from "../utils";
 import type { TemplateExample } from "../standard-pack";
+import { TemplateCtaButton } from "./template-cta-button";
 
 type WhatsappTemplateBubbleProps = {
   body: string;
@@ -14,6 +15,8 @@ type WhatsappTemplateBubbleProps = {
   compose?: boolean;
   footer?: string | null;
   buttonLabel?: string | null;
+  buttonHint?: string | null;
+  buttonUrl?: string | null;
   compact?: boolean;
   className?: string;
 };
@@ -26,6 +29,8 @@ export function WhatsappTemplateBubble({
   compose = false,
   footer,
   buttonLabel,
+  buttonHint,
+  buttonUrl,
   compact = false,
   className,
 }: WhatsappTemplateBubbleProps) {
@@ -55,8 +60,8 @@ export function WhatsappTemplateBubble({
                     <span
                       key={index}
                       className={cn(
-                        "mx-px inline-flex items-baseline rounded-md bg-[#7678ed]/18 px-1 py-px font-semibold text-[#4f4cc8] transition-shadow",
-                        highlighted && "ring-2 ring-[#7678ed]/70 ring-offset-1 ring-offset-[#d9fdd3]"
+                        "mx-px inline-flex items-baseline rounded-md bg-[#0d9488]/18 px-1 py-px font-semibold text-[#0d9488] transition-shadow",
+                        highlighted && "ring-2 ring-[#0d9488]/70 ring-offset-1 ring-offset-[#d9fdd3]"
                       )}
                     >
                       {`{{${part.index}}}`}
@@ -69,7 +74,7 @@ export function WhatsappTemplateBubble({
                     key={index}
                     className={cn(
                       "rounded-sm bg-[#b7e0ae]/80 px-0.5 font-medium text-[#0b5c4a] transition-shadow",
-                      highlighted && "ring-2 ring-[#7678ed]/60 ring-offset-1 ring-offset-[#d9fdd3]"
+                      highlighted && "ring-2 ring-[#0d9488]/60 ring-offset-1 ring-offset-[#d9fdd3]"
                     )}
                   >
                     {filled}
@@ -115,10 +120,15 @@ export function WhatsappTemplateBubble({
         </div>
         {buttonLabel ? (
           <div className="mt-1 overflow-hidden rounded-lg bg-white/90 shadow-sm ring-1 ring-black/5">
-            <div className="flex items-center justify-center gap-1.5 px-3 py-2 text-[13px] font-medium text-[#027eb5]">
-              <ExternalLink className="size-3.5" aria-hidden />
-              {buttonLabel}
-            </div>
+            <TemplateCtaButton
+              cta={{
+                label: buttonLabel,
+                hint: buttonHint ?? `Botón “${buttonLabel}” de la plantilla`,
+                url: buttonUrl ?? null,
+              }}
+              compact={compact}
+              variant="preview"
+            />
           </div>
         ) : null}
       </div>

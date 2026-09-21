@@ -9,10 +9,10 @@ const ACCENT_STYLES = {
     panel: "border-sky-200/80 bg-sky-50/40 dark:border-sky-900/60 dark:bg-sky-950/20",
   },
   tone: {
-    badge: "bg-violet-600 text-white",
-    icon: "text-violet-600",
+    badge: "bg-teal-600 text-white",
+    icon: "text-teal-600",
     panel:
-      "border-violet-200/80 bg-violet-50/40 dark:border-violet-900/60 dark:bg-violet-950/20",
+      "border-teal-200/80 bg-teal-50/40 dark:border-teal-900/60 dark:bg-teal-950/20",
   },
   history: {
     badge: "bg-amber-600 text-white",

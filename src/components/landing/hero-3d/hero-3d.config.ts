@@ -8,15 +8,15 @@ import type {
 
 /** Brand palette — local to the module; does not mutate global tokens. */
 export const HERO_3D_COLORS = {
-  violet: "#6D5EF5",
-  violetDeep: "#4438CA",
+  violet: "#22D3A3",
+  violetDeep: "#0D9488",
   blue: "#397BFF",
   cyan: "#3EE6D0",
   red: "#C4121A",
   redDeep: "#7A0B12",
   white: "#FFFFFF",
   ink: "#111326",
-  softWhite: "#F4F6FF",
+  softWhite: "#F4FBF8",
 } as const;
 
 /** Official EasyComp mark PNG used in the 3D core and HTML fallback. */

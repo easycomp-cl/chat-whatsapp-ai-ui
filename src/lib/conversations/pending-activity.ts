@@ -1,10 +1,13 @@
 import { getLastReadAt } from "@/lib/conversations/last-read-storage";
 import { parseReactions } from "@/lib/conversations/message-display";
+import { isSystemChatMessage } from "@/lib/conversations/system-event";
 import type { Message, MessageReaction } from "@/types/database.types";
 
 export function latestInboundAt(messages: Message[]): string | null {
   for (let i = messages.length - 1; i >= 0; i--) {
-    if (messages[i].direction === "INBOUND") return messages[i].created_at;
+    if (messages[i].direction === "INBOUND" && !isSystemChatMessage(messages[i])) {
+      return messages[i].created_at;
+    }
   }
   return null;
 }
@@ -62,22 +65,13 @@ export function laterTimestamp(a: string, b: string): string {
   return new Date(a) >= new Date(b) ? a : b;
 }
 
-export function getLatestSeenTimestamp(messages: Message[]): string {
+export function getLatestSeenTimestamp(messages: Message[]): string | null {
   const lastMessageAt = messages.at(-1)?.created_at;
   const reactionAt = latestCustomerReactionAt(messages);
-  const now = new Date().toISOString();
-
-  let fromMessages = now;
   if (lastMessageAt && reactionAt) {
-    fromMessages =
-      new Date(lastMessageAt) > new Date(reactionAt) ? lastMessageAt : reactionAt;
-  } else if (lastMessageAt) {
-    fromMessages = lastMessageAt;
-  } else if (reactionAt) {
-    fromMessages = reactionAt;
+    return laterTimestamp(lastMessageAt, reactionAt);
   }
-
-  return new Date(fromMessages) > new Date(now) ? fromMessages : now;
+  return lastMessageAt ?? reactionAt ?? null;
 }
 
 export function hasUnreadCustomerActivity(
@@ -94,7 +88,7 @@ export function countUnreadCustomerActivity(
   if (!lastRead) {
     let count = 0;
     for (const msg of messages) {
-      if (msg.direction === "INBOUND") count++;
+      if (msg.direction === "INBOUND" && !isSystemChatMessage(msg)) count++;
       for (const reaction of msg.reactions ?? []) {
         if (isCustomerReaction(reaction)) count++;
       }
@@ -106,7 +100,11 @@ export function countUnreadCustomerActivity(
   let count = 0;
 
   for (const msg of messages) {
-    if (msg.direction === "INBOUND" && new Date(msg.created_at).getTime() > readTime) {
+    if (
+      msg.direction === "INBOUND" &&
+      !isSystemChatMessage(msg) &&
+      new Date(msg.created_at).getTime() > readTime
+    ) {
       count++;
     }
     for (const reaction of msg.reactions ?? []) {
@@ -127,7 +125,7 @@ export function isUnreadInboundMessage(
   conversationId: string,
   lastRead?: string
 ): boolean {
-  if (message.direction !== "INBOUND") return false;
+  if (isSystemChatMessage(message) || message.direction !== "INBOUND") return false;
   const readAt = lastRead ?? getLastReadAt(conversationId);
   if (!readAt) return true;
   return new Date(message.created_at).getTime() > new Date(readAt).getTime();
@@ -143,6 +141,11 @@ export function findFirstPendingActivity(
   const readTime = new Date(lastRead).getTime();
 
   return messages.find((msg) => {
+    if (isSystemChatMessage(msg)) {
+      return (msg.reactions ?? []).some(
+        (r) => isCustomerReaction(r) && new Date(r.created_at).getTime() > readTime
+      );
+    }
     if (new Date(msg.created_at).getTime() > readTime) return true;
     return (msg.reactions ?? []).some(
       (r) => isCustomerReaction(r) && new Date(r.created_at).getTime() > readTime
@@ -166,10 +169,13 @@ export function collectActivityFromMessages(messages: Array<{
   direction?: string;
   created_at: string;
   reactions?: unknown;
+  sender_type?: string | null;
+  content_type?: string | null;
 }>) {
   const map = new Map<string, string>();
 
   for (const msg of messages) {
+    if (isSystemChatMessage(msg)) continue;
     if (msg.direction === "INBOUND") {
       mergeConversationActivity(map, msg.conversation_id, msg.created_at);
     }

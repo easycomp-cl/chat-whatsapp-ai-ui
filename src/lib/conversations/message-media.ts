@@ -1,6 +1,7 @@
 import type { Message, MessageMedia } from "@/types/database.types";
+import type { ContentType } from "@/types/message";
 
-export type ContentType = "TEXT" | "IMAGE" | "DOCUMENT" | "AUDIO" | "INTERACTIVE" | "TEMPLATE";
+export type { ContentType };
 
 export const MEDIA_PLACEHOLDER_IMAGE = "[Imagen]";
 export const MEDIA_PLACEHOLDER_DOCUMENT = "[Documento]";
@@ -96,7 +97,9 @@ export function normalizeContentType(value: string | null | undefined): ContentT
     upper === "IMAGE" ||
     upper === "DOCUMENT" ||
     upper === "AUDIO" ||
-    upper === "INTERACTIVE"
+    upper === "INTERACTIVE" ||
+    upper === "TEMPLATE" ||
+    upper === "SYSTEM_EVENT"
   ) {
     return upper;
   }

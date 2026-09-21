@@ -29,6 +29,7 @@ import {
 } from "../utils";
 import { cn } from "@/lib/utils";
 import { WhatsappTemplateBubble } from "./whatsapp-template-bubble";
+import { exampleTemplateCta } from "../template-cta";
 
 type TemplatesManagerProps = {
   templates: WhatsappTemplate[];
@@ -45,6 +46,8 @@ function TemplateCard({
   examples,
   footer,
   buttonLabel,
+  buttonHint,
+  buttonUrl,
   apiRow,
   fallbackBody,
 }: {
@@ -56,6 +59,8 @@ function TemplateCard({
   examples: TemplateExample[];
   footer?: string | null;
   buttonLabel?: string | null;
+  buttonHint?: string | null;
+  buttonUrl?: string | null;
   apiRow?: WhatsappTemplate;
   fallbackBody: string;
 }) {
@@ -98,6 +103,8 @@ function TemplateCard({
             examples={examples}
             footer={footer}
             buttonLabel={buttonLabel}
+            buttonHint={buttonHint}
+            buttonUrl={buttonUrl}
             compact
           />
         </div>
@@ -145,6 +152,8 @@ function cardFromPack(
       )}
       footer={item.footer}
       buttonLabel={item.buttonLabel}
+      buttonHint={item.buttonHint}
+      buttonUrl={exampleTemplateCta(item)?.url}
       apiRow={apiRow}
       fallbackBody={item.body}
     />
@@ -211,7 +220,10 @@ export function TemplatesManager({
         <div className="space-y-3">
           <h2 className="text-sm font-semibold tracking-tight">Otras plantillas de la WABA</h2>
           <div className="grid gap-4 lg:grid-cols-2">
-            {extraTemplates.map((item) => (
+            {extraTemplates.map((item) => {
+              const pack = STANDARD_WHATSAPP_TEMPLATES.find((row) => row.name === item.name);
+              const cta = pack ? exampleTemplateCta(pack) : null;
+              return (
               <TemplateCard
                 key={item.name}
                 title={item.product_use?.trim() || item.name}
@@ -220,11 +232,14 @@ export function TemplatesManager({
                 category={String(item.category ?? "UTILITY")}
                 kind={inferInternalKind(item.name, item.product_use)}
                 examples={exampleValuesFor(item, undefined, previewContext)}
-                buttonLabel={/pago|pay/i.test(item.name) ? "Pagar" : null}
+                buttonLabel={cta?.label ?? (/pago|pay/i.test(item.name) ? "Pagar" : null)}
+                buttonHint={cta?.hint}
+                buttonUrl={cta?.url}
                 apiRow={item}
                 fallbackBody=""
               />
-            ))}
+              );
+            })}
           </div>
         </div>
       ) : null}

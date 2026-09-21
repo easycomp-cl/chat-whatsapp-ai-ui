@@ -147,7 +147,7 @@ export function StepHumanContact({ businessId, draft, onChange }: StepHumanConta
               Hola María, fuiste agregado al equipo de EasyComp Repuestos. Confirma que este
               número es correcto.
             </p>
-            <p className="mt-2 text-xs font-medium text-[#7678ed]">Confirmar</p>
+            <p className="mt-2 text-xs font-medium text-[#0d9488]">Confirmar</p>
           </div>
 
           {verifiedAt ? (
@@ -170,7 +170,7 @@ export function StepHumanContact({ businessId, draft, onChange }: StepHumanConta
                     type="button"
                     onClick={handleAlreadyConfirmed}
                     disabled={pendingCheck}
-                    className="bg-[#7678ed] text-white hover:bg-[#7678ed]/90"
+                    className="bg-[#0d9488] text-white hover:bg-[#0d9488]/90"
                   >
                     {pendingCheck ? "Revisando…" : "Ya confirmé"}
                   </Button>

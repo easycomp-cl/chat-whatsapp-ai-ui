@@ -89,7 +89,7 @@ function rawErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : String(error);
 }
 
-export function useFacebookEmbeddedSignup() {
+export function useFacebookEmbeddedSignup(backendConfigId?: string | null) {
   const [sdkReady, setSdkReady] = useState(false);
   const [sdkError, setSdkError] = useState<string | null>(null);
   const sessionRef = useRef<EmbeddedSignupCapture>({});
@@ -109,7 +109,7 @@ export function useFacebookEmbeddedSignup() {
   }, []);
 
   const initSdk = useCallback(() => {
-    const { appId, graphVersion } = getMetaSdkConfig();
+    const { appId, graphVersion } = getMetaSdkConfig(backendConfigId);
     const facebook = window.FB;
     if (!appId) {
       setSdkError(mapEmbeddedSignupError({ kind: "config" }));
@@ -128,10 +128,10 @@ export function useFacebookEmbeddedSignup() {
     setSdkReady(true);
     setSdkError(null);
     return true;
-  }, []);
+  }, [backendConfigId]);
 
   useEffect(() => {
-    const { appId } = getMetaSdkConfig();
+    const { appId } = getMetaSdkConfig(backendConfigId);
     if (!appId) {
       setSdkError(mapEmbeddedSignupError({ kind: "config" }));
       return;
@@ -152,7 +152,7 @@ export function useFacebookEmbeddedSignup() {
     return () => {
       window.clearTimeout(timeout);
     };
-  }, [initSdk]);
+  }, [backendConfigId, initSdk]);
 
   useEffect(() => {
     function onMessage(event: MessageEvent) {
@@ -167,7 +167,7 @@ export function useFacebookEmbeddedSignup() {
   }, [applySessionMessage]);
 
   const launch = useCallback((): Promise<EmbeddedSignupCapture> => {
-    const { configId } = getMetaSdkConfig();
+    const { configId } = getMetaSdkConfig(backendConfigId);
     const facebook = window.FB;
     const login = facebook?.login;
     if (!configId) {
@@ -273,7 +273,7 @@ export function useFacebookEmbeddedSignup() {
         );
       }
     });
-  }, [initSdk]);
+  }, [backendConfigId, initSdk]);
 
   return { sdkReady, sdkError, launch, initSdk };
 }

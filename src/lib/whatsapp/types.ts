@@ -7,4 +7,5 @@ export type WhatsappConnectionRecord = {
   business_id?: string | null;
   status: string;
   message?: string;
+  meta_config_id?: string | null;
 };

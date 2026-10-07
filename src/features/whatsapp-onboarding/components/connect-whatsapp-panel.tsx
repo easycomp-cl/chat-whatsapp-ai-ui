@@ -81,7 +81,9 @@ export function ConnectWhatsappPanel({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { sdkReady, sdkError, launch, initSdk } = useFacebookEmbeddedSignup();
+  const { sdkReady, sdkError, launch, initSdk } = useFacebookEmbeddedSignup(
+    initialConnection?.metaConfigId
+  );
   const [pending, startTransition] = useTransition();
   const [status, setStatus] = useState<WhatsappConnectUiStatus>(
     initialConnection?.connected ? "connected" : "idle"

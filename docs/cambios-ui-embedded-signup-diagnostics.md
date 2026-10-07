@@ -8,13 +8,45 @@
 
 ## Problemas resueltos
 
-### Bug crítico 1: attemptId se leía antes de generarse (corregido en commit 2)
+### Bug crítico 1: attemptId se leía antes de generarse (corregido en commits 2 y 4)
 
 En la implementación inicial del fix, `getCurrentAttemptId()` se llamaba en `handleConnect()` ANTES de llamar a `launch()`, pero el `attemptId` se generaba dentro de `launch()`:
 - **Primer intento**: `currentFlowAttemptIdRef.current` quedaba en `null` → effect de callbacks tardíos hacía return inmediato
 - **Intentos siguientes**: guardaba el id del intento ANTERIOR → code nuevo se descartaba por "intento diferente"
 
-**Fix aplicado**: Generar `attemptId` en `launch()` ANTES de crear la Promise y asignarlo al ref inmediatamente para que esté disponible de forma síncrona cuando el componente lo lea.
+**Fix parcial (commit 2)**: Generar `attemptId` en `launch()` ANTES de crear la Promise y asignarlo al ref interno del hook.
+
+**Problema persistente**: El hook asigna `currentAttemptIdRef.current` (su ref interno), pero el componente tiene su propio `currentFlowAttemptIdRef.current` que nunca se asignaba → camino tardío estaba muerto.
+
+**Fix definitivo (commit 4)**: Después de `launch()`, obtener `attemptId` vía `getCurrentAttemptId()` y asignarlo a `currentFlowAttemptIdRef.current` del componente ANTES de `.then/.catch`. Si `launch()` rechaza síncronamente (SDK no listo), no hay attemptId y se hace return temprano.
+
+#### Traza de verificación (flujo callback tardío)
+
+```
+1. Usuario pulsa Conectar
+   → [ES] Lanzando Embedded Signup: { attempt_id: "attempt_123..." }
+   → [ES] Iniciando conexión: { attempt_id: "attempt_123..." }
+   → currentFlowAttemptIdRef.current = "attempt_123..." ✅
+
+2. Usuario tarda >20s tras FINISH → timeout de gracia
+   → [ES] Timeout de gracia alcanzado (20s)
+   → status = "error", currentFlowAttemptIdRef.current = "attempt_123..." ✅
+
+3. Callback llega tarde con code
+   → [ES] FB.login callback recibido: { has_code: true, settled: true }
+   → sessionRef.current.code = "ABC123..." (en el hook)
+
+4. Effect detecta (cada 500ms):
+   → capture = getCurrentCapture() → tiene code
+   → attemptId = getCurrentAttemptId() → "attempt_123..."
+   → currentFlowAttemptIdRef.current === "attempt_123..." ✅ (NO null, NO diferente)
+   → [ES] Code tardío detectado, procesando automáticamente
+   → currentFlowAttemptIdRef.current = null (marcar consumido)
+   → setPendingCapture → abre PIN UNA SOLA VEZ ✅
+
+5. Si POST falla, status = "error" pero currentFlowAttemptIdRef = null
+   → Effect NO vuelve a detectar (ref es null) ✅
+```
 
 ### Bug crítico 2: doble uso del code (corregido en commit 2)
 

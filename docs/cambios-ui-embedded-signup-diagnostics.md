@@ -8,6 +8,22 @@
 
 ## Problemas resueltos
 
+### Bug crítico 1: attemptId se leía antes de generarse (corregido en commit 2)
+
+En la implementación inicial del fix, `getCurrentAttemptId()` se llamaba en `handleConnect()` ANTES de llamar a `launch()`, pero el `attemptId` se generaba dentro de `launch()`:
+- **Primer intento**: `currentFlowAttemptIdRef.current` quedaba en `null` → effect de callbacks tardíos hacía return inmediato
+- **Intentos siguientes**: guardaba el id del intento ANTERIOR → code nuevo se descartaba por "intento diferente"
+
+**Fix aplicado**: Generar `attemptId` en `launch()` ANTES de crear la Promise y asignarlo al ref inmediatamente para que esté disponible de forma síncrona cuando el componente lo lea.
+
+### Bug crítico 2: doble uso del code (corregido en commit 2)
+
+Después de consumir un code (flujo normal o tardío), `sessionRef.current.code` y `currentFlowAttemptIdRef.current` seguían seteados. Si el POST a `complete` fallaba y el status pasaba a `'error'`, el effect volvía a detectar el mismo code y reabría el diálogo de PIN con un **code ya usado** (Meta lo rechaza, es de un solo uso).
+
+**Fix aplicado**: Limpiar `currentFlowAttemptIdRef.current = null` inmediatamente después de `setPendingCapture` en AMBOS caminos (normal y tardío) para marcar el code como consumido y evitar procesamiento doble.
+
+---
+
 ### Problema 1 (PR #10): Popup que se cierra sin respuesta
 
 En producción, al Reconectar WhatsApp con Meta Embedded Signup:

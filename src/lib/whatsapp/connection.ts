@@ -13,6 +13,7 @@ function normalizeConnection(
 ): WhatsappConnectionRecord | null {
   if (!raw || raw.connected !== true) return null;
   const phone = raw.display_phone_number ?? raw.phone_number ?? null;
+  const configId = raw.meta?.config_id?.trim() || null;
   return {
     connected: true,
     persisted: true,
@@ -21,6 +22,7 @@ function normalizeConnection(
     waba_id: raw.waba_id ?? null,
     business_id: raw.business_id ?? null,
     status: "connected",
+    meta_config_id: configId,
   };
 }
 

@@ -14,5 +14,6 @@ export function toWhatsappConnectionView(
     wabaId: record.waba_id,
     metaBusinessId: record.business_id,
     message: record.message,
+    metaConfigId: record.meta_config_id,
   };
 }

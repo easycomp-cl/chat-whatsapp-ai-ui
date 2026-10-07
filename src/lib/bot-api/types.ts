@@ -655,6 +655,9 @@ export type WhatsappConnection = {
   business_id?: string | null;
   display_phone_number?: string | null;
   message?: string | null;
+  meta?: {
+    config_id?: string | null;
+  } | null;
 };
 
 export type EmbeddedSignupCompleteBody = {

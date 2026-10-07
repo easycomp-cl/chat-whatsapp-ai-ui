@@ -49,6 +49,7 @@ export type WhatsappConnectionView = {
   wabaId?: string | null;
   metaBusinessId?: string | null;
   message?: string | null;
+  metaConfigId?: string | null;
 };
 
 export type CompleteEmbeddedSignupInput = {

@@ -19,7 +19,7 @@ const ALLOWED_OAUTH_PATHS = [
 ] as const;
 
 const DEFAULT_META_APP_ID = "1642810900259407";
-const DEFAULT_META_CONFIG_ID = "1919146745399628";
+const DEFAULT_META_CONFIG_ID = "3646774175478909";
 
 export function getPublicAppOrigin(): string {
   const fromEnv = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "").trim();
@@ -68,7 +68,10 @@ export function getMetaAppId(): string {
   return process.env.NEXT_PUBLIC_META_APP_ID?.trim() || DEFAULT_META_APP_ID;
 }
 
-export function getMetaEmbeddedSignupConfigId(): string {
+export function getMetaEmbeddedSignupConfigId(backendConfigId?: string | null): string {
+  if (backendConfigId?.trim()) {
+    return backendConfigId.trim();
+  }
   return (
     process.env.NEXT_PUBLIC_META_EMBEDDED_SIGNUP_CONFIG_ID?.trim() ||
     DEFAULT_META_CONFIG_ID
@@ -80,14 +83,14 @@ export function getMetaGraphVersion(): string {
   return raw.startsWith("v") ? raw : `v${raw}`;
 }
 
-export function getMetaSdkConfig(): {
+export function getMetaSdkConfig(backendConfigId?: string | null): {
   appId: string;
   configId: string;
   graphVersion: string;
 } {
   return {
     appId: getMetaAppId(),
-    configId: getMetaEmbeddedSignupConfigId(),
+    configId: getMetaEmbeddedSignupConfigId(backendConfigId),
     graphVersion: getMetaGraphVersion(),
   };
 }

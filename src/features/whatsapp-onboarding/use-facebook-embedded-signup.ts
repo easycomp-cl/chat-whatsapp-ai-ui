@@ -246,6 +246,9 @@ export function useFacebookEmbeddedSignup(backendConfigId?: string | null) {
   }, [applySessionMessage]);
 
   const launch = useCallback((): Promise<EmbeddedSignupCapture> => {
+    // Limpiar attemptId al inicio antes de cualquier early return
+    currentAttemptIdRef.current = null;
+    
     const { configId } = getMetaSdkConfig(backendConfigId);
     const facebook = window.FB;
     const login = facebook?.login;
@@ -263,7 +266,7 @@ export function useFacebookEmbeddedSignup(backendConfigId?: string | null) {
       return Promise.reject(new Error(mapEmbeddedSignupError({ kind: "sdk" })));
     }
 
-    // Generar attemptId ANTES de crear la Promise para que esté disponible de inmediato
+    // Generar attemptId DESPUÉS de validaciones para que esté disponible de inmediato
     const attemptId = generateAttemptId();
     currentAttemptIdRef.current = attemptId;
     
@@ -483,6 +486,14 @@ export function useFacebookEmbeddedSignup(backendConfigId?: string | null) {
     return currentAttemptIdRef.current;
   }, []);
 
+  const consumeCapture = useCallback(() => {
+    // Limpiar el code para que no se pueda reutilizar
+    if (sessionRef.current.code) {
+      log("Limpiando code consumido del sessionRef");
+      sessionRef.current = { ...sessionRef.current, code: undefined };
+    }
+  }, []);
+
   return { 
     sdkReady, 
     sdkError, 
@@ -491,5 +502,6 @@ export function useFacebookEmbeddedSignup(backendConfigId?: string | null) {
     initSdk,
     getCurrentCapture,
     getCurrentAttemptId,
+    consumeCapture,
   };
 }

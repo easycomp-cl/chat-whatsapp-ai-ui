@@ -99,6 +99,7 @@ export function ConnectWhatsappPanel({
     initSdk,
     getCurrentCapture,
     getCurrentAttemptId,
+    consumeCapture,
   } = useFacebookEmbeddedSignup(
     initialConnection?.metaConfigId
   );
@@ -309,14 +310,21 @@ export function ConnectWhatsappPanel({
     setError(null);
     setStatus("connecting");
     
-    // launch() genera y asigna el attemptId de inmediato en su ref interno
+    // launch() limpia attemptId al inicio, luego lo genera si pasa validaciones
     const launchPromise = launch();
     
-    // Obtener y copiar el attemptId al ref del componente para el effect de callbacks tardíos
+    // Obtener attemptId (puede ser null si launch rechazó síncronamente)
     const attemptId = getCurrentAttemptId();
+    
     if (!attemptId) {
-      // launch() rechazó de forma síncrona (SDK no listo), no hay intento activo
+      // launch() rechazó de forma síncrona (SDK no listo, config faltante)
       log("launch rechazado síncronamente, no hay attemptId");
+      // Adjuntar .catch() para manejar el rechazo y no dejar status en 'connecting'
+      launchPromise.catch((err: unknown) => {
+        const message = clientActionErrorMessage(err);
+        setStatus("error");
+        setError(message);
+      });
       return;
     }
     
@@ -336,6 +344,7 @@ export function ConnectWhatsappPanel({
           // Marcar code como consumido para evitar procesamiento doble
           log("Code consumido en flujo normal", { attempt_id: attemptId });
           currentFlowAttemptIdRef.current = null;
+          consumeCapture(); // Limpiar code del sessionRef en el hook
           
           setPendingCapture(captureData);
           setStatus("idle");
@@ -343,6 +352,7 @@ export function ConnectWhatsappPanel({
         } catch (err: unknown) {
           const message = clientActionErrorMessage(err);
           currentFlowAttemptIdRef.current = null;
+          consumeCapture();
           setStatus("error");
           setError(message);
         }
@@ -435,6 +445,7 @@ export function ConnectWhatsappPanel({
       
       // Marcar code como consumido ANTES de procesar para evitar doble disparo
       currentFlowAttemptIdRef.current = null;
+      consumeCapture(); // Limpiar code del sessionRef en el hook
       clearInterval(checkInterval);
       
       // Limpiar error y procesar el code
@@ -452,7 +463,7 @@ export function ConnectWhatsappPanel({
     }, 500);
     
     return () => clearInterval(checkInterval);
-  }, [status, getCurrentCapture, getCurrentAttemptId]);
+  }, [status, getCurrentCapture, getCurrentAttemptId, consumeCapture]);
 
   const showSuccess = status === "connected" && view?.connected;
 

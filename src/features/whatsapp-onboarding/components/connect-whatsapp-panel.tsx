@@ -309,8 +309,21 @@ export function ConnectWhatsappPanel({
     setError(null);
     setStatus("connecting");
     
-    // launch() genera y asigna el attemptId de inmediato, antes de devolver la Promise
-    launch()
+    // launch() genera y asigna el attemptId de inmediato en su ref interno
+    const launchPromise = launch();
+    
+    // Obtener y copiar el attemptId al ref del componente para el effect de callbacks tardíos
+    const attemptId = getCurrentAttemptId();
+    if (!attemptId) {
+      // launch() rechazó de forma síncrona (SDK no listo), no hay intento activo
+      log("launch rechazado síncronamente, no hay attemptId");
+      return;
+    }
+    
+    currentFlowAttemptIdRef.current = attemptId;
+    log("Iniciando conexión", { attempt_id: attemptId });
+    
+    launchPromise
       .then((capture) => {
         try {
           const captureData = {
@@ -321,7 +334,6 @@ export function ConnectWhatsappPanel({
           };
           
           // Marcar code como consumido para evitar procesamiento doble
-          const attemptId = getCurrentAttemptId();
           log("Code consumido en flujo normal", { attempt_id: attemptId });
           currentFlowAttemptIdRef.current = null;
           
@@ -345,14 +357,12 @@ export function ConnectWhatsappPanel({
         if (cancelled) {
           currentFlowAttemptIdRef.current = null;
         } else {
-          log("Error en launch (timeout), esperando posibles callbacks tardíos");
+          log("Error en launch (timeout), esperando posibles callbacks tardíos", {
+            attempt_id: attemptId,
+          });
           // NO limpiar currentFlowAttemptIdRef aquí para permitir procesamiento tardío
         }
       });
-    
-    // Log después de launch para capturar el attemptId generado
-    const attemptId = getCurrentAttemptId();
-    log("Iniciando conexión", { attempt_id: attemptId });
   }
 
   function handleCancel() {

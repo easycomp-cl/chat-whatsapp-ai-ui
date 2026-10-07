@@ -81,7 +81,7 @@ export function ConnectWhatsappPanel({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { sdkReady, sdkError, launch, initSdk } = useFacebookEmbeddedSignup(
+  const { sdkReady, sdkError, launch, cancel, initSdk } = useFacebookEmbeddedSignup(
     initialConnection?.metaConfigId
   );
   const [pending, startTransition] = useTransition();
@@ -299,6 +299,12 @@ export function ConnectWhatsappPanel({
       });
   }
 
+  function handleCancel() {
+    cancel();
+    setStatus("cancelled");
+    setError("Conexión cancelada. Puedes intentarlo de nuevo cuando quieras.");
+  }
+
   function handlePinConfirm(pin: string) {
     if (!pendingCapture) return;
     try {
@@ -454,6 +460,18 @@ export function ConnectWhatsappPanel({
                     ? "Esperando a Meta…"
                     : "Conectar con Meta"}
               </button>
+              
+              {status === "connecting" && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleCancel}
+                  disabled={status !== "connecting"}
+                >
+                  Cancelar
+                </Button>
+              )}
+              
               {!sdkReady && !sdkError && (
                 <p className="text-xs text-muted-foreground">Cargando Facebook SDK…</p>
               )}

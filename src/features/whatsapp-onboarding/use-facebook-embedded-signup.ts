@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  EMBEDDED_SIGNUP_TIMEOUT_MS,
+  EMBEDDED_SIGNUP_GLOBAL_TIMEOUT_MS,
+  EMBEDDED_SIGNUP_GRACE_TIMEOUT_MS,
   META_EMBEDDED_SIGNUP_EVENT,
   SESSION_INFO_VERSION,
   SESSION_INFO_WAIT_MS,
@@ -99,12 +100,29 @@ function rawErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : String(error);
 }
 
+function generateAttemptId(): string {
+  return `attempt_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
+}
+
+type TimeoutState = {
+  globalTimeoutId: number | null;
+  graceTimeoutId: number | null;
+  finishEventReceived: boolean;
+};
+
 export function useFacebookEmbeddedSignup(backendConfigId?: string | null) {
   const [sdkReady, setSdkReady] = useState(false);
   const [sdkError, setSdkError] = useState<string | null>(null);
   const sessionRef = useRef<EmbeddedSignupCapture>({});
   const initializedRef = useRef(false);
   const cancelRef = useRef<(() => void) | null>(null);
+  const currentAttemptIdRef = useRef<string | null>(null);
+  const timeoutStateRef = useRef<TimeoutState>({
+    globalTimeoutId: null,
+    graceTimeoutId: null,
+    finishEventReceived: false,
+  });
+  const onTimeoutRef = useRef<(() => void) | null>(null);
 
   const applySessionMessage = useCallback((message: EmbeddedSignupMessage) => {
     if (message.type && message.type !== META_EMBEDDED_SIGNUP_EVENT) return;
@@ -128,6 +146,33 @@ export function useFacebookEmbeddedSignup(backendConfigId?: string | null) {
       business_id: message.data?.business_id ?? sessionRef.current.business_id,
     };
     sessionRef.current = next;
+
+    // Detectar eventos de cierre y activar timeout de gracia
+    const event = message.event;
+    if (event) {
+      const isFinishEvent = event === "FINISH" || event.startsWith("FINISH_");
+      const isCancelEvent = event === "CANCEL";
+      
+      if ((isFinishEvent || isCancelEvent) && !timeoutStateRef.current.finishEventReceived) {
+        timeoutStateRef.current.finishEventReceived = true;
+        
+        // Cancelar timeout global y activar timeout de gracia
+        if (timeoutStateRef.current.globalTimeoutId !== null) {
+          window.clearTimeout(timeoutStateRef.current.globalTimeoutId);
+          timeoutStateRef.current.globalTimeoutId = null;
+        }
+        
+        log(`Evento de cierre recibido (${event}), iniciando timeout de gracia (20s)`);
+        
+        timeoutStateRef.current.graceTimeoutId = window.setTimeout(() => {
+          if (onTimeoutRef.current) {
+            log("Timeout de gracia alcanzado (20s)");
+            onTimeoutRef.current();
+          }
+        }, EMBEDDED_SIGNUP_GRACE_TIMEOUT_MS);
+      }
+    }
+    
     return next;
   }, []);
 
@@ -205,7 +250,10 @@ export function useFacebookEmbeddedSignup(backendConfigId?: string | null) {
     const facebook = window.FB;
     const login = facebook?.login;
     
+    const attemptId = generateAttemptId();
+    
     log("Lanzando Embedded Signup:", {
+      attempt_id: attemptId,
       config_id: configId,
       config_source: backendConfigId ? "backend" : "env/fallback",
       sdk_initialized: initializedRef.current,
@@ -226,56 +274,109 @@ export function useFacebookEmbeddedSignup(backendConfigId?: string | null) {
     }
 
     sessionRef.current = {};
+    currentAttemptIdRef.current = attemptId;
+    timeoutStateRef.current = {
+      globalTimeoutId: null,
+      graceTimeoutId: null,
+      finishEventReceived: false,
+    };
 
     return new Promise<EmbeddedSignupCapture>((resolve, reject) => {
       let settled = false;
-      const timeoutId = window.setTimeout(() => {
+      let manualCancellation = false;
+
+      const clearTimeouts = () => {
+        if (timeoutStateRef.current.globalTimeoutId !== null) {
+          window.clearTimeout(timeoutStateRef.current.globalTimeoutId);
+          timeoutStateRef.current.globalTimeoutId = null;
+        }
+        if (timeoutStateRef.current.graceTimeoutId !== null) {
+          window.clearTimeout(timeoutStateRef.current.graceTimeoutId);
+          timeoutStateRef.current.graceTimeoutId = null;
+        }
+      };
+
+      onTimeoutRef.current = () => {
         if (settled) return;
         settled = true;
-        log("Timeout alcanzado (60s)");
+        clearTimeouts();
         reject(new Error(mapEmbeddedSignupError({ kind: "timeout" })));
-      }, EMBEDDED_SIGNUP_TIMEOUT_MS);
+      };
+
+      // Timeout global de 5 minutos
+      timeoutStateRef.current.globalTimeoutId = window.setTimeout(() => {
+        if (settled) return;
+        settled = true;
+        log("Timeout global alcanzado (5 min)");
+        clearTimeouts();
+        reject(new Error(mapEmbeddedSignupError({ kind: "timeout" })));
+      }, EMBEDDED_SIGNUP_GLOBAL_TIMEOUT_MS);
 
       const finish = (capture: EmbeddedSignupCapture, error?: Error) => {
         if (settled) return;
         settled = true;
-        window.clearTimeout(timeoutId);
+        clearTimeouts();
         cancelRef.current = null;
+        onTimeoutRef.current = null;
         if (error) {
-          log("Launch finalizado con error:", { error: error.message });
+          log("Launch finalizado con error:", { 
+            error: error.message,
+            attempt_id: attemptId,
+          });
           reject(error);
         } else {
           log("Launch finalizado exitosamente:", {
             has_code: Boolean(capture.code),
+            code_length: capture.code?.length,
             has_waba_id: Boolean(capture.waba_id),
             has_phone_number_id: Boolean(capture.phone_number_id),
             event: capture.event,
+            attempt_id: attemptId,
           });
           resolve(capture);
         }
       };
       
-      // Función de cancelación
+      // Función de cancelación manual
       cancelRef.current = () => {
-        log("Launch cancelado manualmente");
+        log("Launch cancelado manualmente por el usuario");
+        manualCancellation = true;
+        currentAttemptIdRef.current = null;
         finish(sessionRef.current, new Error(mapEmbeddedSignupError({ kind: "cancelled" })));
       };
 
       try {
         login(
           (response: FacebookLoginResponse) => {
+            const code = response.authResponse?.code;
+            
             log("FB.login callback recibido:", {
               status: response.status,
               has_authResponse: Boolean(response.authResponse),
-              has_code: Boolean(response.authResponse?.code),
+              has_code: Boolean(code),
+              code_length: code?.length,
+              settled,
+              manual_cancellation: manualCancellation,
+              attempt_id: attemptId,
             });
             
-            const code = response.authResponse?.code;
             if (code) {
               sessionRef.current = { ...sessionRef.current, code };
               const hasSessionIds = () =>
                 Boolean(sessionRef.current.waba_id && sessionRef.current.phone_number_id);
               const settle = () => finish({ ...sessionRef.current, code });
+              
+              if (settled) {
+                // Callback llegó tarde (después del timeout)
+                if (!manualCancellation && currentAttemptIdRef.current === attemptId) {
+                  log("Code llegó después del timeout pero del mismo intento, será procesado");
+                  // El componente padre detectará esto y procesará el code
+                } else {
+                  log("Code llegó tarde pero se ignora (cancelación manual o intento diferente)");
+                }
+                return;
+              }
+              
               if (hasSessionIds()) {
                 settle();
                 return;
@@ -373,5 +474,21 @@ export function useFacebookEmbeddedSignup(backendConfigId?: string | null) {
     }
   }, []);
 
-  return { sdkReady, sdkError, launch, cancel, initSdk };
+  const getCurrentCapture = useCallback((): EmbeddedSignupCapture | null => {
+    return sessionRef.current.code ? sessionRef.current : null;
+  }, []);
+
+  const getCurrentAttemptId = useCallback((): string | null => {
+    return currentAttemptIdRef.current;
+  }, []);
+
+  return { 
+    sdkReady, 
+    sdkError, 
+    launch, 
+    cancel, 
+    initSdk,
+    getCurrentCapture,
+    getCurrentAttemptId,
+  };
 }

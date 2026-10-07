@@ -250,16 +250,6 @@ export function useFacebookEmbeddedSignup(backendConfigId?: string | null) {
     const facebook = window.FB;
     const login = facebook?.login;
     
-    const attemptId = generateAttemptId();
-    
-    log("Lanzando Embedded Signup:", {
-      attempt_id: attemptId,
-      config_id: configId,
-      config_source: backendConfigId ? "backend" : "env/fallback",
-      sdk_initialized: initializedRef.current,
-      login_available: Boolean(login),
-    });
-    
     if (!configId) {
       return Promise.reject(new Error(mapEmbeddedSignupError({ kind: "config" })));
     }
@@ -273,8 +263,19 @@ export function useFacebookEmbeddedSignup(backendConfigId?: string | null) {
       return Promise.reject(new Error(mapEmbeddedSignupError({ kind: "sdk" })));
     }
 
-    sessionRef.current = {};
+    // Generar attemptId ANTES de crear la Promise para que esté disponible de inmediato
+    const attemptId = generateAttemptId();
     currentAttemptIdRef.current = attemptId;
+    
+    log("Lanzando Embedded Signup:", {
+      attempt_id: attemptId,
+      config_id: configId,
+      config_source: backendConfigId ? "backend" : "env/fallback",
+      sdk_initialized: initializedRef.current,
+      login_available: Boolean(login),
+    });
+
+    sessionRef.current = {};
     timeoutStateRef.current = {
       globalTimeoutId: null,
       graceTimeoutId: null,

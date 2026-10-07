@@ -308,11 +308,8 @@ export function ConnectWhatsappPanel({
   function handleConnect() {
     setError(null);
     setStatus("connecting");
-    const attemptId = getCurrentAttemptId();
-    currentFlowAttemptIdRef.current = attemptId;
     
-    log("Iniciando conexión", { attempt_id: attemptId });
-    
+    // launch() genera y asigna el attemptId de inmediato, antes de devolver la Promise
     launch()
       .then((capture) => {
         try {
@@ -322,11 +319,18 @@ export function ConnectWhatsappPanel({
             phone_number_id: capture.phone_number_id,
             business_id: capture.business_id,
           };
+          
+          // Marcar code como consumido para evitar procesamiento doble
+          const attemptId = getCurrentAttemptId();
+          log("Code consumido en flujo normal", { attempt_id: attemptId });
+          currentFlowAttemptIdRef.current = null;
+          
           setPendingCapture(captureData);
           setStatus("idle");
           setPinDialogOpen(true);
         } catch (err: unknown) {
           const message = clientActionErrorMessage(err);
+          currentFlowAttemptIdRef.current = null;
           setStatus("error");
           setError(message);
         }
@@ -337,13 +341,18 @@ export function ConnectWhatsappPanel({
         setStatus(cancelled ? "cancelled" : "error");
         setError(message);
         
-        // Si fue timeout, el attemptId sigue siendo válido para callbacks tardíos
-        if (!cancelled) {
-          log("Error en launch (timeout), esperando posibles callbacks tardíos");
-        } else {
+        // Si fue timeout (NO cancelación), el attemptId sigue válido para callbacks tardíos
+        if (cancelled) {
           currentFlowAttemptIdRef.current = null;
+        } else {
+          log("Error en launch (timeout), esperando posibles callbacks tardíos");
+          // NO limpiar currentFlowAttemptIdRef aquí para permitir procesamiento tardío
         }
       });
+    
+    // Log después de launch para capturar el attemptId generado
+    const attemptId = getCurrentAttemptId();
+    log("Iniciando conexión", { attempt_id: attemptId });
   }
 
   function handleCancel() {
@@ -414,8 +423,11 @@ export function ConnectWhatsappPanel({
         has_phone_number_id: Boolean(capture.phone_number_id),
       });
       
-      // Limpiar error y procesar el code
+      // Marcar code como consumido ANTES de procesar para evitar doble disparo
+      currentFlowAttemptIdRef.current = null;
       clearInterval(checkInterval);
+      
+      // Limpiar error y procesar el code
       setError(null);
       setStatus("idle");
       

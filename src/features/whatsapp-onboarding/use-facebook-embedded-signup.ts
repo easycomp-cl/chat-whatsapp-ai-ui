@@ -12,6 +12,16 @@ import type { FacebookLoginResponse } from "@/types/facebook-sdk";
 import { mapEmbeddedSignupError } from "./errors";
 import type { EmbeddedSignupCapture, EmbeddedSignupMessage } from "./types";
 
+const LOG_PREFIX = "[ES]";
+
+function log(message: string, data?: Record<string, unknown>) {
+  if (data) {
+    console.log(`${LOG_PREFIX} ${message}`, data);
+  } else {
+    console.log(`${LOG_PREFIX} ${message}`);
+  }
+}
+
 function isFacebookOrigin(origin: string) {
   return (
     origin === "https://www.facebook.com" ||
@@ -94,9 +104,22 @@ export function useFacebookEmbeddedSignup(backendConfigId?: string | null) {
   const [sdkError, setSdkError] = useState<string | null>(null);
   const sessionRef = useRef<EmbeddedSignupCapture>({});
   const initializedRef = useRef(false);
+  const cancelRef = useRef<(() => void) | null>(null);
 
   const applySessionMessage = useCallback((message: EmbeddedSignupMessage) => {
     if (message.type && message.type !== META_EMBEDDED_SIGNUP_EVENT) return;
+    
+    log("Meta postMessage recibido:", {
+      type: message.type,
+      event: message.event,
+      version: message.version,
+      current_step: message.data?.current_step,
+      has_waba_id: Boolean(message.data?.waba_id),
+      has_phone_number_id: Boolean(message.data?.phone_number_id),
+      has_error_message: Boolean(message.data?.error_message),
+      error_id: message.data?.error_id,
+    });
+    
     const next: EmbeddedSignupCapture = {
       ...sessionRef.current,
       event: message.event ?? sessionRef.current.event,
@@ -109,8 +132,18 @@ export function useFacebookEmbeddedSignup(backendConfigId?: string | null) {
   }, []);
 
   const initSdk = useCallback(() => {
-    const { appId, graphVersion } = getMetaSdkConfig(backendConfigId);
+    const { appId, configId, graphVersion } = getMetaSdkConfig(backendConfigId);
     const facebook = window.FB;
+    
+    log("Inicializando SDK de Meta:", {
+      config_id: configId,
+      config_source: backendConfigId ? "backend" : "env/fallback",
+      app_id_present: Boolean(appId),
+      graph_version: graphVersion,
+      sdk_ready: Boolean(facebook?.init && facebook.login),
+      already_initialized: initializedRef.current,
+    });
+    
     if (!appId) {
       setSdkError(mapEmbeddedSignupError({ kind: "config" }));
       return false;
@@ -124,6 +157,7 @@ export function useFacebookEmbeddedSignup(backendConfigId?: string | null) {
         version: graphVersion,
       });
       initializedRef.current = true;
+      log("SDK inicializado correctamente");
     }
     setSdkReady(true);
     setSdkError(null);
@@ -170,14 +204,25 @@ export function useFacebookEmbeddedSignup(backendConfigId?: string | null) {
     const { configId } = getMetaSdkConfig(backendConfigId);
     const facebook = window.FB;
     const login = facebook?.login;
+    
+    log("Lanzando Embedded Signup:", {
+      config_id: configId,
+      config_source: backendConfigId ? "backend" : "env/fallback",
+      sdk_initialized: initializedRef.current,
+      login_available: Boolean(login),
+    });
+    
     if (!configId) {
       return Promise.reject(new Error(mapEmbeddedSignupError({ kind: "config" })));
     }
     if (!login) {
       return Promise.reject(new Error(mapEmbeddedSignupError({ kind: "sdk" })));
     }
+    
+    // NO reinicializar el SDK aquí — esto podría invalidar el callback pendiente
     if (!initializedRef.current) {
-      initSdk();
+      log("SDK no inicializado, rechazando launch");
+      return Promise.reject(new Error(mapEmbeddedSignupError({ kind: "sdk" })));
     }
 
     sessionRef.current = {};
@@ -187,6 +232,7 @@ export function useFacebookEmbeddedSignup(backendConfigId?: string | null) {
       const timeoutId = window.setTimeout(() => {
         if (settled) return;
         settled = true;
+        log("Timeout alcanzado (60s)");
         reject(new Error(mapEmbeddedSignupError({ kind: "timeout" })));
       }, EMBEDDED_SIGNUP_TIMEOUT_MS);
 
@@ -194,13 +240,36 @@ export function useFacebookEmbeddedSignup(backendConfigId?: string | null) {
         if (settled) return;
         settled = true;
         window.clearTimeout(timeoutId);
-        if (error) reject(error);
-        else resolve(capture);
+        cancelRef.current = null;
+        if (error) {
+          log("Launch finalizado con error:", { error: error.message });
+          reject(error);
+        } else {
+          log("Launch finalizado exitosamente:", {
+            has_code: Boolean(capture.code),
+            has_waba_id: Boolean(capture.waba_id),
+            has_phone_number_id: Boolean(capture.phone_number_id),
+            event: capture.event,
+          });
+          resolve(capture);
+        }
+      };
+      
+      // Función de cancelación
+      cancelRef.current = () => {
+        log("Launch cancelado manualmente");
+        finish(sessionRef.current, new Error(mapEmbeddedSignupError({ kind: "cancelled" })));
       };
 
       try {
         login(
           (response: FacebookLoginResponse) => {
+            log("FB.login callback recibido:", {
+              status: response.status,
+              has_authResponse: Boolean(response.authResponse),
+              has_code: Boolean(response.authResponse?.code),
+            });
+            
             const code = response.authResponse?.code;
             if (code) {
               sessionRef.current = { ...sessionRef.current, code };
@@ -218,6 +287,7 @@ export function useFacebookEmbeddedSignup(backendConfigId?: string | null) {
                   return;
                 }
                 if (Date.now() - started >= SESSION_INFO_WAIT_MS) {
+                  log("Session info wait timeout (8s), finalizando sin IDs");
                   finish(
                     sessionRef.current,
                     new Error(mapEmbeddedSignupError({ kind: "missing_session" }))
@@ -230,7 +300,29 @@ export function useFacebookEmbeddedSignup(backendConfigId?: string | null) {
               return;
             }
 
+            // No hay code en authResponse
             const event = sessionRef.current.event;
+            
+            // Caso especial: evento FINISH sin code
+            if (event?.startsWith("FINISH")) {
+              const hasSessionData = Boolean(
+                sessionRef.current.waba_id && sessionRef.current.phone_number_id
+              );
+              log("Evento FINISH sin code:", {
+                event,
+                has_waba_id: Boolean(sessionRef.current.waba_id),
+                has_phone_number_id: Boolean(sessionRef.current.phone_number_id),
+              });
+              finish(
+                sessionRef.current,
+                new Error(
+                  `Meta envió ${event} con ${hasSessionData ? "waba_id y phone_number_id" : "datos incompletos"} pero sin code de autorización. ` +
+                  "Esto indica un problema en la configuración de la app de Meta o permisos faltantes."
+                )
+              );
+              return;
+            }
+            
             if (event === "CANCEL") {
               finish(sessionRef.current, new Error(mapEmbeddedSignupError({ kind: "cancelled", event })));
               return;
@@ -273,7 +365,13 @@ export function useFacebookEmbeddedSignup(backendConfigId?: string | null) {
         );
       }
     });
-  }, [backendConfigId, initSdk]);
+  }, [backendConfigId]);
 
-  return { sdkReady, sdkError, launch, initSdk };
+  const cancel = useCallback(() => {
+    if (cancelRef.current) {
+      cancelRef.current();
+    }
+  }, []);
+
+  return { sdkReady, sdkError, launch, cancel, initSdk };
 }

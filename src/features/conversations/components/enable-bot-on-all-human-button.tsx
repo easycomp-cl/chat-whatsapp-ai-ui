@@ -35,8 +35,12 @@ export function EnableBotOnAllHumanButton({
             : `Bot activado en ${result.updated} conversaciones`
         );
         router.refresh();
-      } catch {
-        toast.error("No se pudo activar el bot en las conversaciones");
+      } catch (error) {
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : "No se pudo activar el bot en las conversaciones"
+        );
       }
     });
   }

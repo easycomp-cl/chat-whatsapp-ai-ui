@@ -56,41 +56,30 @@ export async function toggleBotGlobal(enabled: boolean) {
   revalidatePath("/app/settings");
 }
 
+async function patchConversationModeViaBackend(
+  conversationId: string,
+  mode: "BOT" | "HUMAN"
+) {
+  try {
+    await botApi.patchConversationMode(conversationId, { mode });
+  } catch (error) {
+    if (error instanceof BotApiError) {
+      throw new Error(error.message);
+    }
+    throw new Error(BOT_API_UNAVAILABLE_MESSAGE);
+  }
+}
+
 export async function changeConversationMode(
   conversationId: string,
   mode: "BOT" | "HUMAN"
 ) {
   await requireProfile();
 
-  if (mode === "HUMAN") {
-    try {
-      await botApi.patchConversationMode(conversationId, { mode });
-    } catch (error) {
-      if (error instanceof BotApiError) {
-        throw new Error(error.message);
-      }
-      throw new Error(BOT_API_UNAVAILABLE_MESSAGE);
-    }
-  }
-
-  await patchConversationInDatabase(conversationId, {
-    mode,
-    ...(mode === "BOT"
-      ? {
-          handoffReason: null,
-          assignedAdminId: null,
-          botResumeAt: null,
-        }
-      : {}),
-  });
-
-  if (mode === "BOT") {
-    try {
-      await botApi.patchConversationMode(conversationId, { mode });
-    } catch {
-      // Bot API puede usar otra instancia; el dashboard ya quedó actualizado
-    }
-  }
+  // El backend es la fuente de verdad de mode / human_mode_until / evento mode_changed.
+  // No escribir Conversation en Supabase desde el front: si el modo ya cambió,
+  // el PATCH no inserta el evento de sistema.
+  await patchConversationModeViaBackend(conversationId, mode);
 
   revalidatePath("/app/conversations");
   revalidatePath(`/app/conversations/${conversationId}`);
@@ -122,18 +111,7 @@ export async function enableBotOnAllHumanConversationsAction() {
   }
 
   for (const conversationId of conversationIds) {
-    await patchConversationInDatabase(conversationId, {
-      mode: "BOT",
-      handoffReason: null,
-      assignedAdminId: null,
-      botResumeAt: null,
-    });
-
-    try {
-      await botApi.patchConversationMode(conversationId, { mode: "BOT" });
-    } catch {
-      // El dashboard ya quedó actualizado en Supabase
-    }
+    await patchConversationModeViaBackend(conversationId, "BOT");
   }
 
   revalidatePath("/app/conversations");

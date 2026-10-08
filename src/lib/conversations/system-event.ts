@@ -1,3 +1,4 @@
+import { BOT_MODE_RESUMED_FALLBACK } from "@/lib/conversations/human-mode-until";
 import type {
   SystemEvent,
   SystemEventActor,
@@ -10,6 +11,7 @@ const SYSTEM_EVENT_KINDS = new Set<SystemEventKind>([
   "profile_updated",
   "handoff",
   "mode_changed",
+  "bot_mode_resumed",
   "plate_lookup",
   "vehicle_identified",
   "fitment_check",
@@ -120,7 +122,10 @@ export function parseSystemEvent(raw: unknown): SystemEvent | null {
 
   const payload = asRecord(record.payload) ?? undefined;
   const kindResolved = kind ?? "mechanic_note";
-  const titleResolved = title || body;
+  const titleResolved =
+    title ||
+    body ||
+    (kindResolved === "bot_mode_resumed" ? BOT_MODE_RESUMED_FALLBACK : "");
   const actor = parseActor(record.actor ?? payload?.actor);
 
   return {
@@ -147,6 +152,9 @@ function inferKind(title: string): SystemEventKind {
   if (text.includes("patente")) return "plate_lookup";
   if (text.includes("identific")) return "vehicle_identified";
   if (text.includes("cotizaci")) return "quote_prepared";
+  if (/volvi[oó]\s+a\s+modo\s+bot|30\s*min(?:utos)?\s+sin\s+respuesta/i.test(title)) {
+    return "bot_mode_resumed";
+  }
   if (text.includes("devolvi") || text.includes("modo")) return "mode_changed";
   if (text.includes("deriv") || text.includes("tomó") || text.includes("tomo la")) return "handoff";
   if (text.includes("sugir") || text.includes("recomend") || text.includes("compatib")) {
@@ -180,11 +188,24 @@ export function resolveSystemEvent(message: {
   system_event?: SystemEvent | null;
   content_text?: string | null;
 }): SystemEvent | null {
-  if (message.system_event?.title || message.system_event?.body) {
+  if (
+    message.system_event &&
+    (message.system_event.title ||
+      message.system_event.body ||
+      message.system_event.kind === "bot_mode_resumed")
+  ) {
+    const title = message.system_event.title?.trim() || "";
+    const body = message.system_event.body?.trim() || "";
+    const resolvedTitle =
+      title ||
+      body ||
+      (message.system_event.kind === "bot_mode_resumed" ? BOT_MODE_RESUMED_FALLBACK : "");
     return {
       ...message.system_event,
       actor: message.system_event.actor === "HUMAN" ? "HUMAN" : "BOT",
       appearance: resolveSystemEventAppearance(message.system_event),
+      title: resolvedTitle,
+      body: title ? body : "",
     };
   }
   return systemEventFromContentText(message.content_text);

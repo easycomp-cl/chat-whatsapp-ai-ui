@@ -38,7 +38,7 @@ export function AppHeader({ businessName, botEnabled, userName }: AppHeaderProps
                 : "border-red-200 bg-red-50 text-red-700"
             }
           >
-            Bot {botEnabled ? "Activo" : "Pausado"}
+            Bot global {botEnabled ? "activo" : "pausado"}
           </Badge>
         </div>
         <div className="flex items-center gap-3">

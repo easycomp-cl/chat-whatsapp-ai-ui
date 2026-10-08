@@ -25,6 +25,7 @@ import { cn } from "@/lib/utils";
 import { ChatMessageBubble } from "@/features/conversations/components/chat-message-bubble";
 import { ConversationAvatar } from "@/features/conversations/components/conversation-avatar";
 import { ConversationModeSwitch } from "@/features/conversations/components/conversation-mode-switch";
+import { HumanModeResumeCountdown } from "@/features/conversations/components/human-mode-resume-countdown";
 import { AddNoteForm } from "@/features/conversations/components/add-note-form";
 import { ReplyForm } from "@/features/conversations/components/reply-form";
 import { PendingIndicator } from "@/features/conversations/components/pending-indicator";
@@ -51,6 +52,7 @@ import { useCustomerGarage } from "@/features/conversations/hooks/use-customer-g
 import { useInboxColumnLayoutContext } from "@/features/conversations/context/inbox-column-layout-context";
 import type { ConversationFlowState } from "@/lib/bot-api/types";
 import type { OutboundSenderContext } from "@/lib/conversations/outbound-sender";
+import { getFutureHumanModeUntilIso } from "@/lib/conversations/human-mode-until";
 import type { Conversation, Customer, Message } from "@/types/database.types";
 
 type ChatWindowProps = {
@@ -130,6 +132,9 @@ export function ChatWindow({
     customerLastSeenAt: customer?.last_seen_at,
   });
   const mounted = useMounted();
+  const humanModeUntilIso = mounted
+    ? getFutureHumanModeUntilIso(conversation.mode, conversation.human_mode_until)
+    : null;
   const {
     showContactOverlayTrigger,
     showContactColumnReopen,
@@ -301,8 +306,24 @@ export function ChatWindow({
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <h2 className="font-semibold text-[#111b21]">{displayName}</h2>
+              <span
+                className={cn(
+                  "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold",
+                  conversation.mode === "HUMAN"
+                    ? "bg-[#ff7a55]/15 text-[#c44d2a]"
+                    : "bg-[#0d9488]/15 text-[#0d9488]"
+                )}
+              >
+                {conversation.mode === "HUMAN" ? "Modo humano" : "Modo BOT"}
+              </span>
               {showPendingInHeader && <PendingIndicator size="md" showLabel />}
             </div>
+            {humanModeUntilIso ? (
+              <HumanModeResumeCountdown
+                untilIso={humanModeUntilIso}
+                onExpire={refresh}
+              />
+            ) : null}
             <p className="text-xs text-[#667781]">
               {awaitingResponse
                 ? "Mensaje del cliente pendiente de respuesta"

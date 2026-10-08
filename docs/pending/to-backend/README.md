@@ -11,6 +11,7 @@
 |---|-----------|-----------|----------|
 | 1 | [backend-globo-cambio-datos-cliente.md](./backend-globo-cambio-datos-cliente.md) | Al cambiar datos del contacto, persistir píldora azul con quién y el valor nuevo | Bajo |
 | 1b | [backend-globo-patente.md](./backend-globo-patente.md) | Persistir el globo negro de la patente y aceptar formato de moto | Bajo |
+| 1c | [backend-human-mode-timeout.md](./backend-human-mode-timeout.md) | `human_mode_until` + evento `bot_mode_resumed` (30 min → BOT, solo la conversación) | Bajo |
 | 2 | [backend-deploy-pendiente-produccion.md](./backend-deploy-pendiente-produccion.md) | Desplegar `GET .../conversations/inbox` + migración índices en **prod** | Bajo (ops) |
 | 3 | [backend-whatsapp-delivery-status-read.md](./backend-whatsapp-delivery-status-read.md) | Enum `DELIVERED`/`READ` + webhooks `statuses` Meta | Medio |
 | 4 | [backend-customer-profile-crm.md](./backend-customer-profile-crm.md) | `displayAlias`, RUT, direcciones, factura + `GET/PATCH` customer | Medio |

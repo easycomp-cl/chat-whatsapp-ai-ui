@@ -17,38 +17,38 @@ export function HumanModeResumeCountdown({
   onExpire,
 }: HumanModeResumeCountdownProps) {
   const untilMs = parseHumanModeUntilMs(untilIso);
-  const [now, setNow] = useState<number | null>(null);
+  const [now, setNow] = useState(() => Date.now());
   const onExpireRef = useRef(onExpire);
-  const expiredRef = useRef(false);
-  onExpireRef.current = onExpire;
+
+  useEffect(() => {
+    onExpireRef.current = onExpire;
+  }, [onExpire]);
 
   useEffect(() => {
     if (untilMs == null) return;
 
-    expiredRef.current = false;
+    let expired = false;
 
     const tick = () => {
       const t = Date.now();
       setNow(t);
-      if (t >= untilMs && !expiredRef.current) {
-        expiredRef.current = true;
+      if (t >= untilMs && !expired) {
+        expired = true;
         onExpireRef.current?.();
       }
     };
 
-    tick();
     const intervalId = window.setInterval(tick, HUMAN_MODE_COUNTDOWN_INTERVAL_MS);
     const remaining = untilMs - Date.now();
-    const timeoutId =
-      remaining > 0 ? window.setTimeout(tick, remaining + 50) : undefined;
+    const timeoutId = window.setTimeout(tick, Math.max(remaining + 50, 0));
 
     return () => {
       window.clearInterval(intervalId);
-      if (timeoutId !== undefined) window.clearTimeout(timeoutId);
+      window.clearTimeout(timeoutId);
     };
   }, [untilIso, untilMs]);
 
-  if (untilMs == null || now == null) return null;
+  if (untilMs == null) return null;
 
   const label = formatBotResumeCountdown(untilMs - now);
   if (!label) return null;

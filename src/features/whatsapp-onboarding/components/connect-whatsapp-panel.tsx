@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import Script from "next/script";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -33,6 +33,16 @@ import { PinVerificationDialog } from "./pin-verification-dialog";
 import { PlanCheckoutModal } from "@/features/billing/components/plan-checkout-modal";
 import { isNeedsBillingCheckout } from "@/lib/billing/pending-selection";
 import type { CompleteEmbeddedSignupInput, WhatsappConnectUiStatus, WhatsappConnectionView } from "../types";
+
+const LOG_PREFIX = "[ES]";
+
+function log(message: string, data?: Record<string, unknown>) {
+  if (data) {
+    console.log(`${LOG_PREFIX} ${message}`, data);
+  } else {
+    console.log(`${LOG_PREFIX} ${message}`);
+  }
+}
 
 function isRedactedServerError(message: string) {
   return (
@@ -81,7 +91,16 @@ export function ConnectWhatsappPanel({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { sdkReady, sdkError, launch, cancel, initSdk } = useFacebookEmbeddedSignup(
+  const { 
+    sdkReady, 
+    sdkError, 
+    launch, 
+    cancel, 
+    initSdk,
+    getCurrentCapture,
+    getCurrentAttemptId,
+    consumeCapture,
+  } = useFacebookEmbeddedSignup(
     initialConnection?.metaConfigId
   );
   const [pending, startTransition] = useTransition();
@@ -103,6 +122,7 @@ export function ConnectWhatsappPanel({
   } | null>(null);
   const [needsBilling, setNeedsBilling] = useState(false);
   const [planOpen, setPlanOpen] = useState(false);
+  const currentFlowAttemptIdRef = useRef<string | null>(null);
 
   const busy = pending || status === "connecting" || status === "completing" || status === "sdk_loading";
 
@@ -148,7 +168,23 @@ export function ConnectWhatsappPanel({
           if (businessId) input.business_id = businessId;
           if (redirectUri) input.redirect_uri = redirectUri;
 
+          log("Iniciando POST a embedded-signup/complete", {
+            code_length: code.length,
+            has_waba_id: Boolean(wabaId),
+            has_phone_number_id: Boolean(phoneNumberId),
+            has_business_id: Boolean(businessId),
+            has_redirect_uri: Boolean(redirectUri),
+          });
+
+          const startTime = Date.now();
           const result = await completeWhatsappEmbeddedSignupAction(input);
+          const duration = Date.now() - startTime;
+
+          log("POST a embedded-signup/complete completado", {
+            duration_ms: duration,
+            success: result.ok,
+            has_connection: Boolean(result.connection),
+          });
           if (!result.ok) {
             clearWhatsappSignupSnapshot();
             setView(null);
@@ -273,7 +309,29 @@ export function ConnectWhatsappPanel({
   function handleConnect() {
     setError(null);
     setStatus("connecting");
-    launch()
+    
+    // launch() limpia attemptId al inicio, luego lo genera si pasa validaciones
+    const launchPromise = launch();
+    
+    // Obtener attemptId (puede ser null si launch rechazó síncronamente)
+    const attemptId = getCurrentAttemptId();
+    
+    if (!attemptId) {
+      // launch() rechazó de forma síncrona (SDK no listo, config faltante)
+      log("launch rechazado síncronamente, no hay attemptId");
+      // Adjuntar .catch() para manejar el rechazo y no dejar status en 'connecting'
+      launchPromise.catch((err: unknown) => {
+        const message = clientActionErrorMessage(err);
+        setStatus("error");
+        setError(message);
+      });
+      return;
+    }
+    
+    currentFlowAttemptIdRef.current = attemptId;
+    log("Iniciando conexión", { attempt_id: attemptId });
+    
+    launchPromise
       .then((capture) => {
         try {
           const captureData = {
@@ -282,11 +340,19 @@ export function ConnectWhatsappPanel({
             phone_number_id: capture.phone_number_id,
             business_id: capture.business_id,
           };
+          
+          // Marcar code como consumido para evitar procesamiento doble
+          log("Code consumido en flujo normal", { attempt_id: attemptId });
+          currentFlowAttemptIdRef.current = null;
+          consumeCapture(); // Limpiar code del sessionRef en el hook
+          
           setPendingCapture(captureData);
           setStatus("idle");
           setPinDialogOpen(true);
         } catch (err: unknown) {
           const message = clientActionErrorMessage(err);
+          currentFlowAttemptIdRef.current = null;
+          consumeCapture();
           setStatus("error");
           setError(message);
         }
@@ -296,11 +362,22 @@ export function ConnectWhatsappPanel({
         const cancelled = message.toLowerCase().includes("cancelaste");
         setStatus(cancelled ? "cancelled" : "error");
         setError(message);
+        
+        // Si fue timeout (NO cancelación), el attemptId sigue válido para callbacks tardíos
+        if (cancelled) {
+          currentFlowAttemptIdRef.current = null;
+        } else {
+          log("Error en launch (timeout), esperando posibles callbacks tardíos", {
+            attempt_id: attemptId,
+          });
+          // NO limpiar currentFlowAttemptIdRef aquí para permitir procesamiento tardío
+        }
       });
   }
 
   function handleCancel() {
     cancel();
+    currentFlowAttemptIdRef.current = null;
     setStatus("cancelled");
     setError("Conexión cancelada. Puedes intentarlo de nuevo cuando quieras.");
   }
@@ -340,6 +417,53 @@ export function ConnectWhatsappPanel({
     }
     return <Badge variant="outline">Sin conectar</Badge>;
   }, [status]);
+
+  // Effect para detectar callbacks tardíos (code que llega después del timeout)
+  useEffect(() => {
+    if (status !== "error" || !currentFlowAttemptIdRef.current) return;
+    
+    const checkInterval = setInterval(() => {
+      const capture = getCurrentCapture();
+      const attemptId = getCurrentAttemptId();
+      
+      if (!capture?.code || !attemptId) return;
+      
+      // Verificar que sea del mismo intento
+      if (attemptId !== currentFlowAttemptIdRef.current) {
+        log("Code tardío ignorado (intento diferente)", {
+          current_attempt: currentFlowAttemptIdRef.current,
+          capture_attempt: attemptId,
+        });
+        return;
+      }
+      
+      log("Code tardío detectado, procesando automáticamente", {
+        attempt_id: attemptId,
+        has_waba_id: Boolean(capture.waba_id),
+        has_phone_number_id: Boolean(capture.phone_number_id),
+      });
+      
+      // Marcar code como consumido ANTES de procesar para evitar doble disparo
+      currentFlowAttemptIdRef.current = null;
+      consumeCapture(); // Limpiar code del sessionRef en el hook
+      clearInterval(checkInterval);
+      
+      // Limpiar error y procesar el code
+      setError(null);
+      setStatus("idle");
+      
+      const captureData = {
+        code: capture.code,
+        waba_id: capture.waba_id,
+        phone_number_id: capture.phone_number_id,
+        business_id: capture.business_id,
+      };
+      setPendingCapture(captureData);
+      setPinDialogOpen(true);
+    }, 500);
+    
+    return () => clearInterval(checkInterval);
+  }, [status, getCurrentCapture, getCurrentAttemptId, consumeCapture]);
 
   const showSuccess = status === "connected" && view?.connected;
 
@@ -455,7 +579,7 @@ export function ConnectWhatsappPanel({
                   <Smartphone className="size-4" />
                 )}
                 {status === "completing"
-                  ? "Guardando conexión…"
+                  ? "Finalizando conexión con Meta…"
                   : status === "connecting"
                     ? "Esperando a Meta…"
                     : "Conectar con Meta"}

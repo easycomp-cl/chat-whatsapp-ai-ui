@@ -301,8 +301,8 @@ export function ConnectWhatsappPanel({
     };
     setPendingCapture(capture);
     log("Diálogo de PIN mostrado", {
-      attempt_id: capture.waba_id,
-      source: redirectUri ? "autoComplete_url" : "autoComplete_tardy",
+      attempt_id: null,
+      source: "url_redirect",
     });
     setPinDialogOpen(true);
     if (searchParams.toString()) {
@@ -353,7 +353,7 @@ export function ConnectWhatsappPanel({
           setPendingCapture(captureData);
           setStatus("idle");
           log("Diálogo de PIN mostrado", {
-            attempt_id: capture.waba_id,
+            attempt_id: attemptId,
             source: "launch_normal",
           });
           setPinDialogOpen(true);
@@ -473,6 +473,10 @@ export function ConnectWhatsappPanel({
         business_id: capture.business_id,
       };
       setPendingCapture(captureData);
+      log("Diálogo de PIN mostrado", {
+        attempt_id: attemptId,
+        source: "late_callback",
+      });
       setPinDialogOpen(true);
     }, 500);
     

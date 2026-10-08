@@ -90,7 +90,7 @@ Se agregó sistema de logs con prefijo `[ES]` (Embedded Signup) que registra:
 **Al inicializar el SDK:**
 ```
 [ES] Inicializando SDK de Meta: {
-  config_id: "3646774175478909",
+  config_id: "1046141448397539",
   config_source: "backend" | "env/fallback",
   app_id_present: true,
   graph_version: "v25.0",
@@ -104,7 +104,7 @@ Se agregó sistema de logs con prefijo `[ES]` (Embedded Signup) que registra:
 ```
 [ES] Lanzando Embedded Signup: {
   attempt_id: "attempt_1728341234567_abc123xyz",
-  config_id: "3646774175478909",
+  config_id: "1046141448397539",
   config_source: "backend",
   sdk_initialized: true,
   login_available: true

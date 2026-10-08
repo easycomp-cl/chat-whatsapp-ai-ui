@@ -20,7 +20,7 @@ const ALLOWED_OAUTH_PATHS = [
 ] as const;
 
 const DEFAULT_META_APP_ID = "1642810900259407";
-const DEFAULT_META_CONFIG_ID = "3646774175478909";
+const DEFAULT_META_CONFIG_ID = "1046141448397539";
 
 export function getPublicAppOrigin(): string {
   const fromEnv = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "").trim();

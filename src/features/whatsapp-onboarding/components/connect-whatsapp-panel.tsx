@@ -300,6 +300,10 @@ export function ConnectWhatsappPanel({
       redirect_uri: redirectUri,
     };
     setPendingCapture(capture);
+    log("Diálogo de PIN mostrado", {
+      attempt_id: null,
+      source: "url_redirect",
+    });
     setPinDialogOpen(true);
     if (searchParams.toString()) {
       router.replace(pathname);
@@ -348,6 +352,10 @@ export function ConnectWhatsappPanel({
           
           setPendingCapture(captureData);
           setStatus("idle");
+          log("Diálogo de PIN mostrado", {
+            attempt_id: attemptId,
+            source: "launch_normal",
+          });
           setPinDialogOpen(true);
         } catch (err: unknown) {
           const message = clientActionErrorMessage(err);
@@ -384,6 +392,11 @@ export function ConnectWhatsappPanel({
 
   function handlePinConfirm(pin: string) {
     if (!pendingCapture) return;
+    const isValid = /^\d{6}$/.test(pin.trim());
+    log("PIN enviado", {
+      pin_length: pin.trim().length,
+      is_valid: isValid,
+    });
     try {
       persistCapture(pendingCapture, pin);
     } catch (err: unknown) {
@@ -396,6 +409,7 @@ export function ConnectWhatsappPanel({
   }
 
   function handlePinCancel() {
+    log("Diálogo de PIN cancelado");
     setPinDialogOpen(false);
     setPendingCapture(null);
     setStatus("cancelled");
@@ -459,6 +473,10 @@ export function ConnectWhatsappPanel({
         business_id: capture.business_id,
       };
       setPendingCapture(captureData);
+      log("Diálogo de PIN mostrado", {
+        attempt_id: attemptId,
+        source: "late_callback",
+      });
       setPinDialogOpen(true);
     }, 500);
     

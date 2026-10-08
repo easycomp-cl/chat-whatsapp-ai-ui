@@ -106,7 +106,7 @@ GET {BOT_API_BASE_URL}/businesses/:businessId/whatsapp/connection
 ```
 NEXT_PUBLIC_APP_URL=https://chatbotmanager.easycomp.cl
 NEXT_PUBLIC_META_APP_ID=1642810900259407
-NEXT_PUBLIC_META_EMBEDDED_SIGNUP_CONFIG_ID=3646774175478909
+NEXT_PUBLIC_META_EMBEDDED_SIGNUP_CONFIG_ID=1046141448397539
 NEXT_PUBLIC_META_GRAPH_VERSION=v25.0
 NEXT_PUBLIC_BOT_API_BASE_URL=https://api-chatbotmanager.easycomp.cl
 BOT_API_BASE_URL=https://api-chatbotmanager.easycomp.cl
@@ -118,7 +118,7 @@ No hay tokens de larga duración en el front. `config_id` y `app_id` sí son pú
 **Orden de prioridad del config_id (desde 2026-10-07):**
 1. `meta.config_id` del backend (GET `/businesses/:businessId/whatsapp/connection`)
 2. Variable de entorno `NEXT_PUBLIC_META_EMBEDDED_SIGNUP_CONFIG_ID`
-3. Fallback hardcodeado: `3646774175478909`
+3. Fallback hardcodeado: `1046141448397539` (config 'WA ES CloudAPI sin venc', Cloud API sin Marketing Messages, token permanente; vigente desde 2026-10-08)
 
 El frontend consulta el config_id al backend antes de lanzar el popup de Meta. Esto permite que el cambio de config_id sea gobernado desde el backend sin necesidad de redeploy del frontend.
 
@@ -126,7 +126,7 @@ El frontend consulta el config_id al backend antes de lanzar el popup de Meta. E
 
 `FB.login` se llama **síncrono en el click** (si hay un `await` antes, Chrome bloquea el popup). Parámetros:
 
-- `config_id`: Se obtiene dinámicamente del backend (`meta.config_id` en GET `/whatsapp/connection`). Si el backend no lo devuelve, se usa `NEXT_PUBLIC_META_EMBEDDED_SIGNUP_CONFIG_ID` o el fallback `3646774175478909`.
+- `config_id`: Se obtiene dinámicamente del backend (`meta.config_id` en GET `/whatsapp/connection`). Si el backend no lo devuelve, se usa `NEXT_PUBLIC_META_EMBEDDED_SIGNUP_CONFIG_ID` o el fallback `1046141448397539` (config 'WA ES CloudAPI sin venc', Cloud API sin Marketing Messages, token permanente; vigente desde 2026-10-08; config_id anterior era `3646774175478909`).
 - `response_type`: `"code"`
 - `override_default_response_type`: `true`
 - `extras.setup`: `{}`

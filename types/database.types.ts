@@ -45,6 +45,7 @@ export type Conversation = {
   assigned_admin_id: string | null;
   handoff_reason: string | null;
   bot_resume_at: string | null;
+  human_mode_until?: string | null;
   last_message_at: string;
   chat_cleared_at: string | null;
   created_at: string;

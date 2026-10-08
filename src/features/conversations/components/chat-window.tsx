@@ -25,6 +25,7 @@ import { cn } from "@/lib/utils";
 import { ChatMessageBubble } from "@/features/conversations/components/chat-message-bubble";
 import { ConversationAvatar } from "@/features/conversations/components/conversation-avatar";
 import { ConversationModeSwitch } from "@/features/conversations/components/conversation-mode-switch";
+import { ConversationModeBadge } from "@/features/conversations/components/conversation-mode-badge";
 import { AddNoteForm } from "@/features/conversations/components/add-note-form";
 import { ReplyForm } from "@/features/conversations/components/reply-form";
 import { PendingIndicator } from "@/features/conversations/components/pending-indicator";
@@ -325,6 +326,10 @@ export function ChatWindow({
               <PanelRightOpen className="size-4" />
             </button>
           )}
+          <ConversationModeBadge
+            mode={conversation.mode}
+            humanModeUntil={conversation.human_mode_until}
+          />
           <div className="flex items-center gap-1.5">
             {showContactOverlayTrigger && (
               <button

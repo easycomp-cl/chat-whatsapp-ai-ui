@@ -54,7 +54,7 @@ export function BotStatusCard({ enabled, updatedAt, canToggle }: BotStatusCardPr
             <p
               className={`text-2xl font-bold ${localEnabled ? "text-emerald-600" : "text-red-600"}`}
             >
-              {localEnabled ? "Bot activo" : "Bot pausado"}
+              {localEnabled ? "Bot global activo" : "Bot global pausado"}
             </p>
             <p className="text-sm text-muted-foreground">
               Actualizado {formatRelativeFromNow(updatedAt)}

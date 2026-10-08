@@ -10,6 +10,7 @@ const SYSTEM_EVENT_KINDS = new Set<SystemEventKind>([
   "profile_updated",
   "handoff",
   "mode_changed",
+  "bot_mode_resumed",
   "plate_lookup",
   "vehicle_identified",
   "fitment_check",
@@ -147,6 +148,7 @@ function inferKind(title: string): SystemEventKind {
   if (text.includes("patente")) return "plate_lookup";
   if (text.includes("identific")) return "vehicle_identified";
   if (text.includes("cotizaci")) return "quote_prepared";
+  if (text.includes("volvi") && text.includes("modo bot")) return "bot_mode_resumed";
   if (text.includes("devolvi") || text.includes("modo")) return "mode_changed";
   if (text.includes("deriv") || text.includes("tomó") || text.includes("tomo la")) return "handoff";
   if (text.includes("sugir") || text.includes("recomend") || text.includes("compatib")) {

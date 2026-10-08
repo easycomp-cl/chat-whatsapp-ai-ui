@@ -18,6 +18,7 @@ import {
 } from "@/lib/conversations/delivery-status";
 import type { OutboundSenderContext } from "@/lib/conversations/outbound-sender";
 import { APPEND_SYSTEM_EVENT } from "@/features/conversations/lib/append-system-event";
+import { withHumanModeUntil } from "@/lib/conversations/human-mode-until";
 import type { Conversation, Customer, Message } from "@/types/database.types";
 
 const POLL_MS = 2500;
@@ -42,7 +43,9 @@ export function useLiveConversation(
   initialMessages: Message[],
   outboundSender?: OutboundSenderContext | null
 ) {
-  const [conversation, setConversation] = useState(initialConversation);
+  const [conversation, setConversation] = useState(() =>
+    withHumanModeUntil(initialConversation)
+  );
   const [messages, setMessages] = useState(() => normalizeMessages(initialMessages));
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const prevCountRef = useRef(initialMessages.length);
@@ -57,7 +60,7 @@ export function useLiveConversation(
 
   // Solo reiniciar al cambiar de conversación (evita pisar estado vivo con props RSC obsoletas).
   useEffect(() => {
-    setConversation(initialConversation);
+    setConversation(withHumanModeUntil(initialConversation));
     setMessages(normalizeMessages(initialMessages));
     prevCountRef.current = initialMessages.length;
     // eslint-disable-next-line react-hooks/exhaustive-deps -- reset solo al cambiar conversación
@@ -126,10 +129,12 @@ export function useLiveConversation(
         .eq("id", conv.customer_id)
         .single();
 
-      setConversation({
-        ...conv,
-        customers: (customer as Customer | null) ?? null,
-      });
+      setConversation(
+        withHumanModeUntil({
+          ...conv,
+          customers: (customer as Customer | null) ?? null,
+        })
+      );
     }
 
     const msgRes = await fetchConversationMessages(supabase, conversationId, {

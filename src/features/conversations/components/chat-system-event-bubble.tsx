@@ -1,6 +1,7 @@
 "use client";
 
 import { Bot, UserRound } from "lucide-react";
+import { BOT_MODE_RESUMED_FALLBACK } from "@/lib/conversations/human-mode-until";
 import { resolveSystemEvent } from "@/lib/conversations/system-event";
 import { formatFullTime } from "@/lib/conversations/utils";
 import {
@@ -163,6 +164,9 @@ export function ChatSystemEventBubble({
         : !hasGroups && title
           ? title
           : "";
+  const eventText =
+    plainFallback ||
+    (event?.kind === "bot_mode_resumed" ? BOT_MODE_RESUMED_FALLBACK : "");
   const stampedAt = message.created_at ? formatFullTime(message.created_at) : "";
 
   return (
@@ -190,7 +194,7 @@ export function ChatSystemEventBubble({
             <ChangeBlock label="se eliminó:" lines={removedLines} />
           </div>
         ) : null}
-        {!hasGroups && plainFallback ? <p className="mt-1 wrap-anywhere">{plainFallback}</p> : null}
+        {!hasGroups && eventText ? <p className="mt-1 wrap-anywhere">{eventText}</p> : null}
       </div>
     </div>
   );

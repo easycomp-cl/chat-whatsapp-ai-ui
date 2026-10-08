@@ -20,7 +20,7 @@ export function ConversationModeSwitch({
   const isHuman = mode === "HUMAN";
   const title =
     lockedReason ??
-    (isHuman ? "Modo humano activo" : "Bot activo");
+    (isHuman ? "Modo humano activo" : "Modo BOT activo");
 
   return (
     <div

@@ -45,6 +45,11 @@ export type Conversation = {
   assigned_admin_id: string | null;
   handoff_reason: string | null;
   bot_resume_at: string | null;
+  /**
+   * ISO 8601: hora en que esta conversación vuelve a BOT tras inactividad.
+   * `null` = está en BOT. Ausente (`undefined`) = backend aún no despliega el campo.
+   */
+  human_mode_until?: string | null;
   last_message_at: string;
   chat_cleared_at: string | null;
   created_at: string;
